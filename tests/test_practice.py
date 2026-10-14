@@ -52,6 +52,17 @@ class PracticeTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Session mode: diagnostic", prompt)
         self.assertEqual(sum(minutes for _, minutes in DAILY_STEPS), 145)
 
+    def test_timer_identifies_step_and_block_for_display(self):
+        status = self.practice.status()
+        self.assertEqual(status["step_index"], 0)
+        self.assertEqual(status["step_count"], 13)
+        self.assertEqual(status["step_duration_seconds"], 300)
+        self.assertTrue(status["block"].startswith("Bloque 1"))
+        self.practice.index = 4
+        self.assertTrue(self.practice.status()["block"].startswith("Bloque 2"))
+        self.practice.index = 10
+        self.assertTrue(self.practice.status()["block"].startswith("Bloque 3"))
+
     def test_policy_does_not_embed_full_documents_and_keeps_recent_history(self):
         prompt = tutor_prompt("Ahmad", history="old evidence " * 2000 + "RECENT EVIDENCE")
         self.assertLess(len(prompt), 15000)

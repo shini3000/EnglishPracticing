@@ -45,6 +45,12 @@ class Practice:
         return {
             "mode": self.mode, "step": self.steps[self.index][0],
             "step_index": self.index, "elapsed_seconds": int(elapsed),
+            "step_count": len(self.steps),
+            "step_duration_seconds": self.steps[self.index][1] * 60,
+            "block": ("Diagnóstico" if self.mode == "diagnostic" else
+                      "Bloque 1 · Recuperación y diagnóstico" if self.index < 4 else
+                      "Bloque 2 · Estructura y escucha" if self.index < 10 else
+                      "Bloque 3 · Transferencia y cierre"),
             "remaining_seconds": max(0, int(self.steps[self.index][1] * 60 - elapsed)),
             "running": self.since is not None, "started": self.started,
             "finished": self.finished, "completed": list(self.completed),

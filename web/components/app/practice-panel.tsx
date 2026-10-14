@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useDataChannel, useSessionContext } from '@livekit/components-react';
+import type { PracticeMode } from '@/lib/practice-options';
 
 type Timer = {
   step: string;
@@ -10,10 +11,14 @@ type Timer = {
   running: boolean;
   started: boolean;
   finished: boolean;
+  step_index: number;
+  step_count: number;
+  step_duration_seconds: number;
+  block: string;
 };
 type JournalEntry = { kind: string; date: string; [key: string]: unknown };
 
-export function PracticePanel() {
+export function PracticePanel({ mode }: { mode: PracticeMode }) {
   const { isConnected } = useSessionContext();
   const [timer, setTimer] = useState<Timer | null>(null);
   const [receivedAt, setReceivedAt] = useState(0);
@@ -75,15 +80,55 @@ export function PracticePanel() {
       )
     : 0;
   return (
-    <aside className="bg-background/95 fixed top-20 right-3 z-50 max-h-[65vh] w-72 overflow-auto rounded-xl border p-3 shadow-sm">
-      <p className="text-sm font-medium">{timer?.step ?? 'Preparando práctica'}</p>
-      <p className="text-muted-foreground text-xs" aria-live="off">
-        {!timer?.started
-          ? 'El cronómetro comienza al confirmar el tema.'
-          : timer.finished
-            ? 'Sesión finalizada'
-            : `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')} · ${timer.running ? 'en curso' : 'pausa'}`}
+    <aside
+      aria-label="Cronómetro y paso de la práctica"
+      className="bg-background fixed top-[max(0.75rem,env(safe-area-inset-top))] right-3 left-3 z-[100] max-h-[45vh] overflow-auto rounded-xl border-2 border-emerald-500 p-4 shadow-xl sm:left-auto sm:w-80"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold tracking-wide uppercase">Cronómetro de práctica</p>
+        <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-xs">
+          {timer?.finished
+            ? 'Finalizada'
+            : !timer?.started
+              ? 'Preparación'
+              : timer.running
+                ? 'En curso'
+                : 'En pausa'}
+        </span>
+      </div>
+      <p className="text-muted-foreground mt-2 text-xs">
+        {timer?.block ??
+          (mode === 'diagnostic' ? 'Diagnóstico' : 'Bloque 1 · Recuperación y diagnóstico')}
+        {' · '}Paso {(timer?.step_index ?? 0) + 1} de{' '}
+        {timer?.step_count ?? (mode === 'diagnostic' ? 7 : 13)}
       </p>
+      <p className="mt-1 text-base font-semibold" aria-live="polite">
+        {timer?.step ?? (mode === 'diagnostic' ? 'Presentación y presente' : 'Preparación')}
+      </p>
+      <p className="mt-2 font-mono text-4xl font-bold tabular-nums" aria-live="off">
+        {timer?.started
+          ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`
+          : mode === 'diagnostic'
+            ? '04:00'
+            : '05:00'}
+      </p>
+      <p className="text-muted-foreground mt-1 text-xs">
+        {!timer
+          ? 'Conectando con el cronómetro del tutor…'
+          : !timer.started
+            ? 'El tiempo comienza al confirmar el tema.'
+            : timer.finished
+              ? 'Práctica terminada.'
+              : remaining === 0
+                ? 'Tiempo cumplido: termina tu respuesta antes de cambiar de paso.'
+                : 'Tiempo restante del paso actual'}
+      </p>
+      <progress
+        className="mt-2 h-2 w-full"
+        aria-label="Avance del paso"
+        max={timer?.step_duration_seconds ?? 300}
+        value={timer?.started ? (timer.step_duration_seconds ?? 300) - remaining : 0}
+      />
       <p className="text-muted-foreground mt-1 text-xs">
         Pide al tutor pausar, continuar o terminar.
       </p>

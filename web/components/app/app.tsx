@@ -116,7 +116,7 @@ export function App({ appConfig, learnerName }: AppProps) {
           onPracticeMode={setPracticeMode}
         />
       </main>
-      <PracticePanel />
+      <PracticePanel mode={practiceMode} />
       <PersonalAvatarDialog
         open={photoDialogOpen}
         photoSrc={photoSrc}

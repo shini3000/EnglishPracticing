@@ -1,6 +1,7 @@
 import importlib.resources
 import logging
 import uuid
+import asyncio
 
 from livekit.agents import Agent, AgentSession, JobContext
 from livekit.plugins import groq, silero
@@ -187,7 +188,21 @@ async def entrypoint(ctx: JobContext) -> None:
     practice = Practice(learner_id, ctx.room, settings.PROGRESS_DATABASE_URL, mode, language)
     history = await practice.history()
 
+    # Reliable data messages are not retained for clients that subscribe later.
+    # Re-send state so the panel recovers after mounting or reconnecting.
+    async def _sync_practice() -> None:
+        while True:
+            await practice.publish()
+            await asyncio.sleep(5)
+
+    practice_sync = asyncio.create_task(_sync_practice())
+
     async def _close_practice() -> None:
+        practice_sync.cancel()
+        try:
+            await practice_sync
+        except asyncio.CancelledError:
+            pass
         await practice.practice_control("finish", "Call ended; unconfirmed activities remain pending.")
         await practice.flush()
 
