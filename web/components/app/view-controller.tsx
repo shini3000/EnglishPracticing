@@ -7,6 +7,7 @@ import type { AppConfig } from '@/app-config';
 import { AgentSessionView_01 } from '@/components/agents-ui/blocks/agent-session-view-01';
 import { WelcomeView } from '@/components/app/welcome-view';
 import type { AvatarChoice } from '@/lib/avatar-choice';
+import type { NativeLanguage, PracticeMode } from '@/lib/practice-options';
 
 const MotionWelcomeView = motion.create(WelcomeView);
 const MotionSessionView = motion.create(AgentSessionView_01);
@@ -30,6 +31,10 @@ const VIEW_MOTION_PROPS = {
 };
 
 interface ViewControllerProps {
+  nativeLanguage: NativeLanguage;
+  practiceMode: PracticeMode;
+  onNativeLanguage: (value: NativeLanguage) => void;
+  onPracticeMode: (value: PracticeMode) => void;
   appConfig: AppConfig;
   learnerName: string | null;
   avatarChoice: AvatarChoice;
@@ -45,6 +50,10 @@ export function ViewController({
   photoSrc,
   onPickAvatar,
   onPickPhotoAvatar,
+  nativeLanguage,
+  practiceMode,
+  onNativeLanguage,
+  onPracticeMode,
 }: ViewControllerProps) {
   const { isConnected, start } = useSessionContext();
   const { resolvedTheme } = useTheme();
@@ -63,6 +72,10 @@ export function ViewController({
           onPickAvatar={onPickAvatar}
           onPickPhotoAvatar={onPickPhotoAvatar}
           onStartCall={start}
+          nativeLanguage={nativeLanguage}
+          practiceMode={practiceMode}
+          onNativeLanguage={onNativeLanguage}
+          onPracticeMode={onPracticeMode}
         />
       )}
       {/* Session view */}

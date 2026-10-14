@@ -1,5 +1,33 @@
 # English Tutor
 
+## Structured practice
+
+Choose your native language on the pre-call screen. English remains the learning
+language; explanations and corrections use your selected native language.
+Choose an initial diagnostic (30–40 minutes) or daily practice (145 effective
+minutes in three blocks). Ask the tutor to pause, resume or finish; the timer
+does not cut off an answer, and incomplete activities remain pending.
+
+Teaching policy is versioned in `prompts/curriculum/`, adapted from the supplied
+teacher-role, daily-practice and diagnostic documents. Personal historical notes
+are not imported automatically into other learners' profiles.
+
+After updating, apply the idempotent schema before restarting the agent:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\apply_schema.py
+.\.venv\Scripts\python.exe main.py dev
+```
+
+The new `practice_journal` stores append-only corrections, vocabulary cards,
+retrieval attempts and activity evidence by signed-in learner. The agent loads
+recent evidence for subsequent practices; the call panel displays recent entries.
+Without the database, evidence is available only during the current call.
+Speech recognition auto-detects language and multilingual voices read explanations.
+Pronunciation scores remain pending because the tutor receives transcripts rather
+than directly assessing audio. Video page availability does not certify playback,
+caption availability or duration; those require learner confirmation.
+
 A real-time voice agent that acts as a conversational English tutor. You talk, it listens, and it
 talks back — correcting mistakes naturally in the flow of conversation rather than stopping to
 lecture. It then remembers what you got wrong, and tells you when a mistake you had fixed comes back.

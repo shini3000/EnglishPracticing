@@ -5,6 +5,7 @@ import { ArrowLeftIcon, MicrophoneIcon } from '@phosphor-icons/react/dist/ssr';
 import { AvatarPicker } from '@/components/avatar/avatar-picker';
 import { Button } from '@/components/ui/button';
 import { type AvatarChoice, tutorNameFor } from '@/lib/avatar-choice';
+import { NATIVE_LANGUAGES, type NativeLanguage, type PracticeMode } from '@/lib/practice-options';
 
 /**
  * The pre-call screen: the last thing a learner sees before the microphone opens.
@@ -17,6 +18,10 @@ import { type AvatarChoice, tutorNameFor } from '@/lib/avatar-choice';
  */
 
 interface WelcomeViewProps {
+  nativeLanguage: NativeLanguage;
+  practiceMode: PracticeMode;
+  onNativeLanguage: (value: NativeLanguage) => void;
+  onPracticeMode: (value: PracticeMode) => void;
   startButtonText: string;
   learnerName: string | null;
   avatarChoice: AvatarChoice;
@@ -34,6 +39,10 @@ export const WelcomeView = ({
   onPickAvatar,
   onPickPhotoAvatar,
   onStartCall,
+  nativeLanguage,
+  practiceMode,
+  onNativeLanguage,
+  onPracticeMode,
   ref,
 }: React.ComponentProps<'div'> & WelcomeViewProps) => {
   const tutorName = tutorNameFor(avatarChoice);
@@ -46,9 +55,41 @@ export const WelcomeView = ({
         </h1>
 
         <p className="text-muted-foreground mt-3 text-sm leading-6 text-pretty">
-          Speak naturally about anything at all. {capitalize(tutorName)} will chat back, gently
-          correct your mistakes, and look things up on the web if you ask.
+          {capitalize(tutorName)} guiará tu práctica de inglés, explicará las correcciones en tu
+          idioma nativo y te pedirá que vuelvas a usar lo aprendido.
         </p>
+
+        <div className="mt-4 grid w-full gap-3 text-left">
+          <label className="text-sm">
+            Idioma nativo para explicaciones
+            <select
+              value={nativeLanguage}
+              onChange={(e) => onNativeLanguage(e.target.value as NativeLanguage)}
+              className="bg-background mt-1 w-full rounded-md border p-2"
+            >
+              {Object.entries(NATIVE_LANGUAGES).map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="text-muted-foreground text-xs">Idioma de aprendizaje: inglés.</p>
+          <label className="text-sm">
+            Tipo de sesión
+            <select
+              value={practiceMode}
+              onChange={(e) => onPracticeMode(e.target.value as PracticeMode)}
+              className="bg-background mt-1 w-full rounded-md border p-2"
+            >
+              <option value="daily">Práctica diaria · 145 min en tres bloques</option>
+              <option value="diagnostic">Diagnóstico inicial · 30–40 min</option>
+            </select>
+          </label>
+          <p className="text-muted-foreground text-xs">
+            Puedes pausar o terminar antes. Las actividades pendientes se conservan como pendientes.
+          </p>
+        </div>
 
         <div className="mt-6 w-full text-left">
           <AvatarPicker

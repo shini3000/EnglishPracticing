@@ -7,11 +7,13 @@ from livekit.plugins import groq, silero
 
 import progress
 from agent import avatars, personas
+from agent.practice import Practice
 from agent.text_filters import strip_tool_call_leakage
 from config.settings import settings
 from plugins.edge_tts import EdgeTTS
-from prompts.tutor import tutor_prompt
+from prompts.tutor import LANGUAGES, tutor_prompt
 from tools import search_web
+from tools.search import find_listening_video
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +34,47 @@ class EnglishTutor(Agent):
     prompt sent to the LLM on every turn — no manual ChatContext needed.
     """
 
-    def __init__(self, persona: personas.Persona) -> None:
-        super().__init__(instructions=tutor_prompt(persona.name), tools=[search_web])
+    def __init__(self, persona: personas.Persona, practice: Practice, history: str) -> None:
+        self.practice = practice
+        super().__init__(
+            instructions=tutor_prompt(persona.name, practice.language, practice.mode, history),
+            tools=[search_web, find_listening_video, practice.practice_control, practice.record_learning],
+        )
         self._greeting = persona.greeting
 
     async def on_enter(self) -> None:
         """Called once when the agent joins the session. Used for the greeting."""
-        await self.session.say(self._greeting, allow_interruptions=True)
+        greetings = {
+            "es": ("Hola, soy tu profesor de inglés. ¿Prefieres un tema propuesto por mí o quieres elegirlo tú?",
+                   "Vamos a hacer el diagnóstico. Responde en inglés, sin preparar ni leer respuestas. Tell me about yourself, your usual week, and something you enjoy doing."),
+            "en": ("Hello, I'm your English teacher. Would you like my suggested topic or your own?",
+                   "Let's start the diagnostic. Answer in English without prepared notes. Tell me about yourself, your usual week, and something you enjoy doing."),
+            "pt": ("Olá, sou seu professor de inglês. Você prefere um tema sugerido por mim ou quer escolher?",
+                   "Vamos começar o diagnóstico. Responda em inglês sem ler respostas preparadas. Tell me about yourself and your usual week."),
+            "fr": ("Bonjour, je suis votre professeur d'anglais. Préférez-vous mon sujet ou choisir le vôtre ?",
+                   "Commençons le diagnostic. Répondez en anglais sans lire de réponses préparées. Tell me about yourself and your usual week."),
+            "de": ("Hallo, ich bin dein Englischlehrer. Möchtest du meinen Themenvorschlag oder dein eigenes Thema?",
+                   "Beginnen wir die Einstufung. Antworte auf Englisch ohne vorbereitete Antworten. Tell me about yourself and your usual week."),
+            "it": ("Ciao, sono il tuo insegnante di inglese. Preferisci un mio argomento o vuoi sceglierlo?",
+                   "Iniziamo la valutazione. Rispondi in inglese senza leggere risposte preparate. Tell me about yourself and your usual week."),
+            "zh": ("你好，我是你的英语老师。你想自己选话题，还是让我推荐？",
+                   "现在开始水平测试。请用英语回答，不要读提前准备的答案。Tell me about yourself and your usual week."),
+            "ja": ("こんにちは。英語の先生です。話題を自分で選びますか、それとも私が提案しましょうか？",
+                   "レベルチェックを始めましょう。用意した答えを読まずに英語で答えてください。Tell me about yourself and your usual week."),
+        }
+        if self.practice.mode == "diagnostic":
+            await self.practice.practice_control("start")
+        greeting = greetings[self.practice.language][self.practice.mode == "diagnostic"]
+        await self.session.say(greeting, allow_interruptions=False)
+        await self.practice.publish()
+
+    async def on_user_turn_completed(self, turn_ctx, new_message) -> None:
+        turn_ctx.add_message(
+            role="system",
+            content="Measured practice state after learner turn: " + str(self.practice.status())
+            + ". If time expired, collect evidence before advancing; never claim elapsed time from memory.",
+        )
+        await self.practice.publish()
 
 
 def _load_vad() -> silero.VAD:
@@ -142,6 +178,20 @@ async def entrypoint(ctx: JobContext) -> None:
     participant = await ctx.wait_for_participant()
     learner_id = _learner_id_from(participant.identity)
     avatar_mode = participant.attributes.get(AVATAR_MODE_ATTRIBUTE, "")
+    language = participant.attributes.get("native_language", "es")
+    if language not in LANGUAGES:
+        language = "es"
+    mode = participant.attributes.get("practice_mode", "daily")
+    if mode not in {"daily", "diagnostic"}:
+        mode = "daily"
+    practice = Practice(learner_id, ctx.room, settings.PROGRESS_DATABASE_URL, mode, language)
+    history = await practice.history()
+
+    async def _close_practice() -> None:
+        await practice.practice_control("finish", "Call ended; unconfirmed activities remain pending.")
+        await practice.flush()
+
+    ctx.add_shutdown_callback(_close_practice)
 
     photo: bytes | None = None
     if avatar_mode == "photo":
@@ -154,9 +204,9 @@ async def entrypoint(ctx: JobContext) -> None:
         persona = personas.BY_CHARACTER.get(avatar_mode, personas.DEFAULT)
 
     session = AgentSession(
-        stt=groq.STT(model=settings.STT_MODEL),
+        stt=groq.STT(model=settings.STT_MODEL, detect_language=True),
         llm=groq.LLM(model=settings.LLM_MODEL),
-        tts=EdgeTTS(voice=persona.voice),
+        tts=EdgeTTS(voice="en-US-AndrewMultilingualNeural" if persona.name == "Ahmad" else "en-US-AvaMultilingualNeural"),
         vad=_load_vad(),
         # Groq's llama-3.3-70b-versatile occasionally leaks a tool call into the
         # reply text as literal `<function=...>...</function>` syntax instead of
@@ -202,5 +252,5 @@ async def entrypoint(ctx: JobContext) -> None:
 
     await session.start(
         room=ctx.room,
-        agent=EnglishTutor(persona),
+        agent=EnglishTutor(persona, practice, history),
     )

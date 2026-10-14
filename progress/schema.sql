@@ -89,6 +89,17 @@ UPDATE learners AS l
 -- usable as an `ON CONFLICT (username)` arbiter, which is how login upserts (web/lib/learners.ts).
 CREATE UNIQUE INDEX IF NOT EXISTS learners_username_key ON learners (username);
 
+-- Append-only teaching evidence; never replace previous sessions or retrieval attempts.
+CREATE TABLE IF NOT EXISTS practice_journal (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  learner_id uuid NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  room_name text NOT NULL,
+  entry jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS practice_journal_learner_time
+  ON practice_journal (learner_id, created_at DESC);
+
 -- ---------------------------------------------------------------------------
 -- sessions — one row per completed practice conversation
 -- ---------------------------------------------------------------------------

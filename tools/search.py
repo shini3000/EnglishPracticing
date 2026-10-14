@@ -7,6 +7,8 @@ aloud, not ten blue links.
 """
 import logging
 import re
+import json
+import httpx
 
 from livekit.agents import RunContext, function_tool
 from tavily import AsyncTavilyClient
@@ -130,3 +132,38 @@ async def search_web(ctx: RunContext, query: str) -> str:
         return f"The web search for {query!r} failed. Tell the user you couldn't reach the web."
 
     return _format(query, data)
+
+
+@function_tool
+async def find_listening_video(ctx: RunContext, topic: str) -> str:
+    """Find a short English listening video for the practice topic and show its link.
+
+    HTTP verification checks page availability only, not playable media, duration or
+    captions. Ask the learner to confirm those before marking listening completed.
+    """
+    try:
+        data = await _client.search(
+            topic + " English short video 2 6 minutes subtitles",
+            include_domains=["youtube.com", "bbc.co.uk", "ted.com"],
+            max_results=3, timeout=_SEARCH_TIMEOUT,
+        )
+        async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
+            for result in data.get("results", []):
+                url = result.get("url", "")
+                parsed = httpx.URL(url)
+                if parsed.scheme != "https" or parsed.host not in {
+                    "youtube.com", "www.youtube.com", "www.bbc.co.uk", "bbc.co.uk", "www.ted.com", "ted.com"
+                }:
+                    continue
+                response = await client.get(url)
+                if response.status_code != 200:
+                    continue
+                material = {"url": url, "title": result.get("title", "Listening video"),
+                            "note": "Página accesible; confirma reproducción, duración y subtítulos."}
+                await ctx.session.room_io.room.local_participant.publish_data(
+                    json.dumps(material).encode(), reliable=True, topic="practice-material"
+                )
+                return json.dumps(material)
+    except Exception:
+        logger.warning("Listening material lookup failed", exc_info=True)
+    return "No verified link available. Reserve 5–10 minutes to choose with learner or use their audio. Mark listening pending until played."

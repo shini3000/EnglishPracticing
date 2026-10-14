@@ -7,12 +7,14 @@ import { WarningIcon } from '@phosphor-icons/react/dist/ssr';
 import type { AppConfig } from '@/app-config';
 import { AgentSessionProvider } from '@/components/agents-ui/agent-session-provider';
 import { StartAudioButton } from '@/components/agents-ui/start-audio-button';
+import { PracticePanel } from '@/components/app/practice-panel';
 import { ViewController } from '@/components/app/view-controller';
 import { PersonalAvatarDialog } from '@/components/avatar/personal-avatar-dialog';
 import { Toaster } from '@/components/ui/sonner';
 import { useAgentErrors } from '@/hooks/useAgentErrors';
 import { useDebugMode } from '@/hooks/useDebug';
 import { type AvatarChoice, DEFAULT_AVATAR_CHOICE } from '@/lib/avatar-choice';
+import { type NativeLanguage, type PracticeMode } from '@/lib/practice-options';
 import { getSandboxTokenSource } from '@/lib/utils';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
@@ -32,6 +34,14 @@ interface AppProps {
 
 export function App({ appConfig, learnerName }: AppProps) {
   const [avatarChoice, setAvatarChoice] = useState<AvatarChoice>(DEFAULT_AVATAR_CHOICE);
+  const [nativeLanguage, setNativeLanguage] = useState<NativeLanguage>('es');
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>('daily');
+  useEffect(() => {
+    const stored = localStorage.getItem('native-language');
+    if (stored && ['es', 'en', 'pt', 'fr', 'de', 'it', 'zh', 'ja'].includes(stored)) {
+      setNativeLanguage(stored as NativeLanguage);
+    }
+  }, []);
   const [hasPhoto, setHasPhoto] = useState(false);
   // Bumped on every new upload so the <img> URLs change and no cache — browser or CDN —
   // can keep showing the photo that was just replaced.
@@ -72,14 +82,14 @@ export function App({ appConfig, learnerName }: AppProps) {
       const res = await fetch('/api/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ avatar: avatarChoice }),
+        body: JSON.stringify({ avatar: avatarChoice, nativeLanguage, practiceMode }),
       });
       if (!res.ok) {
         throw new Error(`Token request failed with status ${res.status}`);
       }
       return await res.json();
     });
-  }, [appConfig, avatarChoice]);
+  }, [appConfig, avatarChoice, nativeLanguage, practiceMode]);
 
   const session = useSession(
     tokenSource,
@@ -97,8 +107,16 @@ export function App({ appConfig, learnerName }: AppProps) {
           photoSrc={photoSrc}
           onPickAvatar={setAvatarChoice}
           onPickPhotoAvatar={() => setPhotoDialogOpen(true)}
+          nativeLanguage={nativeLanguage}
+          practiceMode={practiceMode}
+          onNativeLanguage={(value) => {
+            setNativeLanguage(value);
+            localStorage.setItem('native-language', value);
+          }}
+          onPracticeMode={setPracticeMode}
         />
       </main>
+      <PracticePanel />
       <PersonalAvatarDialog
         open={photoDialogOpen}
         photoSrc={photoSrc}

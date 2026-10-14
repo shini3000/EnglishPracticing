@@ -3,6 +3,7 @@ import { AccessToken, type AccessTokenOptions, type VideoGrant } from 'livekit-s
 import { RoomConfiguration } from '@livekit/protocol';
 import { hasAvatarPhoto } from '@/lib/avatars';
 import { getDb } from '@/lib/db';
+import { NATIVE_LANGUAGES } from '@/lib/practice-options';
 import { currentLearnerId } from '@/lib/session';
 
 type ConnectionDetails = {
@@ -44,6 +45,15 @@ export async function POST(req: Request) {
 
     // Parse room config from request body.
     const body = await req.json();
+    const nativeLanguage = body?.nativeLanguage ?? 'es';
+    const practiceMode = body?.practiceMode ?? 'daily';
+    if (
+      typeof nativeLanguage !== 'string' ||
+      !Object.hasOwn(NATIVE_LANGUAGES, nativeLanguage) ||
+      !['daily', 'diagnostic'].includes(practiceMode)
+    ) {
+      return new NextResponse('Invalid practice preferences', { status: 400 });
+    }
     const roomConfig = body?.room_config
       ? RoomConfiguration.fromJson(body.room_config, { ignoreUnknownFields: true })
       : new RoomConfiguration();
@@ -84,7 +94,12 @@ export async function POST(req: Request) {
       {
         identity: participantIdentity,
         name: participantName,
-        attributes: { avatar_mode: avatarMode },
+        attributes: {
+          avatar_mode: avatarMode,
+          native_language: nativeLanguage,
+          practice_mode: practiceMode,
+          target_language: 'en',
+        },
       },
       roomName,
       roomConfig
