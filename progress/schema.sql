@@ -100,6 +100,16 @@ CREATE TABLE IF NOT EXISTS practice_journal (
 CREATE INDEX IF NOT EXISTS practice_journal_learner_time
   ON practice_journal (learner_id, created_at DESC);
 
+-- Derived projection: raw journal evidence remains append-only and authoritative.
+CREATE TABLE IF NOT EXISTS learner_learning_items (
+  learner_id uuid NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  item_type text NOT NULL CHECK (item_type IN ('vocabulary','structure')),
+  item_key text NOT NULL,
+  snapshot jsonb NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (learner_id, item_type, item_key)
+);
+
 -- ---------------------------------------------------------------------------
 -- sessions — one row per completed practice conversation
 -- ---------------------------------------------------------------------------

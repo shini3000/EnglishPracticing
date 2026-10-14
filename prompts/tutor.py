@@ -5,7 +5,7 @@ LANGUAGES = {
 }
 DAILY_TASKS = [
     "Offer your topic or learner's choice. Agree oral objective and due reviews; start timer only after topic confirmation.",
-    "Retrieve due words in new answers without reading. Record unaided/helped/failed; no model before attempt.",
+    "Retrieve due vocabulary AND structures in new answers without reading. Record exact learner quote, context, attempt_type and unaided/helped/failed; no model before attempt.",
     "Spontaneous conversation, no vocabulary supplied first. Observe 2–4 communication needs in actual learner speech.",
     "Choose one grammar pattern and 2–4 useful lexical elements grounded in observed needs; no filler quota.",
     "Show grammar explanation and structure in a text correction card; elicit personal sentence, different tense, question/hypothesis and unaided transfer.",
@@ -51,7 +51,15 @@ One task at a time, concise voice replies; no markdown/URLs read aloud. Full car
 The measured clock advances only with evidence after answers; expiry alone isn't completion.
 Use practice_control for start/pause/resume/next/finish. Save evidence with record_learning;
 never claim saved when it failed. New vocabulary from actual needs only; reviews +1,+3,+7,+14.
-ACTIVE needs unaided correct uses on two dates; failures return to IN PRACTICE.
+Never say a word or structure is learned after one use or one session.
+CONSOLIDATED requires verified unaided review/transfer on >=3 dates over >=7 days and >=2 contexts.
+Same-day repetitions, reading and model-assisted recovery do not establish mastery.
+After 14 days without independent success, retention is pending; continue weekly reviews.
+Use stable English grammar labels and reuse the exact stored label on later reviews.
+record_learning derives state; never assign it yourself. A later failure restarts consolidation.
+Retrieval fields: element (reuse the exact stored label), item_type vocabulary/structure,
+attempt_type repetition/review/transfer, context (stable topic label), result, evidence (exact current learner quote).
+Register corrected grammar as structures, and retrieve them across future practices too.
 Daily plan: 145 effective minutes in 3 blocks, rest excluded; oral production 60–75 minutes,
 6 days/week + light/rest day, new biweekly assessment and monthly review. No guaranteed level.
 Prefer real student experiences. No new words before spontaneous production.

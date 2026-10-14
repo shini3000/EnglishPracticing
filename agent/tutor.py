@@ -86,6 +86,7 @@ class EnglishTutor(Agent):
     async def on_user_turn_completed(self, turn_ctx, new_message) -> None:
         # The full measured state is built once per request, not accumulated as
         # another system message on every turn.
+        self.practice.latest_user_text = new_message.text_content or ""
         await self.practice.publish()
 
     def _learning_memory(self) -> str:
@@ -96,6 +97,7 @@ class EnglishTutor(Agent):
             except ValueError:
                 continue
         entries.extend(self.practice.entries)
+        snapshots = [entry for entry in entries if entry.get("kind") == "learning_snapshot"]
         # Explicit evidence, not an invented LLM summary. Focus on latest priorities.
         selected = []
         for kind in ("step", "correction", "vocabulary", "retrieval", "assessment", "listening"):
@@ -125,6 +127,10 @@ class EnglishTutor(Agent):
                 due.append({"element": element, "pattern": card.get("pattern", ""),
                             "state": attempt.get("state", "EN PRÁCTICA")})
         # A few due reviews plus current correction evidence, not the entire word bank.
+        if snapshots:
+            due = [{"element": item["label"], "item_type": item["item_type"],
+                    "state": item["state"], "next_review": item["next_review"]}
+                   for item in snapshots if item.get("due")]
         return ("Due reviews: " + json.dumps(due[:4], ensure_ascii=False)[:500]
                 + "\n" + "\n".join(selected)[-1000:])
 

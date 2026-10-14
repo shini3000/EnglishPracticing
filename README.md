@@ -99,11 +99,50 @@ La pronunciación de referencia no es una evaluación de cómo habló el estudia
 - Un elemento nuevo comienza **EN PRÁCTICA**.
 - Se reutiliza hoy y se programa revisión a **+1, +3, +7 y +14 días**.
 - Cada intento registra resultado: sin ayuda, con ayuda o falló.
-- Pasa a **ACTIVA** solo con uso correcto sin leer en dos fechas distintas.
+- Pasa a **EN CONSOLIDACIÓN** al demostrar recuperación correcta en dos días.
+- Se considera **CONSOLIDADA** con al menos tres días correctos sin ayuda,
+  un intervalo mínimo de siete días y dos contextos diferentes.
+- Repetir el modelo, leer una frase o usarla una sola vez no demuestra dominio.
+- Tras 14 días sin recuperación independiente, pasa a **REPASO PENDIENTE**.
 - Si vuelve a fallar, regresa a **EN PRÁCTICA**; se conserva su evidencia anterior.
 
 El tutor recibe un conjunto breve de repasos vencidos y evidencias recientes,
 no todo el historial dentro de cada petición.
+
+### Estadísticas de aprendizaje
+
+En **Progreso** (`/progress`) puedes ver vocabulario y estructuras por separado:
+elementos trabajados, en consolidación, consolidados y repasos vencidos; días de
+recuperación; usos sin ayuda, con ayuda y fallidos; porcentaje de éxito y una
+gráfica diaria. Cada elemento muestra sus evidencias, días correctos, variedad de
+contextos e intervalo entre prácticas.
+
+Las palabras contadas en una transcripción se muestran como **palabras usadas**,
+no como vocabulario aprendido. Los intentos antiguos sin contexto o sin evidencia
+verificada se conservan, pero no acreditan consolidación. La valoración del tutor
+sigue dependiendo de la transcripción: estas estadísticas no certifican dominio.
+
+Después de esta actualización, desde la raíz:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\apply_schema.py
+.\.venv\Scripts\python.exe scripts\rebuild_learning.py
+```
+
+El segundo comando recalcula la tabla derivada `learner_learning_items` sin
+reescribir ni borrar el diario original. Los nuevos intentos se validan contra
+la intervención actual; se identifican como repetición, revisión o transferencia.
+
+Si Postgres falla, la evidencia se conserva en una cola local
+`.data/practice-pending.sqlite3` y se reintenta al guardar o iniciar otra práctica
+desde el mismo equipo. La cola no se sube a Git ni se incorpora a la imagen Docker.
+En un alojamiento efímero necesitas un volumen persistente para conservarla tras
+reinicios del contenedor; el guardado remoto solo se confirma cuando se sincroniza.
+
+Para Neon, el agente utiliza Postgres a través de un túnel WebSocket TLS (puerto
+443), manteniendo las transacciones. Esto evita depender de que tu red permita
+conexiones Postgres directas. Las otras bases Postgres siguen usando conexión
+directa. El sitio conserva su driver HTTPS. No se requieren nuevas credenciales.
 
 ### 5. Escucha, shadowing y parafraseo
 

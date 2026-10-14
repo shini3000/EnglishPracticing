@@ -17,6 +17,7 @@ import base64
 import logging
 
 import asyncpg
+from progress.connection import connect as connect_database
 from groq import AsyncGroq
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ async def load_avatar_photo(learner_id: str, *, dsn: str | None) -> bytes | None
     try:
         # statement_cache_size=0 for the same reason as progress/repository.py: Neon's pooled
         # URL goes through PgBouncer, which breaks asyncpg's prepared-statement cache.
-        conn = await asyncpg.connect(dsn, statement_cache_size=0)
+        conn = await connect_database(dsn, statement_cache_size=0)
         row = await conn.fetchrow(
             "SELECT image FROM learner_avatars WHERE learner_id = $1",
             learner_id,

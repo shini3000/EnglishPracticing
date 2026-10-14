@@ -11,6 +11,7 @@ python-dotenv>=1.0.0
 
 # --- progress tracking (progress/) ---
 asyncpg>=0.30.0        # Postgres driver; see repository.py for the statement_cache_size=0 note
+aiohttp>=3.9.0         # TLS WebSocket transport for Neon on networks blocking Postgres TCP
 groq>=0.11.0           # end-of-session grading call; separate from the livekit groq plugin
 tiktoken>=0.8.0       # local token budgeting; no LLM calls for history compaction
 wordfreq>=3.1.1        # real Zipf word frequencies, so "advanced vocabulary" is a measurement

@@ -115,7 +115,9 @@ function LevelCard({ summary }: { summary: ProgressSummary }) {
 function EmptyState() {
   return (
     <div className="mx-auto max-w-md py-20 text-center">
-      <h1 className="text-foreground text-xl font-semibold">No practice yet</h1>
+      <h1 className="text-foreground text-xl font-semibold">
+        No completed conversation reports yet
+      </h1>
       <p className="text-muted-foreground mt-3 text-sm leading-6">
         Have your first conversation with Ahmad and your progress will show up here — your level,
         the mistakes worth fixing, and how both change over time.
@@ -193,9 +195,9 @@ export function Dashboard({ summary }: { summary: ProgressSummary }) {
           hint={`${totals.wordsSpoken.toLocaleString()} words spoken`}
         />
         <StatTile
-          label="Vocabulary"
+          label="Words used"
           value={totals.vocabularySize.toLocaleString()}
-          hint="distinct words you've used"
+          hint="words produced, not proof of mastery"
         />
         <StatTile
           label="Streak"

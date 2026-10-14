@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA = ROOT / "progress" / "schema.sql"
+sys.path.insert(0, str(ROOT))
 
 
 async def main() -> int:
@@ -31,12 +32,12 @@ async def main() -> int:
         print("PROGRESS_DATABASE_URL is not set in .env", file=sys.stderr)
         return 1
 
-    import asyncpg
+    from progress.connection import connect
 
     # statement_cache_size=0 is required for Neon's pooled (PgBouncer) connection string —
     # the same reason progress/repository.py sets it. Without it, prepared statements from a
     # previous connection collide and you get a baffling DuplicatePreparedStatementError.
-    conn = await asyncpg.connect(dsn, statement_cache_size=0)
+    conn = await connect(dsn, statement_cache_size=0)
     try:
         await conn.execute(SCHEMA.read_text(encoding="utf-8"))
     finally:

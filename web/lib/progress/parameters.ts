@@ -152,7 +152,7 @@ export const PARAMETERS: ParameterSpec[] = [
   {
     key: 'cumulative_vocabulary',
     group: 'vocabulary',
-    label: 'Vocabulary size',
+    label: 'Distinct words used',
     caption: 'Distinct words you have used, adding up across every session.',
     goodDirection: 'higher',
     cumulative: true,
@@ -163,7 +163,7 @@ export const PARAMETERS: ParameterSpec[] = [
   {
     key: 'new_word_count',
     group: 'vocabulary',
-    label: 'New words per session',
+    label: 'First-use words per session',
     caption:
       'Words you had never used before. This is the one that flattens when you stop stretching — the total above keeps climbing regardless.',
     goodDirection: 'higher',

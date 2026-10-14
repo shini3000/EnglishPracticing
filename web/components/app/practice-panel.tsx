@@ -32,6 +32,7 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
   const [now, setNow] = useState(0);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [saved, setSaved] = useState(true);
+  const [queued, setQueued] = useState(false);
   const [material, setMaterial] = useState<{ url: string; title: string } | null>(null);
   const [correctionVisible, setCorrectionVisible] = useState(true);
   useDataChannel('practice', (message) => {
@@ -48,6 +49,7 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
       setEntries((previous) => [...previous, data.entry]);
       if (data.entry?.kind === 'correction') setCorrectionVisible(true);
       setSaved(data.saved);
+      setQueued(Boolean(data.queued));
     } catch {
       /* Ignore malformed data. */
     }
@@ -189,7 +191,9 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
         </summary>
         {!saved && (
           <p className="mt-2 text-xs">
-            Guardado no disponible: conserva estas notas antes de salir.
+            {queued
+              ? 'Evidencia en cola local: se sincronizará cuando la base vuelva a estar disponible en este equipo.'
+              : 'Guardado no disponible: conserva estas notas antes de salir.'}
           </p>
         )}
         {entries.map((entry, index) => (

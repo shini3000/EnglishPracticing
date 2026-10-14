@@ -25,6 +25,7 @@ import json
 import logging
 
 import asyncpg
+from .connection import connect as connect_database
 
 from .models import SessionReport
 
@@ -81,7 +82,7 @@ async def save_report(report: SessionReport, *, dsn: str) -> str | None:
     """
     conn: asyncpg.Connection | None = None
     try:
-        conn = await asyncpg.connect(dsn, statement_cache_size=0)
+        conn = await connect_database(dsn, statement_cache_size=0)
 
         async with conn.transaction():
             columns, extra = _split_metrics(report.metrics)

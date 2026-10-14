@@ -4,10 +4,15 @@ from __future__ import annotations
 import json
 import logging
 import time
+import asyncio
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
 from livekit.agents import function_tool
+from progress.learning import build_learning_items, save_learning_projection, item_identity
+from progress.pending import PendingEvidence
+from progress.connection import connect as connect_database
 
 logger = logging.getLogger(__name__)
 DAILY_STEPS = [
@@ -41,6 +46,15 @@ class Practice:
         self.saved = 0
         self.quota_status: dict = {"state": "ready"}
         self.focus = ""
+        self.latest_user_text = ""
+        self._flush_lock = asyncio.Lock()
+        self._modeled_examples: set[str] = set()
+        try:
+            self.pending = PendingEvidence() if learner_id else None
+        except Exception:
+            logger.warning("Local evidence queue unavailable; remote saving remains enabled", exc_info=True)
+            self.pending = None
+        self.local_pending = False
 
     def status(self) -> dict:
         elapsed = self.elapsed + (time.monotonic() - self.since if self.since is not None else 0)
@@ -73,25 +87,55 @@ class Practice:
                            ("step", "step_index", "remaining_seconds", "running", "started", "finished")})
 
     async def append(self, kind: str, evidence: dict) -> bool:
+        saved, _ = await self.append_event(kind, evidence)
+        return saved
+
+    async def append_event(self, kind: str, evidence: dict) -> tuple[bool, dict]:
         entry = {
             "kind": kind, "date": datetime.now(timezone(timedelta(hours=-5))).date().isoformat(),
             "mode": self.mode, "native_language": self.language, **evidence,
         }
+        entry["event_id"] = str(uuid.uuid4())
+        entry["recorded_at"] = datetime.now(timezone.utc).isoformat()
+        entry["room_name"] = self.room.name
         self.entries.append(entry)
-        return await self.flush()
+        if self.pending:
+            try:
+                await asyncio.to_thread(self.pending.add, self.learner_id, entry)
+                self.local_pending = True
+            except Exception:
+                logger.warning("Local evidence queue unavailable; keep visible notes", exc_info=True)
+        return await self.flush(), entry
 
     async def flush(self) -> bool:
+        async with self._flush_lock:
+            return await self._flush_locked()
+
+    async def _flush_locked(self) -> bool:
         if not self.dsn or not self.learner_id:
             return False
         conn = None
         try:
-            conn = await asyncpg.connect(self.dsn, statement_cache_size=0, timeout=8)
-            while self.saved < len(self.entries):
-                await conn.execute(
-                    "INSERT INTO practice_journal (learner_id, room_name, entry) VALUES ($1,$2,$3::jsonb)",
-                    self.learner_id, self.room.name, json.dumps(self.entries[self.saved]),
-                )
-                self.saved += 1
+            conn = await connect_database(self.dsn, statement_cache_size=0, timeout=8)
+            count = len(self.entries)
+            pending = await asyncio.to_thread(self.pending.read, self.learner_id) if self.pending else []
+            combined = {entry["event_id"]: entry for entry in pending + self.entries[self.saved:count]}
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", str(self.learner_id))
+                for entry in combined.values():
+                    await conn.execute(
+                        """INSERT INTO practice_journal (id,learner_id,room_name,entry,created_at)
+                           VALUES ($1,$2,$3,$4::jsonb,$5) ON CONFLICT (id) DO NOTHING""",
+                        entry["event_id"], self.learner_id, entry["room_name"], json.dumps(entry),
+                        datetime.fromisoformat(entry["recorded_at"]),
+                    )
+                await save_learning_projection(conn, self.learner_id,
+                                               datetime.now(timezone(timedelta(hours=-5))).date())
+            # Advance only after the entire transaction committed.
+            self.saved = count
+            if self.pending:
+                await asyncio.to_thread(self.pending.acknowledge, self.learner_id, list(combined))
+                self.local_pending = False
             return True
         except Exception:
             logger.warning("Practice journal unavailable; evidence remains in session", exc_info=True)
@@ -105,19 +149,31 @@ class Practice:
             return ""
         conn = None
         try:
-            conn = await asyncpg.connect(self.dsn, statement_cache_size=0, timeout=8)
+            conn = await connect_database(self.dsn, statement_cache_size=0, timeout=8)
+            # Recover queued evidence from earlier calls on this machine first.
+            if self.pending:
+                pending = await asyncio.to_thread(self.pending.read, self.learner_id)
+                if pending:
+                    async with conn.transaction():
+                        await conn.execute("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", str(self.learner_id))
+                        for entry in pending:
+                            await conn.execute(
+                                """INSERT INTO practice_journal (id,learner_id,room_name,entry,created_at)
+                                   VALUES ($1,$2,$3,$4::jsonb,$5) ON CONFLICT (id) DO NOTHING""",
+                                entry["event_id"], self.learner_id, entry["room_name"], json.dumps(entry),
+                                datetime.fromisoformat(entry["recorded_at"]))
+                    await asyncio.to_thread(self.pending.acknowledge, self.learner_id,
+                                            [entry["event_id"] for entry in pending])
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", str(self.learner_id))
+                items = await save_learning_projection(conn, self.learner_id,
+                                                       datetime.now(timezone(timedelta(hours=-5))).date())
             rows = await conn.fetch(
                 "SELECT entry FROM practice_journal WHERE learner_id=$1 ORDER BY created_at DESC LIMIT 80",
                 self.learner_id,
             )
             # Keep older vocabulary visible even after many newer conversations.
-            bank = await conn.fetch(
-                """SELECT DISTINCT ON (entry->>'element', entry->>'kind') entry
-                   FROM practice_journal
-                   WHERE learner_id=$1 AND entry->>'kind' IN ('vocabulary','retrieval')
-                   ORDER BY entry->>'element', entry->>'kind', created_at DESC""",
-                self.learner_id,
-            )
+            bank = [{"entry": {"kind": "learning_snapshot", **item}} for item in items]
             entries = [json.loads(row["entry"]) if isinstance(row["entry"], str) else row["entry"]
                        for row in list(rows) + list(bank)]
             entries.sort(key=lambda entry: entry.get("date", ""))
@@ -167,12 +223,14 @@ class Practice:
 
     @function_tool
     async def record_learning(self, kind: str, details_json: str) -> str:
-        """Append evidence JSON. Kinds: correction/vocabulary/retrieval/listening/assessment/feedback.
+        """Append evidence JSON. Kinds: correction/vocabulary/structure/retrieval/listening/assessment/feedback.
         Correction (TEXT ONLY): learner_text,corrected_text,pattern,explanation,recovery_task.
         Vocabulary keys: element,observed_need,meaning,pattern,pronunciation,restrictions,
-        collocations,examples (2),transfer_task. Retrieval: element,result (unaided/helped/failed),evidence.
+        collocations,examples (2),transfer_task. Structure: element,meaning,pattern,examples (2),transfer_task.
+        Retrieval: element,item_type (vocabulary/structure),result (unaided/helped/failed),
+        attempt_type (repetition/review/transfer),context,evidence (exact learner quote).
         """
-        if kind not in {"correction", "vocabulary", "retrieval", "listening", "assessment", "feedback"}:
+        if kind not in {"correction", "vocabulary", "structure", "retrieval", "listening", "assessment", "feedback"}:
             return "Invalid entry kind."
         try:
             data = json.loads(details_json)
@@ -184,33 +242,67 @@ class Practice:
             required = {"learner_text", "corrected_text", "pattern", "explanation", "recovery_task"}
             if any(not isinstance(data.get(key), str) or not data[key].strip() for key in required):
                 return "Text correction requires nonempty learner_text, corrected_text, pattern, explanation and recovery_task."
-        if kind == "vocabulary":
-            required = {"element", "observed_need", "meaning", "pattern", "pronunciation", "restrictions", "collocations", "examples", "transfer_task"}
+            from progress.learning import normalize
+            self._modeled_examples.add(normalize(data["corrected_text"]))
+        if kind in {"vocabulary", "structure"}:
+            required = {"element", "meaning", "pattern", "examples", "transfer_task"}
+            if kind == "vocabulary":
+                required |= {"observed_need", "pronunciation", "restrictions", "collocations"}
             if not required.issubset(data) or not isinstance(data["examples"], list) or len(data["examples"]) < 2:
                 return "Incomplete lexical card: provide all required fields and two examples."
+            if any(not isinstance(data.get(key), str) or not data[key].strip()
+                   for key in ("element", "meaning", "pattern", "transfer_task")):
+                return "Learning card needs nonempty element, meaning, pattern and transfer_task."
+            from progress.learning import normalize
+            self._modeled_examples.update(normalize(example) for example in data["examples"] if isinstance(example, str))
             today = datetime.now(timezone(timedelta(hours=-5))).date()
             data["reviews"] = [(today + timedelta(days=d)).isoformat() for d in (1, 3, 7, 14)]
             data["state"] = "EN PRÁCTICA"
         if kind == "retrieval":
-            if not data.get("element") or not data.get("evidence") or data.get("result") not in {"unaided", "helped", "failed"}:
+            if any(not isinstance(data.get(key), str) or not data[key].strip()
+                   for key in ("element", "evidence", "context")) or data.get("result") not in {"unaided", "helped", "failed"}:
                 return "Retrieval needs element, result and evidence."
-            # Activation is derived from append-only attempts, never an LLM assertion.
-            history = await self.history()
-            dates = {
-                row.get("date") for line in history.splitlines()
-                if (row := json.loads(line)).get("kind") == "retrieval"
-                and row.get("element") == data["element"] and row.get("result") == "unaided"
-            }
-            dates.update(e["date"] for e in self.entries if e["kind"] == "retrieval" and e.get("element") == data["element"] and e.get("result") == "unaided")
-            if data["result"] == "unaided":
-                dates.add(datetime.now(timezone(timedelta(hours=-5))).date().isoformat())
-            data["state"] = "ACTIVA" if len(dates) >= 2 and data["result"] != "failed" else "EN PRÁCTICA"
+            if data.get("item_type") not in {"vocabulary", "structure"} or data.get("attempt_type") not in {"repetition", "review", "transfer"} or not str(data.get("context", "")).strip():
+                return "Retrieval requires item_type, attempt_type and a concrete context."
+            from progress.learning import normalize
+            data["observed"] = bool(self.latest_user_text and
+                                    normalize(data["evidence"]) in normalize(self.latest_user_text))
+            if normalize(data["evidence"]) in self._modeled_examples:
+                data["attempt_type"] = "repetition"
+        # Model-provided dates, states or verified flags are never authoritative.
+        data.pop("state", None)
         data.pop("kind", None)
         data.pop("date", None)
-        saved = await self.append(kind, data)
+        data.pop("event_id", None)
+        data.pop("recorded_at", None)
+        if kind != "retrieval":
+            data.pop("observed", None)
+        saved, entry = await self.append_event(kind, data)
+        if kind in {"vocabulary", "structure", "correction", "retrieval"}:
+            # Projection derives mastery from all attempts, not the last 80 messages.
+            identity = item_identity(entry)
+            candidates = build_learning_items(self.entries,
+                datetime.now(timezone(timedelta(hours=-5))).date())
+            if saved and identity:
+                conn = None
+                try:
+                    conn = await connect_database(self.dsn, statement_cache_size=0, timeout=8)
+                    row = await conn.fetchrow(
+                        "SELECT snapshot FROM learner_learning_items WHERE learner_id=$1 AND item_type=$2 AND item_key=$3",
+                        self.learner_id, identity[0], identity[1])
+                    if row:
+                        snapshot = json.loads(row["snapshot"]) if isinstance(row["snapshot"], str) else row["snapshot"]
+                        candidates = [snapshot]
+                except Exception:
+                    logger.warning("Learning snapshot unavailable", exc_info=True)
+                finally:
+                    if conn is not None:
+                        await conn.close()
+            matching = next((item for item in candidates if identity and item["item_type"] == identity[0] and item["key"] == identity[1]), None)
+            data["state"] = matching["state"] if matching else "EN PRÁCTICA"
         try:
             await self.room.local_participant.publish_data(
-                json.dumps({"entry": self.entries[-1], "saved": saved}).encode(),
+                json.dumps({"entry": entry, "saved": saved, "queued": self.local_pending}).encode(),
                 reliable=True, topic="practice-journal",
             )
         except Exception:
