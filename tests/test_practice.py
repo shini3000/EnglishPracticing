@@ -36,14 +36,14 @@ class PracticeTests(unittest.IsolatedAsyncioTestCase):
         result = {"element": "listen to", "result": "unaided", "evidence": "I listen to music"}
         for _ in range(2):
             output = json.loads(await self.practice.record_learning("retrieval", json.dumps(result)))
-            self.assertEqual(output["entry"]["state"], "EN PRÁCTICA")
+            self.assertEqual(output["state"], "EN PRÁCTICA")
             self.assertFalse(output["saved"])
         self.practice.entries[0]["date"] = "2020-01-01"
         output = json.loads(await self.practice.record_learning("retrieval", json.dumps(result)))
-        self.assertEqual(output["entry"]["state"], "ACTIVA")
+        self.assertEqual(output["state"], "ACTIVA")
         result["result"] = "failed"
         output = json.loads(await self.practice.record_learning("retrieval", json.dumps(result)))
-        self.assertEqual(output["entry"]["state"], "EN PRÁCTICA")
+        self.assertEqual(output["state"], "EN PRÁCTICA")
 
     def test_policy_uses_selected_language_and_english_target(self):
         prompt = tutor_prompt("Sara", "fr", "diagnostic")
@@ -51,6 +51,21 @@ class PracticeTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("target language is ALWAYS English", prompt)
         self.assertIn("Session mode: diagnostic", prompt)
         self.assertEqual(sum(minutes for _, minutes in DAILY_STEPS), 145)
+        self.assertIn("GRAMMAR FEEDBACK IS TEXT ONLY", prompt)
+
+    async def test_written_correction_requires_full_explanation_and_publishes_card(self):
+        incomplete = {"learner_text": "I did went", "corrected_text": "I went", "pattern": "past"}
+        await self.practice.record_learning("correction", json.dumps(incomplete))
+        self.assertEqual(self.practice.entries, [])
+        card = {**incomplete, "explanation": "Después de did se usa el verbo base.",
+                "recovery_task": "Tell me what you did yesterday using a different verb."}
+        result = json.loads(await self.practice.record_learning("correction", json.dumps(card)))
+        self.assertEqual(result["delivery"], "text_only")
+        self.assertNotIn("explanation", result)
+        self.assertEqual(self.practice.entries[-1]["explanation"], card["explanation"])
+        published = self.room.local_participant.publish_data.call_args
+        self.assertEqual(published.kwargs["topic"], "practice-journal")
+        self.assertEqual(json.loads(published.args[0])["entry"]["recovery_task"], card["recovery_task"])
 
     def test_timer_identifies_step_and_block_for_display(self):
         status = self.practice.status()

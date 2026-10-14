@@ -1,690 +1,350 @@
-# English Tutor
+# English Practicing
 
-## Structured practice
+Tutor de inglés hablado con conversación por voz, correcciones escritas y práctica
+acumulativa. El estudiante elige a Ahmad o Sara, su idioma nativo y el tipo de
+sesión. **El idioma de aprendizaje siempre es inglés**: las explicaciones de las
+tarjetas se escriben en el idioma nativo seleccionado.
 
-Choose your native language on the pre-call screen. English remains the learning
-language; explanations and corrections use your selected native language.
-Choose an initial diagnostic (30–40 minutes) or daily practice (145 effective
-minutes in three blocks). Ask the tutor to pause, resume or finish; the timer
-does not cut off an answer, and incomplete activities remain pending.
+El objetivo es producir inglés propio, entender los errores y volver a usar las
+formas corregidas en situaciones nuevas. La metodología no consiste en memorizar
+listas ni escuchar largos monólogos del tutor.
 
-Teaching policy is versioned in `prompts/curriculum/`, adapted from the supplied
-teacher-role, daily-practice and diagnostic documents. Personal historical notes
-are not imported automatically into other learners' profiles.
+## Metodología de práctica
 
-After updating, apply the idempotent schema before restarting the agent:
+### 1. Diagnóstico inicial
+
+Antes de seguir una rutina, se recomienda elegir **Diagnóstico inicial**. Dura
+aproximadamente 30–40 minutos y recorre estas tareas:
+
+1. Presentación personal, rutina y presente.
+2. Narración en pasado y referencia de las terminaciones **-ed**.
+3. Planes y predicciones.
+4. Resolver un problema, explicar vocabulario y contrastar palabras.
+5. Narración u opinión con preguntas de seguimiento.
+6. Reparar una conversación: pedir aclaración y describir una palabra olvidada.
+7. Revisión de evidencias, fortalezas y prioridades.
+
+Las respuestas son en inglés, sin traductor, guion preparado ni lectura de
+respuestas. El tutor no ofrece una respuesta modelo antes del intento.
+
+El nivel CEFR/MCER es una estimación de la expresión oral, no una certificación.
+El agente recibe transcripciones: **no evalúa directamente la pronunciación ni el
+ritmo acústico**. Esos criterios quedan pendientes; no se inventa una nota /30
+cuando faltan criterios evaluables.
+
+### 2. Práctica diaria: 145 minutos efectivos
+
+La ruta base se divide en tres bloques. Los descansos de 5–10 minutos entre bloques
+no cuentan como práctica efectiva. Una jornada puede durar más que 145 minutos
+de reloj por descansos, búsquedas y tiempo adicional para ver material.
+
+Al comenzar, el tutor ofrece un tema propio o permite que el estudiante lo elija.
+Se define una meta oral concreta y se recupera vocabulario pendiente. No se asume
+que todo estudiante nuevo tiene nivel A2.
+
+| Bloque | Paso | Minutos | Evidencia esperada |
+|---|---|---:|---|
+| 1 · Recuperación y diagnóstico | Preparación | 5 | Tema, objetivo oral y repasos |
+| 1 | Recuperación sin leer | 15 | Uso nuevo de elementos pendientes; resultado por intento |
+| 1 | Conversación espontánea | 20 | Ideas propias y 2–4 necesidades comunicativas observadas |
+| 1 | Selección | 5 | Un patrón gramatical y elementos léxicos útiles |
+| 2 · Estructura y escucha | Gramática aplicada | 20 | Frase personal, otro tiempo verbal, pregunta o hipótesis |
+| 2 | Enlace e instrucciones | 2 | Material compartido y consigna clara |
+| 2 | Primera escucha | 6 | Tema, hablante e idea principal, sin transcripción |
+| 2 | Segunda escucha | 6 | 3–5 detalles y dos expresiones útiles |
+| 2 | Shadowing | 8 | Repetición de un fragmento comprendido de 20–40 segundos |
+| 2 | Paraphrasing | 8 | Resumen propio de 45–90 segundos y conexión personal |
+| 3 · Transferencia y cierre | Conversación principal | 25 | Narrar, opinar, resolver y reutilizar lo aprendido |
+| 3 | Taller léxico | 15 | Fichas completas y transferencia a contextos nuevos |
+| 3 | Grabación y registro | 10 | Producción final de 2–3 minutos, balance y próximas revisiones |
+
+Una etapa no cuenta como completada solo porque terminó su tiempo: requiere
+evidencia. El tutor no debe cortar una respuesta para avanzar. El cronómetro
+muestra bloque, paso y tiempo restante; puedes pedir **pausar**, **continuar** o
+**terminar**. Si cierras antes, las actividades no confirmadas quedan pendientes.
+El tiempo de llamada no equivale automáticamente al tiempo que hablaste.
+
+La secuencia y las consignas se orientan mediante las instrucciones del modelo y
+las herramientas del agente. El cronómetro mide tiempo; no certifica por sí mismo
+que se haya alcanzado un objetivo pedagógico.
+
+### 3. Correcciones escritas, recuperación oral
+
+Cuando aparece un error gramatical o de estructura, se muestra una tarjeta con:
+
+- Lo que dijiste y la frase corregida, conservando tu intención.
+- La estructura o fórmula gramatical.
+- Por qué hay un error, explicado en tu idioma nativo.
+- Una tarea en inglés para reutilizar la forma correcta.
+
+La explicación completa **no se narra por voz**. El tutor solo invita brevemente
+a mirar la tarjeta y reformular. Puedes ocultarla para practicar sin leer.
+Las tarjetas anteriores siguen disponibles en el registro.
+
+Se distinguen errores, opciones más naturales y palabras o intenciones que necesitan
+aclaración. Una transcripción dudosa no debe convertirse en una corrección inventada.
+Después de revisar la tarjeta, se recupera la frase y se transfiere el patrón a
+otra situación antes de cambiar de tema.
+
+### 4. Vocabulario acumulativo
+
+Primero se escucha producción espontánea. Luego se seleccionan **2–4 palabras,
+colocaciones o expresiones** que ayuden a comunicar esas mismas ideas; no hay una
+cuota de términos arbitrarios.
+
+Cada ficha incluye necesidad observada, significado, patrón, pronunciación de
+referencia, restricciones, colocaciones, dos ejemplos y una tarea de transferencia.
+La pronunciación de referencia no es una evaluación de cómo habló el estudiante.
+
+- Un elemento nuevo comienza **EN PRÁCTICA**.
+- Se reutiliza hoy y se programa revisión a **+1, +3, +7 y +14 días**.
+- Cada intento registra resultado: sin ayuda, con ayuda o falló.
+- Pasa a **ACTIVA** solo con uso correcto sin leer en dos fechas distintas.
+- Si vuelve a fallar, regresa a **EN PRÁCTICA**; se conserva su evidencia anterior.
+
+El tutor recibe un conjunto breve de repasos vencidos y evidencias recientes,
+no todo el historial dentro de cada petición.
+
+### 5. Escucha, shadowing y parafraseo
+
+Se busca un video de 2–6 minutos relacionado con el tema. La aplicación muestra
+el enlace y comprueba que la página abra. **Eso no garantiza reproducción,
+subtítulos, duración ni calidad del audio**: el estudiante debe confirmarlos.
+
+Primero se escucha sin transcripción, después se recuperan detalles con subtítulos
+en inglés cuando existan. El shadowing usa un fragmento ya comprendido; finalmente
+se explica el mensaje con palabras propias y se conecta con una experiencia.
+
+Si no hay material adecuado, se reserva tiempo adicional para elegirlo o se utiliza
+audio aportado por el estudiante. Si no se reprodujo material, la actividad queda
+pendiente. La producción final puede hacerse en la llamada; conservar un archivo
+de audio requiere una grabación aparte, no se genera automáticamente.
+
+### 6. Ciclo semanal y evaluación
+
+| Día | Enfoque sugerido |
+|---|---|
+| 1 | Universidad, rutinas y presente |
+| 2 | Prácticas profesionales, pasado y presente perfecto |
+| 3 | Emociones, causas y explicación |
+| 4 | Viajes, futuro y condicionales |
+| 5 | Tecnología, comparación y opinión |
+| 6 | Integración; evaluación nueva en semanas pares |
+| 7 | Escucha ligera o descanso activo |
+
+La propuesta intensiva es de 120–150 minutos efectivos durante seis días, con
+60–75 minutos de producción oral diaria, evaluación quincenal y revisión mensual.
+La meta de 12–16 semanas es orientativa: **no garantiza un cambio de nivel**.
+La carga debe reducirse si aparece fatiga persistente.
+
+Los documentos de referencia están en [prompts/curriculum](prompts/curriculum):
+[rol del profesor](prompts/curriculum/rol-del-profesor.md),
+[práctica diaria](prompts/curriculum/practica-diaria.md),
+[diagnóstico](prompts/curriculum/examen-diagnostico.md) y
+[guía](prompts/curriculum/guia.md). Sus referencias a un MCP externo, español fijo
+o archivos personales se adaptan a esta aplicación: cronómetro propio, idioma
+nativo seleccionable y registro por alumno en Postgres.
+
+## Arquitectura
+
+El navegador se conecta a una sala LiveKit. El sitio Next.js valida el acceso y
+firma el token; el agente Python escucha y conduce la práctica.
+
+```text
+Micrófono → Silero VAD → Whisper en Groq → GPT-OSS en Groq → Edge TTS → Altavoces
+                                              ↓
+                                  Tarjetas escritas y cronómetro
+                                              ↓
+                                  Registro acumulativo en Postgres
+```
+
+Ahmad y Sara son avatares dibujados en el navegador. Una foto animada mediante
+bitHuman es opcional y puede requerir un plan de pago y créditos adicionales.
+Sin base de datos, se puede conversar y ver evidencia de la llamada actual, pero
+no se conserva el progreso entre sesiones. Sin bitHuman, funcionan los personajes
+incluidos.
+
+## Requisitos
+
+- Python 3.13.
+- Node.js 20 o posterior y pnpm; el proyecto declara pnpm 9.15.9.
+- Un proyecto de [LiveKit](https://cloud.livekit.io/).
+- Claves de [Groq](https://console.groq.com/keys) y [Tavily](https://app.tavily.com/).
+- Opcional: Postgres; el frontend utiliza el driver de [Neon](https://neon.com/).
+- Opcional: API de bitHuman para el avatar con foto.
+
+Los servicios tienen cuotas independientes. Una sesión de 150 minutos no está
+garantizada por sus planes gratuitos ni implica que se pueda practicar esa duración
+todos los días del mes sin agotar algún servicio.
+
+## Configuración de entorno
+
+Hay **dos archivos independientes**; no se sincronizan automáticamente.
+
+| Ubicación | Variables |
+|---|---|
+| Raíz: `.env` | LiveKit, Groq, Tavily, modelos, límites y tolerancia a pausas |
+| Raíz: `.env`, opcionales | `PROGRESS_DATABASE_URL`, `BITHUMAN_API_SECRET` |
+| Frontend: `web/.env.local` | LiveKit, `APP_PASSCODE`, `AGENT_NAME` vacío |
+| Frontend, opcionales | `DATABASE_URL`, `AVATAR_PASSCODE` |
+
+Usa [.env.example](.env.example) para el agente y
+[web/.env.example](web/.env.example) para el sitio. El frontend también admite
+`web/.env` si ya lo estás usando; evita crear valores contradictorios en otro
+archivo de mayor prioridad.
+
+Las tres credenciales LiveKit deben coincidir en ambos archivos.
+`PROGRESS_DATABASE_URL` y `DATABASE_URL` apuntan a la misma base, con nombres
+distintos. **No pongas `DATABASE_URL`, `APP_PASSCODE` ni `AGENT_NAME` en el
+`.env` de la raíz:** el agente rechaza campos desconocidos.
+
+`APP_PASSCODE` lo eliges tú para entrar al sitio. `AVATAR_PASSCODE` protege la
+carga de fotos. El inicio de sesión usa un nombre y un código compartido: no es
+un sistema de contraseñas individuales. Mantén `AGENT_NAME` vacío para que el
+agente se asigne automáticamente a las salas.
+
+El ejemplo de la raíz selecciona GPT-OSS 20B para conversar, GPT-OSS 120B para
+evaluar, Whisper Turbo para transcribir y Qwen 3.8 para la foto opcional. Copia
+esas selecciones explícitas: algunos valores predeterminados históricos del código
+pueden corresponder a modelos retirados. No publiques tus archivos con secretos.
+
+## Ejecutar localmente en Windows
+
+Desde la raíz del proyecto, crea el entorno si todavía no existe:
+
+```powershell
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+if (-not (Test-Path web/.env.local) -and -not (Test-Path web/.env)) {
+    Copy-Item web/.env.example web/.env.local
+}
+```
+
+Edita los archivos de entorno y sustituye los placeholders antes de iniciar.
+Si no utilizas una opción, déjala comentada o elimina su línea; no dejes una
+conexión de ejemplo como si fuera real.
+
+Si configuraste la base de datos, aplica el esquema idempotente:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\apply_schema.py
+```
+
+**Terminal 1 — agente**, desde la raíz:
+
+```powershell
+.\.venv\Scripts\python.exe main.py download-files
 .\.venv\Scripts\python.exe main.py dev
 ```
 
-The new `practice_journal` stores append-only corrections, vocabulary cards,
-retrieval attempts and activity evidence by signed-in learner. The agent loads
-recent evidence for subsequent practices; the call panel displays recent entries.
-Without the database, evidence is available only during the current call.
-Speech recognition auto-detects language and multilingual voices read explanations.
-Pronunciation scores remain pending because the tutor receives transcripts rather
-than directly assessing audio. Video page availability does not certify playback,
-caption availability or duration; those require learner confirmation.
+Espera a que aparezca `registered worker`. La instalación y descarga se hacen
+al preparar el entorno; los siguientes arranques solo necesitan `main.py dev`.
 
-A real-time voice agent that acts as a conversational English tutor. You talk, it listens, and it
-talks back — correcting mistakes naturally in the flow of conversation rather than stopping to
-lecture. It then remembers what you got wrong, and tells you when a mistake you had fixed comes back.
+**Terminal 2 — sitio**:
 
-There are two tutor personas — **Ahmad** and **Sara**, each with an animated face and a matching
-voice — and you pick one on the pre-call screen. Both are patient, encouraging, and calibrated to
-your proficiency level. They embed corrections into their replies (you say *"I goed to the store"*,
-the tutor answers *"Oh, you went to the store! What did you get?"*) and always end with a follow-up
-question to keep you talking. You can also upload a photo and have *that person* become your tutor's
-face, with a voice matched to the picture — see **Avatars** below.
+```powershell
+cd web
+pnpm install
+pnpm dev
+```
 
-## Try it
+Abre [http://localhost:3000](http://localhost:3000), entra con tu nombre y
+`APP_PASSCODE`, selecciona idioma nativo, modo y personaje, y permite el micrófono.
+Usa el mismo nombre para recuperar tu historial. Detén cada proceso con `Ctrl+C`.
 
-**<https://english-tutor-nine-green.vercel.app>** — passcode `ALEX2026`
+`main.py console` sirve para probar audio en la terminal; no sustituye al agente
+en modo `dev` que atiende las llamadas del sitio.
 
-Sign in with **any username** you like plus the passcode. There is no registration step — the first
-time a username is used, it becomes yours. Then pick **Talk to Ahmad**, choose your tutor (Ahmad,
-Sara, or your own photo), and allow the microphone. Nothing to install; it works on a phone. The
-tutor greets you first, so if you hear the greeting, everything downstream is working.
+## Pausas al hablar
 
-Use the **same username on every device** and your progress follows you: phone and laptop are one
-learner, not two.
+El agente espera aproximadamente **3 segundos de silencio detectado** antes de
+responder. Una pausa corta puede generar un segmento de transcripción separado,
+pero no debería cerrar tu turno. Retomar la voz reinicia la detección del final.
 
-The first call of the day can take a few seconds to connect — the agent worker scales to zero when
-idle and has to wake up.
+Puedes ampliar el margen en el `.env` de la raíz:
 
-### Install it on your phone
+```env
+TURN_END_SILENCE_SECONDS=4.0
+```
 
-The site is a PWA, so it can live on a home screen with its own icon and open fullscreen, without
-an app store and without a second codebase.
+Reinicia el agente después de cambiarlo. Un margen mayor permite pensar, pero
+también hace más lenta la respuesta cuando realmente terminaste.
 
-- **Android (Chrome):** the address bar offers **Install app**. Otherwise ⋮ → *Add to Home screen*.
-- **iPhone (Safari):** Share → *Add to Home Screen*. There is no automatic prompt — iOS has never
-  offered one, so the manual route is the only route.
+## Ahorro de cuota de Groq
 
-It is the same app either way, not a cut-down one: same sign-in, same voice call, same dashboard.
-What installing buys you is the icon, the fullscreen window, and not hunting for the link.
+Cada petición incluye las reglas esenciales, el paso actual, evidencias breves y
+hasta tres turnos anteriores. La respuesta actual y sus pares de herramientas se
+conservan. No se consume otra petición para resumir todo el historial.
 
-**What it cannot do is run in the background.** Lock the phone or switch apps mid-call and the
-browser suspends the page, which drops the microphone and ends the session. That is a limit of the
-web platform, not of this setup, and it applies equally to the plain link. Background audio needs a
-real native app (LiveKit ships `@livekit/react-native`), which means a second frontend — the
-dashboard's charts and the SVG tutor faces do not port. Worth it only if practising with the screen
-off is something you actually want.
+Se cuenta el tamaño localmente, se limita la salida y se ajusta la reserva con
+el uso real informado por Groq. El contador se comparte entre procesos locales
+de la misma clave/modelo mediante SQLite temporal. No puede conocer el consumo
+desde otras computadoras o instancias.
 
-## What it does
+Los límites conservadores incluidos en el ejemplo son:
 
-**Voice conversation.** A full speech pipeline: voice activity detection, speech-to-text, an LLM, and
-text-to-speech, all on free tiers.
+```env
+GROQ_TPM_BUDGET=7200
+GROQ_TPD_BUDGET=180000
+GROQ_RPM_BUDGET=24
+GROQ_RPD_BUDGET=900
+GROQ_MAX_REQUEST_TOKENS=3600
+GROQ_MAX_COMPLETION_TOKENS=640
+GROQ_MAX_WAIT_SECONDS=60
+```
 
-**Web search.** Ask about the news, the weather, a price, last night's score, and the tutor looks it
-up via [Tavily](https://tavily.com). It announces the search out loud first, because dead air on a
-voice call is unnerving. Tell it not to search and it won't.
+Estos valores **no aumentan la cuota del proveedor**. La generación especulativa
+está desactivada; hay un único responsable de los reintentos, y no se repite una
+respuesta que ya empezó. Si hace falta esperar, el cronómetro se pausa y el panel
+lo indica. Una corrección escrita utiliza una invitación oral fija, sin otra
+petición para narrar la tarjeta.
 
-**Avatars.** Every call has a face. The two built-in characters — Ahmad (male voice) and Sara
-(female voice), drawn as South Asian portraits — are rendered in the browser and animated live from
-the tutor's audio: the mouth follows the voice, the eyes blink, the brows lift while it thinks.
-They cost nothing per minute. The third option is a **personalized avatar**: upload a photo and
-[bitHuman](https://www.bithuman.ai) animates that face in real time, with the agent running one
-vision call on the picture first so the voice matches the person in it. Photo avatars burn metered
-bitHuman credits (~25 minutes/month on the free tier), so uploading one is gated behind a second
-passcode (`AVATAR_PASSCODE`), checked server-side on every upload. If bitHuman fails, credits run
-out, or the key is missing, the call degrades to voice-only — the tutor itself is never blocked.
+Una respuesta demasiado grande se trabaja en partes, sin recortarla silenciosamente.
+La evaluación automática de toda una sesión puede quedar pendiente si su
+transcripción o la cuota restante no caben: se conservan las métricas disponibles
+y las evidencias del registro. No se presenta una muestra como evaluación completa.
+El límite de audio de Whisper es independiente de los tokens del modelo.
 
-**Progress tracking.** Every session is analysed after the call ends, and `/progress` shows you where
-you are, what to fix, and whether you are actually improving. This is the part that makes it more
-than a chatbot: a general-purpose assistant has no memory of your last conversation, so it can never
-tell you that the articles you had under control have started slipping again. This can, because every
-mistake is stored individually and compared across sessions.
+## Registro y comprobaciones
 
-The dashboard reads at three depths. The aggregates answer "where am I now"; a **trajectory report**
-breaks the history into sequential groups of sessions (1–5 vs 6–10 vs …) so you can see whether each
-stretch of practice beat the one before, which session-to-session lines are too noisy to say; and a
-**session explorer** lets you filter to a recent window (last 5 or 10 sessions, past week or month)
-or open any single session and see its own numbers next to what is typical for you, with that
-session's corrections underneath.
+Postgres conserva sesiones, métricas y el diario `practice_journal`. Las nuevas
+evidencias se añaden; no se reemplazan las sesiones anteriores. El alumno puede
+consultar el diario de la llamada y sus tarjetas. Si el guardado no está disponible,
+la aplicación lo indica y las notas de esa llamada deben conservarse antes de salir.
 
-What is tracked, and what is deliberately not:
+```powershell
+# Pruebas sin llamadas de pago o consumo a Groq.
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 
-| Tracked | How |
+# Comprobación real: sí consume algunas peticiones de Groq.
+.\.venv\Scripts\python.exe scripts\check_voice.py
+
+# Desde web/
+pnpm exec tsc --noEmit
+pnpm build
+```
+
+## Resolución de problemas
+
+| Síntoma | Qué revisar |
 |---|---|
-| Grammar errors, by type | One LLM pass over the transcript at session end, tagged against a closed taxonomy (tenses, articles, prepositions, subject–verb agreement, …) |
-| Vocabulary range | Moving-average type-token ratio, plus the share of words rarer than Zipf 3.5 measured against a real frequency corpus |
-| Sentence complexity | Mean sentence length, *variability* of sentence length, and rate of subordination |
-| Speech delivery | Words per minute, hesitation rate, self-correction rate |
-| Conversational initiative | How often you ask a question rather than only answering |
-| CEFR level (A1–C2) | Estimated per session, then smoothed across sessions by grader confidence and recency |
-| Weak areas | Auto-tagged, and classified as *slipped back* / *keeps happening* / *new* |
-
-| **Not** tracked | Why |
-|---|---|
-| Pronunciation | Whisper exposes no phonemes and is explicitly trained to be *robust to accents* — the signal a pronunciation score needs is the one it is built to discard. Any number here would be fabricated, and a learner would act on it. Doing it properly needs Azure Speech Pronunciation Assessment. What *is* measured is **delivery** (pace, hesitation, self-repair), which is real and is not pronunciation. |
-| Reading / listening comprehension | There is no reading or listening *exercise* in the app. There is nothing to comprehend, so there is nothing to measure. |
-
-Grammar scoring runs on a speech-to-text transcript, so it inherits Whisper's mistakes: it will miss
-errors Whisper silently repaired, and can occasionally flag one Whisper invented. No prompt removes
-that ceiling, so the dashboard says so where the learner can see it.
-
-## How it works
-
-Three deployed pieces. The agent and the website are **deployed separately** and neither redeploys
-the other; the database is provisioned once and then just exists.
-
-```
-   your browser                  LiveKit Cloud
-┌────────────────┐            ┌─────────────────┐
-│  web/  (Next)  │            │  the agent      │
-│  on Vercel     │ ── room ── │  worker         │
-│                │            │                 │
-│ mints the JWT  │            │ STT → LLM → TTS │
-│ shows /progress│            │                 │
-└───────┬────────┘            └────────┬────────┘
-        │                              │
-        │  reads                       │  writes, once, at session end
-        │        ┌─────────────────┐   │
-        └───────▶│  Neon Postgres  │◀──┘
-                 └─────────────────┘
-```
-
-The frontend exists mainly to mint a room token. Joining a LiveKit room needs a JWT signed with your
-API secret, and a secret can never ship to a browser — so a shareable link needs a small server-side
-piece to sign one per visitor. That is the whole reason this isn't a single static HTML page.
-
-The agent is where the voice pipeline lives, orchestrated by
-[LiveKit Agents](https://docs.livekit.io/agents/):
-
-```
-mic → Silero VAD → Groq STT → Groq LLM → Edge TTS → speaker
-                (whisper-large-v3-turbo)  (llama-3.3-70b)  (male or female voice, per persona)
-```
-
-Everything on that path is a free tier: Groq for STT and the LLM, Microsoft Edge neural voices for
-TTS (no API key at all), Tavily for search, and Neon for the database. The one metered exception is
-the optional photo avatar (bitHuman cloud), which is why it sits behind its own passcode.
-
-**The agent writes to the database; the website only reads from it.** They never talk to each other
-directly.
-
-## Requirements
-
-For the agent:
-
-- Python 3.13
-- A [Groq API key](https://console.groq.com) (free)
-- A [Tavily API key](https://tavily.com) (free tier: 1,000 searches/month)
-- A [LiveKit](https://cloud.livekit.io) project (free tier is fine) and the `lk` CLI
-
-For the website, and only if you're changing or redeploying it:
-
-- Node 20+ and [pnpm](https://pnpm.io) (`npm install -g pnpm`)
-- A [Vercel](https://vercel.com) account (free) and the `vercel` CLI
-
-For progress tracking:
-
-- A Postgres database. This project uses [Neon](https://neon.tech) via the Vercel Marketplace, free
-  tier. It is **optional** — without it the tutor works exactly as before and simply records nothing.
-
-For the photo avatar:
-
-- A [bitHuman](https://www.bithuman.ai) API secret (free tier: 99 credits/month ≈ 25 minutes of
-  Expression avatar). Also **optional** — without it the photo option quietly degrades to
-  voice-only, and the free animated characters are unaffected.
-
-## Local setup
-
-```bash
-python -m venv .venv
-.venv/Scripts/activate          # Windows
-# source .venv/bin/activate     # macOS / Linux
-
-pip install -r requirements.txt
-```
-
-Create `.env` in the project root:
-
-```ini
-LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=your_key
-LIVEKIT_API_SECRET=your_secret
-
-GROQ_API_KEY=your_groq_key
-TAVILY_API_KEY=your_tavily_key
-
-# Optional. Without it the tutor runs untracked — it does NOT fail.
-PROGRESS_DATABASE_URL=postgresql://...
-
-# Optional. Without it the photo avatar degrades to voice-only — it does NOT fail.
-BITHUMAN_API_SECRET=your_bithuman_secret
-```
-
-The first five are **required**: `config/settings.py` builds its `Settings()` at import time, so a
-missing one raises a pydantic error before any agent code runs. Optional overrides:
-
-| Variable | Default | What it does |
-|---|---|---|
-| `LLM_MODEL` | `llama-3.3-70b-versatile` | the conversational model |
-| `GRADING_MODEL` | `llama-3.3-70b-versatile` | the model that grades a finished session |
-| `STT_MODEL` | `whisper-large-v3-turbo` | |
-| `TTS_VOICE_MALE` | `en-US-ChristopherNeural` | Ahmad's voice — any [Edge TTS voice](https://github.com/rany2/edge-tts); `edge-tts --list-voices` |
-| `TTS_VOICE_FEMALE` | `en-US-JennyNeural` | Sara's voice |
-| `VISION_MODEL` | `qwen/qwen3.6-27b` | matches the photo avatar's voice to the person in the picture |
-| `AGENT_GREETING` | *(see `config/settings.py`)* | `{name}` is replaced with the persona's name |
-| `PROGRESS_DATABASE_URL` | *(unset)* | Postgres for progress tracking |
-| `BITHUMAN_API_SECRET` | *(unset)* | enables the personalized photo avatar |
-
-## Running locally
-
-Console mode is the fastest feedback loop — your microphone and speakers, no LiveKit room:
-
-```bash
-python main.py console
-```
-
-Against a real room:
-
-```bash
-python main.py dev      # hot reload on file changes
-python main.py start    # production worker
-python main.py download-files   # pre-fetch model weights (Silero VAD)
-```
-
-### The website
-
-```bash
-cd web
-pnpm install     # pnpm, NOT npm — npm resolves a newer `motion` that breaks the build
-pnpm dev         # http://localhost:3000
-pnpm build       # prettier + eslint + tsc + next build — exactly what Vercel runs
-```
-
-It needs its own `web/.env.local`, which is **separate from the root `.env` and not synced with it**:
-
-```ini
-LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=your_key
-LIVEKIT_API_SECRET=your_secret
-
-APP_PASSCODE=ALEX2026    # what visitors must type to start a call
-AVATAR_PASSCODE=...      # what they must type to UPLOAD a photo avatar (metered bitHuman credits)
-DATABASE_URL=postgresql://...   # same database the agent writes to, different variable name
-AGENT_NAME=              # must stay EMPTY — see below
-```
-
-**Leave `AGENT_NAME` blank.** The worker registers with no agent name, which means it auto-joins any
-room the frontend creates. If you set a name here that doesn't match a worker registered under that
-exact name, the page will load, the call will "connect", and Ahmad will simply never speak — with no
-error anywhere. That is the first thing to check if the app goes silent.
-
-### Helper scripts
-
-```bash
-python scripts/sync_taxonomy.py           # copy the error taxonomy into web/ (see below)
-python scripts/sync_taxonomy.py --check   # fail if web/'s copy is stale — use in CI
-
-python scripts/seed_demo.py               # seed a demo learner with a known 8-session history
-python scripts/seed_demo.py --remove      # delete it again
-
-python scripts/make_icons.py              # re-render the PWA icons from the tutor logo
-python scripts/make_icons.py --check      # fail if the committed icons are stale — use in CI
-```
-
-`progress/taxonomy.json` is the single source of truth for error categories, labels, and practice
-advice. The website cannot import it — Vercel deploys from `web/` and never uploads anything above it
-— so it reads a **generated copy** at `web/lib/progress/taxonomy.json`. Edit the source, then run the
-sync script. If they drift, the dashboard falls back to showing raw category keys.
-
-`make_icons.py` is the same idea for images: `web/public/tutor-logo.svg` is the mark, and the
-home-screen PNGs beside it are generated copies. It reads the brand colour straight out of the SVG,
-so a recolour propagates — but the bubble's *geometry* is transcribed into the script by hand, so it
-pins the path it was transcribed from and refuses to run if the logo's shape changed. Needs Pillow,
-which is deliberately not in `requirements.txt` (that file ships into the agent container).
-
----
-
-# Deployment
-
-> **Just want the commands?** → **[`DEPLOY.md`](DEPLOY.md)** is the step-by-step runbook:
-> copy-pasteable commands, what to verify after each one, and the traps that have already bitten.
->
-> This section is the *understanding* behind it — read it once, then work from `DEPLOY.md`.
-
-Read this section fully before deploying anything. The system has **three deploy targets and four
-secret stores**, none of which are synced, and the most common failures here are silent.
-
-## The mental model
-
-| Piece | Code lives in | Runs on | Deployed with | Redeploy needed when |
-|---|---|---|---|---|
-| **Agent** | repo root | LiveKit Cloud (`CA_e4HZqEcBFotF`) | `lk agent deploy` | Python code or agent secrets change |
-| **Website** | `web/` | Vercel (`english-tutor`) | `cd web && vercel deploy --prod` | `web/` code or Vercel env change |
-| **Database** | `progress/schema.sql` | Neon (`neon-violet-grass`) | `python scripts/apply_schema.py` | the schema changes |
-
-Three rules that explain most of the confusion:
-
-1. **The two halves are independent.** Changing the prompt does not redeploy the website. Changing
-   the dashboard does not redeploy the agent. If you change both, deploy both.
-2. **Both deploy from your local working directory, not from git.** There is no CI, no GitHub
-   trigger, no branch that means "production". Uncommitted edits *will* ship. The live artifact may
-   correspond to no commit that exists anywhere.
-3. **Environment changes do not apply to deployments that already exist.** Setting a Vercel env var
-   and not redeploying looks exactly like the change "didn't save".
-
-## Secret stores — four of them, none synced
-
-This is the part that bites people. Adding a key to `.env` makes it work locally and then fail in
-production, silently as far as your terminal is concerned.
-
-| Store | Holds | Written with | Read by |
-|---|---|---|---|
-| `.env` (repo root, gitignored) | everything, for local runs | edit the file | `python main.py …` on your machine |
-| `web/.env.local` (gitignored) | `LIVEKIT_*`, `APP_PASSCODE`, `AVATAR_PASSCODE`, `DATABASE_URL` | edit the file | `pnpm dev` on your machine |
-| LiveKit Cloud agent secrets | `GROQ_API_KEY`, `TAVILY_API_KEY`, `PROGRESS_DATABASE_URL`, `BITHUMAN_API_SECRET` | `lk agent update-secrets --secrets "K=V"` | the deployed agent |
-| Vercel project env | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `APP_PASSCODE`, `AVATAR_PASSCODE`, `DATABASE_URL` | `vercel env add K production` | the deployed website |
-
-Things that look wrong but are correct:
-
-- **`LIVEKIT_*` is absent from the agent's secret list.** LiveKit Cloud injects those into the agent
-  container itself. The *website* needs them (it signs the JWT); the agent does not.
-- **The same database has two different variable names.** `PROGRESS_DATABASE_URL` on the agent (which
-  writes) and `DATABASE_URL` on Vercel (which reads — that's the name the Neon integration sets
-  automatically). Renaming either means editing `config/settings.py` or `web/lib/db.ts` to match.
-- **`lk agent update-secrets` merges.** It does not wipe the keys you didn't mention. Confirm with
-  `lk agent secrets list`.
-
-## First-time setup, in order
-
-The order matters — the database must exist before the agent is told about it.
-
-### 1. Provision the database
-
-```bash
-cd web
-vercel integration add neon
-```
-
-The first run stops and prints a `verification_uri`: you must accept the Neon marketplace terms in a
-browser once, then re-run the command. When it succeeds, Vercel sets `DATABASE_URL` (and a dozen
-Postgres aliases) on the project automatically, for all environments.
-
-> ### ⚠ `vercel integration add` OVERWRITES `web/.env.local`
->
-> It rewrites the file with **only** the integration's variables, silently destroying
-> `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` and `APP_PASSCODE`. Local dev then dies
-> with `Error: APP_PASSCODE is not set`.
->
-> **`vercel env pull` will not repair it.** Those four are marked *sensitive* in the Vercel project,
-> so the pull writes them back as empty strings — the file looks fixed and is not. Check value
-> *lengths*, not key presence.
->
-> **Back `web/.env.local` up before adding any integration.** To recover: `LIVEKIT_*` are in the
-> repo-root `.env`, and `APP_PASSCODE` is in `ARCHITECTURE.md` §9.
-
-### 2. Apply the schema
-
-```bash
-python scripts/apply_schema.py     # reads PROGRESS_DATABASE_URL from the repo-root .env
-```
-
-`progress/schema.sql` is idempotent — `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, and
-guarded `UPDATE`s throughout — so **re-running it is how you migrate.** There is no version table
-and no Alembic: one database, one schema file. Write new DDL so that running the file twice is a
-no-op, and applying a change is just running the script again.
-
-It creates five tables: `learners`, `sessions`, `session_errors`, `learner_vocabulary`,
-`learner_avatars`.
-
-### 3. Give the agent the connection string
-
-```bash
-lk agent update-secrets --secrets "PROGRESS_DATABASE_URL=postgresql://..."
-```
-
-Use the **pooled** URL here (the plain `DATABASE_URL` value). `progress/repository.py` sets
-`statement_cache_size=0`, which makes asyncpg work correctly against PgBouncer.
-
-### 4. Deploy both halves
-
-```bash
-lk agent deploy                    # from the repo root
-cd web && vercel deploy --prod
-```
-
-### 5. Verify (do not skip this)
-
-```bash
-lk agent status     # want: Status = Running
-lk agent logs       # want: "registered worker", no traceback
-```
-
-Then open the site, sign in with a username and the passcode, talk to Ahmad for a minute or two, hang
-up, and open the **Dashboard**.
-
-## Deploying a change
-
-Day to day, it's two commands, and you only run the half you changed:
-
-```bash
-lk agent deploy                    # agent  → LiveKit Cloud
-cd web && vercel deploy --prod     # web    → Vercel
-```
-
-### What `lk agent deploy` actually does
-
-```
-lk agent deploy
-   │
-   ├─ reads livekit.toml  → project demo-yygoau1f, agent CA_e4HZqEcBFotF
-   ├─ builds Dockerfile   → python:3.13-slim, pip install -r requirements.txt
-   ├─ pushes the image to LiveKit's registry
-   └─ rolling update      → Building ─▶ Running   (~1–2 min observed)
-```
-
-The container runs `python main.py start`.
-
-**`registered worker` in the logs is the real success signal — not "Deployed agent".** Because
-`config/settings.py` constructs `Settings()` at *import* time, a missing secret raises before any
-agent code runs. The image still builds and deploys perfectly; the container then dies on startup and
-restarts forever. **A missing secret is a crashloop, not a degraded agent.** Reaching
-`registered worker` with no traceback proves every required key was present.
-
-### What `vercel deploy --prod` actually does
-
-```
-vercel deploy --prod
-   │
-   ├─ uploads web/ (respecting .gitignore — .env.local never leaves your machine)
-   ├─ pnpm install --frozen-lockfile
-   ├─ pnpm build   → prettier + eslint + tsc + next build
-   ├─ injects the Vercel env vars (NOT your .env.local)
-   └─ aliases → english-tutor-nine-green.vercel.app
-```
-
-The build is **strict**: a formatting violation fails it, not just a type error. Run `pnpm build`
-locally first. If you get a wall of `Delete ␍` errors, a Windows checkout converted the template to
-CRLF — fix with `pnpm exec prettier --write .`, not by editing the prettier config.
-
-## Adding a new secret — the checklist
-
-1. Add it to `.env` (local agent) and/or `web/.env.local` (local website).
-2. Add it to `config/settings.py` **only if the agent needs it** — and think hard before making it
-   required, because a missing required value is a production crashloop. `PROGRESS_DATABASE_URL` is
-   deliberately `str | None`: a database outage must not stop people speaking English.
-3. Push it to whichever store the *runtime that reads it* uses (table above).
-4. **Redeploy that half.** Env changes never apply to existing deployments.
-5. Confirm: `lk agent logs` → `registered worker`, or re-test the web flow end to end.
-
-## Rotating the passcode
-
-```bash
-cd web
-vercel env add APP_PASSCODE production --force
-vercel deploy --prod          # REQUIRED — without this the old passcode stays live
-```
-
-Also update `web/.env.local` and `ARCHITECTURE.md` §9 so local dev and the docs don't diverge.
-
-## Rolling back
-
-Vercel keeps every deployment. `vercel ls english-tutor` lists them; promote an older one from the
-dashboard, or `vercel rollback <url>`. Note that rolling back the *website* does not roll back the
-*agent* — if a bad release spans both, roll back both.
-
-The agent has no rollback command. Redeploy from a known-good working tree.
-
-## Known gaps
-
-- **No CI and no push-to-deploy.** Connecting the GitHub repo to Vercel would give the web half
-  automatic deploys on push. It hasn't been done.
-- **No rate limiting on `/api/login`**, so the passcode is brute-forceable given time. Fine for a
-  link shared with people you know; not fine posted publicly. Closing it needs IP rate limiting,
-  which needs a KV store (Vercel KV or Upstash).
-- **Usernames are not passwords.** Everyone shares one passcode, so anyone who has it can sign in as
-  any username and read that learner's history. Going properly public means real per-user
-  credentials (Clerk, Auth.js), not a stronger cookie.
-- **No custom domain.**
-- **Database migrations are manual.** `progress/schema.sql` is idempotent and re-running it applies
-  changes, but there is no version table and no down-migration. A destructive change is hand-written.
-
----
-
-## Sharing it
-
-Send the link and the passcode. Recipients need no account and install nothing — they pick a
-username on the way in, and it becomes theirs the first time they use it.
-
-The passcode is not decoration. `web/app/api/token/route.ts` mints a LiveKit token for whoever asks,
-and each token starts a real agent session that consumes your Groq, Tavily, and LiveKit quota. The
-upstream template refuses to run that route in production for exactly this reason. Sign-in replaces
-that refusal: `/api/login` checks the passcode and sets an httpOnly, HMAC-signed cookie, and the
-token route issues nothing without it. The passcode never reaches browser JavaScript.
-
-That one cookie also carries **who** you are. Identity is the **username**, not the browser, so the
-same username on a phone and a laptop is one learner with one history. It is not a security boundary
-between people who already share the passcode: it stops a learner *forging* another's id (you cannot
-sign a cookie without `LIVEKIT_API_SECRET`), and it tells the agent whose progress it is recording.
-Anyone with the passcode who types your username sees your dashboard.
-
-## Project layout
-
-```
-main.py                     entry point — see the note below
-agent/tutor.py              pipeline wiring, learner identity, the shutdown hook
-agent/personas.py           Ahmad and Sara — name + voice per avatar choice
-agent/avatars.py            photo avatar: load the photo from Neon, match a voice to it
-prompts/tutor.py            the tutor's system prompt (parameterized by persona name)
-plugins/edge_tts.py         custom LiveKit TTS plugin for Microsoft Edge TTS
-tools/search.py             the search_web function tool (Tavily)
-config/settings.py          env-backed settings
-Dockerfile                  what LiveKit Cloud builds
-livekit.toml                which LiveKit project/agent this deploys to
-
-progress/                   progress tracking — three strict layers
-  collector.py              COLLECTION  — captures transcriptions during the live call
-  metrics/                  ANALYSIS    — deterministic arithmetic, one file per metric family
-  grading.py                ANALYSIS    — the one end-of-session LLM call
-  scoring.py                ANALYSIS    — combines both; MIN_WORDS_FOR_GRADING lives here
-  repository.py             PERSISTENCE — the only module that knows SQL
-  taxonomy.json             the error taxonomy — SOURCE OF TRUTH, synced into web/
-  schema.sql                the database schema
-
-scripts/apply_schema.py     applies schema.sql to Neon — this is "migrate"
-scripts/sync_taxonomy.py    copies taxonomy.json into web/
-scripts/seed_demo.py        seeds a demo learner with a known history
-
-web/                        the website (Next.js)
-  app-config.ts             title, button copy, colors, which inputs are enabled
-
-  app/page.tsx              signpost — redirects to /home or /login
-  app/login/page.tsx        username + passcode; the only door in
-  app/home/page.tsx         the hub — Talk to Ahmad, or Dashboard
-  app/call/page.tsx         the voice session
-  app/progress/page.tsx     the dashboard
-
-  app/api/login/route.ts    checks the passcode, upserts the learner, signs the session cookie
-  app/api/logout/route.ts   drops the cookie (the history stays)
-  app/api/token/route.ts    mints the LiveKit JWT — gated; carries the learner id + avatar choice
-  app/api/avatar/route.ts   photo upload (avatar-passcode-gated), has-photo check, delete
-  app/api/avatar/photo/     serves the signed-in learner their own photo, for the picker
-  app/api/progress/route.ts the dashboard's data, as JSON
-
-  lib/session.ts            both passcode checks, the signed session cookie, username rules
-  lib/guard.ts              requireLearnerId() — the one-liner at the top of every private page
-  lib/learners.ts           the only module that writes the learners table
-  lib/avatars.ts            the only module that touches the learner_avatars table
-  lib/avatar-choice.ts      the avatar picker's client-safe types and labels
-  lib/db.ts                 the Neon handle
-  lib/progress/             SQL (summary.ts) → pure analysis (analysis.ts, filters.ts) → types
-
-  components/layout/        the app shell — header, nav, sign-out
-  components/auth/          the login form
-  components/home/          the two action cards
-  components/avatar/        the animated Ahmad/Sara faces, the picker, the photo dialog
-  components/progress/      the dashboard — rendering only
-```
-
-### A note on `main.py`
-
-The first thing `main.py` does is install a stub module into `sys.modules` in place of
-`livekit.local_inference`. That package ships a native library which calls Windows `ExitProcess()`
-during initialization on some machines, killing the process outright — and because that's a
-process-level exit, no `try`/`except` can catch it. Stubbing the module out means it's never loaded.
-Nothing here uses local inference anyway; STT and the LLM run on Groq, and VAD comes from Silero.
-
-The consequence is that **import order in `main.py` matters**. The stub and `load_dotenv()` must both
-run before anything from `livekit` is imported. The `# noqa: E402` comments mark those deliberately
-late imports.
-
-## Extending it
-
-**The tutor's behavior** lives entirely in `prompts/tutor.py`. It's written for speech, so it forbids
-markdown, bullet points, and headers — anything the LLM emits goes straight to text-to-speech and
-would be read aloud verbatim. Keep that constraint. Whether Ahmad searches the web is also decided
-there, not in code.
-
-**Adding a tracked metric** is one function. Write it in `progress/metrics/`, decorate it with
-`@metric`, and import it in that package's `__init__.py`:
-
-```python
-@metric
-def hesitation(transcript: Transcript) -> dict[str, float | int | None]:
-    return {"hesitation_index": ...}
-```
-
-It reaches the database with **no migration** — unknown keys land in the `sessions.extra` JSONB
-column — and can be promoted to a real column later. Two rules: the function must be pure (transcript
-in, numbers out), and it must return `None`, never `0.0`, when a measurement is impossible. Zero
-plots as a real data point; `None` renders as a gap, which is the truth.
-
-**Adding an error category** means editing `progress/taxonomy.json` and running
-`python scripts/sync_taxonomy.py`. It flows automatically into the grading prompt, the weak-area
-list, and the practice suggestions.
-
-**Swapping providers** means changing one line each in `agent/tutor.py`. LiveKit ships plugins for
-OpenAI, Deepgram, Cartesia, ElevenLabs, and others; the `EdgeTTS` class in `plugins/edge_tts.py` is
-only there because Edge TTS is free and had no official plugin.
-
-## Troubleshooting
-
-The common thread: **this system fails quietly.** VAD failure, TTS failure, and dispatch failure all
-produce *silence* rather than an exception. When something is wrong, assume the logs know and the UI
-does not.
-
-**The page connects, the call "starts", but Ahmad never speaks.** `AGENT_NAME` is set to something no
-worker is registered under. It must be empty, in both `web/.env.local` and Vercel. The room is
-created, no worker is dispatched, and nothing reports an error anywhere.
-
-**The agent responds to typed input but never to the microphone.** VAD is returning 0.0 for every
-frame — the Windows `local_inference` stub. `_load_vad()` must pass `onnx_file_path=`.
-
-**The agent goes silent mid-conversation.** `EdgeTTSStream._run` logs and *returns* on a synthesis
-failure rather than raising, so a failed TTS call produces silence, not an error. Check
-`lk agent logs`.
-
-**The deploy "succeeded" but the agent is unreachable.** A missing secret → pydantic error at import
-→ crashloop. `lk agent logs` and look for `registered worker`.
-
-**Local dev suddenly can't find `APP_PASSCODE`.** You ran `vercel integration add`, which overwrote
-`web/.env.local`. See the warning in the deployment section above.
-
-**The passcode change "didn't save".** Vercel env vars don't apply to existing deployments. Redeploy.
-
-**`pnpm build` fails with hundreds of `Delete ␍` errors.** A Windows checkout converted the template
-to CRLF. Run `pnpm exec prettier --write .` from `web/`.
-
-**`/progress` says "Progress tracking isn't set up".** No `DATABASE_URL` on the website. This is a
-graceful degradation, not a crash — the tutor still works.
-
-**The photo avatar never appears — the call is voice-only with the plain visualizer.** By design,
-every avatar failure degrades to a working call, so the reason is in `lk agent logs`: no
-`BITHUMAN_API_SECRET` on the agent, no photo row for that learner, exhausted bitHuman credits
-(99/month free), or a bitHuman outage. Also give it 15–30 seconds — the vision call and the avatar
-worker spin-up happen before the video track arrives.
-
-**The photo avatar speaks with the "wrong" voice.** The voice comes from one vision call on the
-uploaded photo (`agent/avatars.py::detect_gender`). If the model can't tell (no clear face in the
-picture), the agent defaults to the male persona rather than guessing. A clearer, front-facing
-photo fixes it.
-
-**A session happened but no progress row appeared.** Two things to check, in order: did they say at
-least 30 words (below `MIN_WORDS_FOR_GRADING` the session is recorded but not graded); and is
-`PROGRESS_DATABASE_URL` set on the *agent* (not just on Vercel). Signing in is now mandatory, so the
-old "anonymous visitor, deliberately not tracked" cause no longer exists.
-
-**Someone's history "disappeared" after the login screen shipped.** Progress used to be keyed to a
-browser cookie; it is now keyed to a username. The schema backfills a username from each old
-learner's display name, so signing in as that name (lowercased) reconnects them. If two old learners
-had the same name, only the oldest kept it — the other starts fresh, which is the safe way to be
-wrong about who owns a history.
-
-**Importing anything from `progress/` kills Python with exit code 29 and no traceback.** That's the
-`local_inference` `ExitProcess()` crash. `progress/__init__.py` imports the collector lazily via
-`__getattr__` specifically to prevent this — don't "tidy" it into a normal import.
-
-## Going deeper
-
-`ARCHITECTURE.md` is the reference: system diagram, what happens when someone opens the link, the
-request lifecycle, where every secret lives, a decision log explaining the non-obvious choices, and
-the failure modes that produce silence instead of an error.
-
-`CLAUDE.md` is the rules-of-the-road for editing the code.
+| Error `extra_forbidden: database_url` | En la raíz debe llamarse `PROGRESS_DATABASE_URL` |
+| La llamada conecta y nadie habla | Agente registrado, mismas credenciales LiveKit y `AGENT_NAME` vacío |
+| Error de modelo no disponible | Selecciones de modelos en el ejemplo de la raíz y acceso de tu cuenta |
+| Groq devuelve 413 o 429 | Tamaño de petición, límites y uso restante; el panel muestra la espera |
+| No se guarda progreso | Ambas conexiones a la misma base y esquema aplicado |
+| Tutor responde durante una pausa | Aumentar `TURN_END_SILENCE_SECONDS` y reiniciar el agente |
+| No aparece la foto animada | Clave, plan y créditos de bitHuman; usar Ahmad o Sara como alternativa |
+
+## Despliegue y procedencia
+
+El frontend y el agente se despliegan por separado; sus variables también deben
+configurarse por separado en el alojamiento. No reutilices sin revisar las referencias
+de despliegue del autor original en `livekit.toml` o en los documentos históricos.
+
+Fork de [Asad-Mhmood/EnglishTutor](https://github.com/Asad-Mhmood/EnglishTutor).
+La documentación histórica adicional se conserva en [ARCHITECTURE.md](ARCHITECTURE.md)
+y [DEPLOY.md](DEPLOY.md); algunos ejemplos reflejan la instalación original.
+Este README describe la metodología y configuración de esta versión.

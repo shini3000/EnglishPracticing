@@ -98,19 +98,7 @@ def _format(query: str, data: dict) -> str:
 
 @function_tool
 async def search_web(ctx: RunContext, query: str) -> str:
-    """Search the web for current or unfamiliar information.
-
-    Use this for facts you cannot know reliably from memory: news, current events,
-    weather, prices, sports results, recent releases, or anything that may have
-    changed since your training data. Do not use it for grammar, vocabulary,
-    definitions, opinions, or ordinary conversation — answer those yourself.
-
-    The user is told a search is happening automatically. Do not announce it yourself.
-
-    Args:
-        query: A short, natural search query describing what to look up.
-               It is read aloud to the user, so phrase it as words, not keywords.
-    """
+    """Search current facts or explicit lookup requests, never ordinary grammar practice."""
     logger.info("Web search: %s", query)
 
     try:
@@ -136,11 +124,7 @@ async def search_web(ctx: RunContext, query: str) -> str:
 
 @function_tool
 async def find_listening_video(ctx: RunContext, topic: str) -> str:
-    """Find a short English listening video for the practice topic and show its link.
-
-    HTTP verification checks page availability only, not playable media, duration or
-    captions. Ask the learner to confirm those before marking listening completed.
-    """
+    """Find and show a listening video. Learner must confirm playback, captions and duration."""
     try:
         data = await _client.search(
             topic + " English short video 2 6 minutes subtitles",

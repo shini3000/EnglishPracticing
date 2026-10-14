@@ -34,9 +34,12 @@ on it.
 from __future__ import annotations
 
 import json
+import asyncio
+import os
 import logging
 
 from groq import AsyncGroq
+from agent.quota import QuotaLedger, estimate_tokens
 
 from .models import Grading, GrammarError
 from .taxonomy import VALID_KEYS, prompt_reference
@@ -175,7 +178,25 @@ async def grade(transcript_text: str, *, api_key: str, model: str) -> Grading | 
     session. A failed grading run that recorded a perfect score would be a lie the learner
     could see on their chart.
     """
-    client = AsyncGroq(api_key=api_key, timeout=TIMEOUT_SECONDS)
+    # Never send an unbounded 145-minute transcript or exhaust quota while closing.
+    # Keep the complete local evidence; an unavailable full-session grade is NULL,
+    # not a fabricated perfect score or a sample presented as the whole session.
+    output_budget = 1400
+    cost = estimate_tokens(_SYSTEM_PROMPT + transcript_text) + output_budget + 128
+    if cost > 6500:
+        logger.warning("Full-session grading deferred: transcript exceeds safe request budget")
+        return None
+    ledger = QuotaLedger(
+        api_key, model, int(os.getenv("GROQ_TPM_BUDGET", "7200")),
+        int(os.getenv("GROQ_TPD_BUDGET", "180000")),
+        int(os.getenv("GROQ_RPM_BUDGET", "24")),
+        int(os.getenv("GROQ_RPD_BUDGET", "900")),
+    )
+    reservation, _, reason = await asyncio.to_thread(ledger.reserve, cost)
+    if not reservation:
+        logger.warning("Full-session grading deferred: %s quota; metrics still saved", reason)
+        return None
+    client = AsyncGroq(api_key=api_key, timeout=TIMEOUT_SECONDS, max_retries=0)
 
     try:
         response = await client.chat.completions.create(
@@ -188,7 +209,11 @@ async def grade(transcript_text: str, *, api_key: str, model: str) -> Grading | 
             # flip. Level estimates are noisy enough without sampling adding to it.
             temperature=0.2,
             response_format={"type": "json_object"},
+            max_completion_tokens=output_budget,
+            **({"reasoning_effort": "low"} if model.startswith("openai/gpt-oss") else {}),
         )
+        if response.usage:
+            await asyncio.to_thread(ledger.settle, reservation, response.usage.total_tokens)
         content = response.choices[0].message.content or ""
         return _parse(content)
 

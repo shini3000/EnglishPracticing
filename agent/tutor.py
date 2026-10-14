@@ -2,14 +2,20 @@ import importlib.resources
 import logging
 import uuid
 import asyncio
+import json
+import time
+from datetime import datetime, timedelta, timezone
 
-from livekit.agents import Agent, AgentSession, JobContext
+from livekit.agents import Agent, AgentSession, JobContext, APIStatusError, APIError, TurnHandlingOptions
+from livekit.agents.types import APIConnectOptions, NOT_GIVEN
 from livekit.plugins import groq, silero
 
 import progress
 from agent import avatars, personas
 from agent.practice import Practice
+from agent.quota import QuotaLedger, compact_context, request_tokens, retry_delay, quota_message
 from agent.text_filters import strip_tool_call_leakage
+from agent.text_feedback import correction_was_shown, audio_safe_chunks, recovery_invitation
 from config.settings import settings
 from plugins.edge_tts import EdgeTTS
 from prompts.tutor import LANGUAGES, tutor_prompt
@@ -37,6 +43,14 @@ class EnglishTutor(Agent):
 
     def __init__(self, persona: personas.Persona, practice: Practice, history: str) -> None:
         self.practice = practice
+        self._name = persona.name
+        self._history = history
+        self._quota_paused = False
+        self.quota = QuotaLedger(
+            settings.GROQ_API_KEY, settings.LLM_MODEL,
+            settings.GROQ_TPM_BUDGET, settings.GROQ_TPD_BUDGET,
+            settings.GROQ_RPM_BUDGET, settings.GROQ_RPD_BUDGET,
+        )
         super().__init__(
             instructions=tutor_prompt(persona.name, practice.language, practice.mode, history),
             tools=[search_web, find_listening_video, practice.practice_control, practice.record_learning],
@@ -70,12 +84,155 @@ class EnglishTutor(Agent):
         await self.practice.publish()
 
     async def on_user_turn_completed(self, turn_ctx, new_message) -> None:
-        turn_ctx.add_message(
-            role="system",
-            content="Measured practice state after learner turn: " + str(self.practice.status())
-            + ". If time expired, collect evidence before advancing; never claim elapsed time from memory.",
-        )
+        # The full measured state is built once per request, not accumulated as
+        # another system message on every turn.
         await self.practice.publish()
+
+    def _learning_memory(self) -> str:
+        entries = []
+        for line in self._history.splitlines():
+            try:
+                entries.append(json.loads(line))
+            except ValueError:
+                continue
+        entries.extend(self.practice.entries)
+        # Explicit evidence, not an invented LLM summary. Focus on latest priorities.
+        selected = []
+        for kind in ("step", "correction", "vocabulary", "retrieval", "assessment", "listening"):
+            matches = [entry for entry in entries if entry.get("kind") == kind]
+            for entry in matches[-2:]:
+                fields = {key: entry[key] for key in (
+                    "kind", "date", "step", "evidence", "element", "state", "result",
+                    "learner_text", "corrected_text", "pattern", "observed_need", "summary"
+                ) if key in entry}
+                selected.append(json.dumps(fields, ensure_ascii=False)[:260])
+        today = datetime.now(timezone(timedelta(hours=-5))).date().isoformat()
+        cards, attempts = {}, {}
+        for entry in entries:
+            element = entry.get("element")
+            if element and entry.get("kind") == "vocabulary":
+                cards[element] = entry
+            elif element and entry.get("kind") == "retrieval":
+                attempts[element] = entry
+        due = []
+        for element, card in cards.items():
+            attempt = attempts.get(element, {})
+            attempted = attempt.get("date", "")
+            schedule = card.get("reviews") or []
+            if attempt.get("state") == "ACTIVA":
+                continue
+            if any(attempted < day <= today for day in schedule):
+                due.append({"element": element, "pattern": card.get("pattern", ""),
+                            "state": attempt.get("state", "EN PRÁCTICA")})
+        # A few due reviews plus current correction evidence, not the entire word bank.
+        return ("Due reviews: " + json.dumps(due[:4], ensure_ascii=False)[:500]
+                + "\n" + "\n".join(selected)[-1000:])
+
+    async def _quota_notice(self, state: str, seconds: float = 0, reason: str = "") -> None:
+        self.practice.quota_status = {"state": state, "wait_seconds": int(seconds),
+                                      "reason": reason}
+        await self.practice.publish()
+
+    async def llm_node(self, chat_ctx, tools, model_settings):
+        # The card is already visible. No second model request is needed to read
+        # it back; give a short recovery invitation instead.
+        if correction_was_shown(chat_ctx):
+            yield recovery_invitation(self.practice.language)
+            return
+        policy = tutor_prompt(self._name, self.practice.language,
+                              self.practice.mode, step=self.practice.index)
+        clock = self.practice.status()
+        policy += "\nMeasured state: " + json.dumps({
+            key: clock[key] for key in ("step", "remaining_seconds", "running", "started", "finished")
+        }) + ". Expiry alone is not completion."
+        if self.practice.focus:
+            policy += "\nConfirmed topic and oral goal: " + self.practice.focus
+        # Account for schema size and the completion allowance before choosing history.
+        from livekit.agents import llm
+        schema_cost = request_tokens(llm.ChatContext.empty(), tools)
+        budget = settings.GROQ_MAX_REQUEST_TOKENS - settings.GROQ_MAX_COMPLETION_TOKENS - schema_cost
+        try:
+            context = compact_context(chat_ctx, policy, self._learning_memory(), budget)
+        except ValueError:
+            await self._quota_notice("input_too_long")
+            yield quota_message(self.practice.language, "input_too_long")
+            return
+        cost = request_tokens(context, tools) + settings.GROQ_MAX_COMPLETION_TOKENS
+        for attempt in range(2):
+            wait_started = time.monotonic()
+            while True:
+                reservation, wait, reason = await asyncio.to_thread(self.quota.reserve, cost)
+                if reservation:
+                    break
+                if reason in {"daily", "oversized"} or time.monotonic() - wait_started + wait > settings.GROQ_MAX_WAIT_SECONDS:
+                    await self._quota_notice("daily_limit" if reason == "daily" else "limited", wait, reason)
+                    if self.practice.since is not None:
+                        await self.practice.practice_control("pause")
+                        self._quota_paused = True
+                    yield quota_message(self.practice.language, "paused")
+                    return
+                if self.practice.since is not None:
+                    await self.practice.practice_control("pause")
+                    self._quota_paused = True
+                await self._quota_notice("waiting", wait, reason)
+                # Short cancellable waits; no duplicate requests while quota is exhausted.
+                delay = min(wait, 5)
+                await asyncio.sleep(delay)
+            if self._quota_paused and not self.practice.finished:
+                await self.practice.practice_control("resume")
+                self._quota_paused = False
+            await self._quota_notice("ready")
+            emitted = False
+            usage = None
+            pending = []
+            try:
+                # Both SDK and LiveKit retries are disabled: this is the only retry owner.
+                async with self.session.llm.chat(
+                    chat_ctx=context, tools=tools,
+                    tool_choice=model_settings.tool_choice if model_settings else NOT_GIVEN,
+                    conn_options=APIConnectOptions(max_retry=0, timeout=30),
+                ) as stream:
+                    async for chunk in stream:
+                        if chunk.usage:
+                            usage = chunk.usage
+                        emitted = emitted or chunk.has_response()
+                        pending.append(chunk)
+                # Buffer one short completion so text accompanying a correction
+                # tool call cannot reach TTS before we know it's a written card.
+                for chunk in audio_safe_chunks(pending):
+                    yield chunk
+                if usage:
+                    actual = max(0, usage.prompt_tokens - usage.prompt_cached_tokens) + usage.completion_tokens
+                    await asyncio.to_thread(self.quota.settle, reservation, actual)
+                    self.practice.quota_status.update({"last_input_tokens": usage.prompt_tokens,
+                                                      "last_output_tokens": usage.completion_tokens})
+                    await self.practice.publish()
+                return
+            except APIStatusError as exc:
+                if exc.status_code == 429 and not emitted:
+                    await asyncio.to_thread(self.quota.settle, reservation, 0)
+                    delay = retry_delay(exc)
+                    await asyncio.to_thread(self.quota.cooldown, delay)
+                    if attempt == 0:
+                        continue
+                await self._quota_notice("limited", reason=str(exc.status_code))
+                if exc.status_code == 429 and self.practice.since is not None:
+                    await self.practice.practice_control("pause")
+                    self._quota_paused = True
+                logger.warning("Groq request failed (status %s)", exc.status_code)
+                for chunk in audio_safe_chunks(pending):
+                    yield chunk
+                if not emitted:
+                    yield quota_message(self.practice.language, "error")
+                return
+            except APIError:
+                logger.warning("Groq connection failed; preserving practice context", exc_info=True)
+                await self._quota_notice("limited", reason="connection")
+                for chunk in audio_safe_chunks(pending):
+                    yield chunk
+                if not emitted:
+                    yield quota_message(self.practice.language, "error")
+                return
 
 
 def _load_vad() -> silero.VAD:
@@ -92,7 +249,21 @@ def _load_vad() -> silero.VAD:
     plugin's own bundled model, so this is the default weights, just a different runtime.
     """
     onnx_path = importlib.resources.files("livekit.plugins.silero.resources") / "silero_vad.onnx"
-    return silero.VAD.load(onnx_file_path=str(onnx_path))
+    return silero.VAD.load(
+        onnx_file_path=str(onnx_path),
+        min_silence_duration=settings.VAD_SILENCE_SECONDS,
+    )
+
+
+def _turn_handling_options() -> TurnHandlingOptions:
+    # Short pauses may produce an STT segment, but not an assistant response.
+    # Explicit VAD mode avoids treating every final Whisper segment as a turn.
+    silence = max(settings.TURN_END_SILENCE_SECONDS, settings.VAD_SILENCE_SECONDS)
+    return TurnHandlingOptions(
+        turn_detection="vad",
+        endpointing={"mode": "fixed", "min_delay": silence, "max_delay": max(6.0, silence)},
+        preemptive_generation={"enabled": False},
+    )
 
 
 def _learner_id_from(identity: str) -> str | None:
@@ -220,9 +391,12 @@ async def entrypoint(ctx: JobContext) -> None:
 
     session = AgentSession(
         stt=groq.STT(model=settings.STT_MODEL, detect_language=True),
-        llm=groq.LLM(model=settings.LLM_MODEL),
+        llm=groq.LLM(model=settings.LLM_MODEL,
+                     max_completion_tokens=settings.GROQ_MAX_COMPLETION_TOKENS,
+                     max_retries=0),
         tts=EdgeTTS(voice="en-US-AndrewMultilingualNeural" if persona.name == "Ahmad" else "en-US-AvaMultilingualNeural"),
         vad=_load_vad(),
+        turn_handling=_turn_handling_options(),
         # Groq's llama-3.3-70b-versatile occasionally leaks a tool call into the
         # reply text as literal `<function=...>...</function>` syntax instead of
         # the structured tool_calls field. See agent/text_filters.py.

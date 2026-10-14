@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field
 
 
 class Settings(BaseSettings):
@@ -38,6 +39,19 @@ class Settings(BaseSettings):
 
     # STT — whisper-large-v3-turbo: faster than v3 with comparable accuracy
     STT_MODEL: str = "whisper-large-v3-turbo"
+
+    # Conservative local caps; Groq's organization-wide limits remain authoritative.
+    GROQ_TPM_BUDGET: int = 7200
+    GROQ_TPD_BUDGET: int = 180000
+    GROQ_RPM_BUDGET: int = 24
+    GROQ_RPD_BUDGET: int = 900
+    GROQ_MAX_REQUEST_TOKENS: int = 3600
+    GROQ_MAX_COMPLETION_TOKENS: int = 640
+    GROQ_MAX_WAIT_SECONDS: int = 60
+
+    # Allow thinking pauses while learning; measured from the last detected speech.
+    TURN_END_SILENCE_SECONDS: float = Field(default=3.0, ge=0.5, le=15.0)
+    VAD_SILENCE_SECONDS: float = Field(default=1.0, ge=0.2, le=3.0)
 
     # TTS — Microsoft Edge Neural voices (free, no key needed). One per persona: the learner
     # picks a boy or girl tutor on the pre-call screen, and an uploaded photo avatar picks

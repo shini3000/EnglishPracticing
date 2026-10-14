@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useDataChannel, useSessionContext } from '@livekit/components-react';
+import { CorrectionCard } from '@/components/app/correction-card';
 import type { PracticeMode } from '@/lib/practice-options';
 
 type Timer = {
@@ -15,6 +16,12 @@ type Timer = {
   step_count: number;
   step_duration_seconds: number;
   block: string;
+  quota?: {
+    state: string;
+    wait_seconds?: number;
+    last_input_tokens?: number;
+    last_output_tokens?: number;
+  };
 };
 type JournalEntry = { kind: string; date: string; [key: string]: unknown };
 
@@ -26,6 +33,7 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [saved, setSaved] = useState(true);
   const [material, setMaterial] = useState<{ url: string; title: string } | null>(null);
+  const [correctionVisible, setCorrectionVisible] = useState(true);
   useDataChannel('practice', (message) => {
     try {
       setTimer(JSON.parse(new TextDecoder().decode(message.payload)));
@@ -38,6 +46,7 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
     try {
       const data = JSON.parse(new TextDecoder().decode(message.payload));
       setEntries((previous) => [...previous, data.entry]);
+      if (data.entry?.kind === 'correction') setCorrectionVisible(true);
       setSaved(data.saved);
     } catch {
       /* Ignore malformed data. */
@@ -59,19 +68,26 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
       setMaterial(null);
       return;
     }
+    let cancelled = false;
     fetch('/api/practice-journal')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data) {
-          setEntries(data.entries);
+        if (data && !cancelled) {
+          setEntries((current) => [...data.entries, ...current]);
           setSaved(data.available);
         }
       })
-      .catch(() => setSaved(false));
+      .catch(() => {
+        if (!cancelled) setSaved(false);
+      });
     const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [isConnected]);
   if (!isConnected) return null;
+  const latestCorrection = [...entries].reverse().find((entry) => entry.kind === 'correction');
   const remaining = timer
     ? Math.max(
         0,
@@ -82,7 +98,7 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
   return (
     <aside
       aria-label="Cronómetro y paso de la práctica"
-      className="bg-background fixed top-[max(0.75rem,env(safe-area-inset-top))] right-3 left-3 z-[100] max-h-[45vh] overflow-auto rounded-xl border-2 border-emerald-500 p-4 shadow-xl sm:left-auto sm:w-80"
+      className="bg-background fixed top-[max(0.75rem,env(safe-area-inset-top))] right-3 left-3 z-[100] max-h-[70vh] overflow-auto rounded-xl border-2 border-emerald-500 p-4 shadow-xl sm:left-auto sm:w-96"
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold tracking-wide uppercase">Cronómetro de práctica</p>
@@ -123,6 +139,17 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
                 ? 'Tiempo cumplido: termina tu respuesta antes de cambiar de paso.'
                 : 'Tiempo restante del paso actual'}
       </p>
+      {timer?.quota && timer.quota.state !== 'ready' && (
+        <p role="status" className="mt-2 rounded-md bg-amber-500/15 p-2 text-sm">
+          {timer.quota.state === 'waiting'
+            ? `Esperando cuota de IA · ${timer.quota.wait_seconds ?? 0} s. Tu práctica se conserva.`
+            : timer.quota.state === 'input_too_long'
+              ? 'Respuesta extensa: el tutor te pedirá trabajarla en partes.'
+              : timer.quota.state === 'daily_limit'
+                ? 'Cuota diaria local alcanzada. Práctica en pausa; conserva y repasa tus correcciones.'
+                : 'Cuota de IA temporalmente limitada. Tu avance se conserva.'}
+        </p>
+      )}
       <progress
         className="mt-2 h-2 w-full"
         aria-label="Avance del paso"
@@ -142,6 +169,20 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
           {material.title}
         </a>
       )}
+      {latestCorrection && (
+        <div aria-live="polite">
+          <button
+            type="button"
+            className="mt-3 text-sm underline"
+            onClick={() => setCorrectionVisible((visible) => !visible)}
+          >
+            {correctionVisible
+              ? 'Ocultar corrección para practicar sin leer'
+              : 'Mostrar última corrección'}
+          </button>
+          {correctionVisible && <CorrectionCard entry={latestCorrection} />}
+        </div>
+      )}
       <details className="mt-3">
         <summary className="cursor-pointer text-sm">
           Registro acumulativo ({entries.length})
@@ -156,9 +197,13 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
             <p className="font-medium">
               {entry.date} · {entry.kind}
             </p>
-            <pre className="mt-1 font-sans break-words whitespace-pre-wrap">
-              {JSON.stringify(entry, null, 2)}
-            </pre>
+            {entry.kind === 'correction' ? (
+              <CorrectionCard entry={entry} />
+            ) : (
+              <pre className="mt-1 font-sans break-words whitespace-pre-wrap">
+                {JSON.stringify(entry, null, 2)}
+              </pre>
+            )}
           </div>
         ))}
       </details>

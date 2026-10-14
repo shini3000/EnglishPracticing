@@ -39,6 +39,8 @@ class Practice:
         self.completed: list[dict] = []
         self.entries: list[dict] = []
         self.saved = 0
+        self.quota_status: dict = {"state": "ready"}
+        self.focus = ""
 
     def status(self) -> dict:
         elapsed = self.elapsed + (time.monotonic() - self.since if self.since is not None else 0)
@@ -54,6 +56,7 @@ class Practice:
             "remaining_seconds": max(0, int(self.steps[self.index][1] * 60 - elapsed)),
             "running": self.since is not None, "started": self.started,
             "finished": self.finished, "completed": list(self.completed),
+            "quota": self.quota_status,
         }
 
     async def publish(self) -> None:
@@ -63,6 +66,11 @@ class Practice:
             )
         except Exception:
             logger.warning("Could not publish practice timer", exc_info=True)
+
+    def model_status(self) -> str:
+        state = self.status()
+        return json.dumps({key: state[key] for key in
+                           ("step", "step_index", "remaining_seconds", "running", "started", "finished")})
 
     async def append(self, kind: str, evidence: dict) -> bool:
         entry = {
@@ -102,7 +110,18 @@ class Practice:
                 "SELECT entry FROM practice_journal WHERE learner_id=$1 ORDER BY created_at DESC LIMIT 80",
                 self.learner_id,
             )
-            return "\n".join(str(row["entry"]) for row in reversed(rows))
+            # Keep older vocabulary visible even after many newer conversations.
+            bank = await conn.fetch(
+                """SELECT DISTINCT ON (entry->>'element', entry->>'kind') entry
+                   FROM practice_journal
+                   WHERE learner_id=$1 AND entry->>'kind' IN ('vocabulary','retrieval')
+                   ORDER BY entry->>'element', entry->>'kind', created_at DESC""",
+                self.learner_id,
+            )
+            entries = [json.loads(row["entry"]) if isinstance(row["entry"], str) else row["entry"]
+                       for row in list(rows) + list(bank)]
+            entries.sort(key=lambda entry: entry.get("date", ""))
+            return "\n".join(json.dumps(entry) for entry in entries)
         except Exception:
             logger.warning("Practice history unavailable", exc_info=True)
             return ""
@@ -112,17 +131,16 @@ class Practice:
 
     @function_tool
     async def practice_control(self, action: str, evidence: str = "") -> str:
-        """Control measured timer: start, status, pause, resume, next or finish.
-
-        Start after topic confirmation. Next requires observed completion evidence.
-        Finish leaves remaining steps pending. Never advance while the learner is speaking.
-        """
+        """Timer: start/status/pause/resume/next/finish. Start evidence=topic and goal; next evidence=completed task."""
         if action not in {"start", "status", "pause", "resume", "next", "finish"}:
             return "Invalid action."
         if self.finished:
-            return json.dumps(self.status())
+            return self.model_status()
         if action == "start" and not self.started:
             self.started, self.since = True, time.monotonic()
+            if evidence.strip():
+                self.focus = evidence[:600]
+                await self.append("focus", {"evidence": self.focus})
         elif action in {"pause", "next", "finish"}:
             if action == "next" and (not evidence.strip() or not self.started):
                 return "Next requires a started practice and concrete completion evidence."
@@ -145,18 +163,14 @@ class Practice:
         elif action == "resume" and self.started and self.since is None:
             self.since = time.monotonic()
         await self.publish()
-        return json.dumps(self.status())
+        return self.model_status()
 
     @function_tool
     async def record_learning(self, kind: str, details_json: str) -> str:
-        """Append evidence and show it in the practice journal.
-
-        kind: correction, vocabulary, retrieval, listening, assessment, feedback.
-        Supply a JSON object with concrete learner evidence. Vocabulary requires element,
-        observed_need, meaning, pattern, pronunciation, restrictions, collocations,
-        examples (two different contexts), and transfer_task.
-        Retrieval requires element, result (unaided, helped, failed), and evidence.
-        Pronunciation scores must remain pending: only transcripts are available.
+        """Append evidence JSON. Kinds: correction/vocabulary/retrieval/listening/assessment/feedback.
+        Correction (TEXT ONLY): learner_text,corrected_text,pattern,explanation,recovery_task.
+        Vocabulary keys: element,observed_need,meaning,pattern,pronunciation,restrictions,
+        collocations,examples (2),transfer_task. Retrieval: element,result (unaided/helped/failed),evidence.
         """
         if kind not in {"correction", "vocabulary", "retrieval", "listening", "assessment", "feedback"}:
             return "Invalid entry kind."
@@ -166,6 +180,10 @@ class Practice:
             return "Provide valid JSON."
         if not isinstance(data, dict):
             return "Provide a JSON object."
+        if kind == "correction":
+            required = {"learner_text", "corrected_text", "pattern", "explanation", "recovery_task"}
+            if any(not isinstance(data.get(key), str) or not data[key].strip() for key in required):
+                return "Text correction requires nonempty learner_text, corrected_text, pattern, explanation and recovery_task."
         if kind == "vocabulary":
             required = {"element", "observed_need", "meaning", "pattern", "pronunciation", "restrictions", "collocations", "examples", "transfer_task"}
             if not required.issubset(data) or not isinstance(data["examples"], list) or len(data["examples"]) < 2:
@@ -197,4 +215,6 @@ class Practice:
             )
         except Exception:
             logger.warning("Could not publish learning entry", exc_info=True)
-        return json.dumps({"saved": saved, "entry": self.entries[-1]})
+        return json.dumps({"saved": saved, "kind": kind, "element": data.get("element"),
+                           "state": data.get("state"), "reviews": data.get("reviews"),
+                           "delivery": "text_only" if kind == "correction" else "journal"})
