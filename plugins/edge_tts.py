@@ -108,11 +108,19 @@ def _decode_mp3_to_pcm(mp3_data: bytes, target_sample_rate: int) -> list[bytes]:
         try:
             for frame in container.decode(audio=0):
                 for resampled in resampler.resample(frame):
-                    results.append(bytes(resampled.planes[0]))
+                    results.append(_pcm_samples(resampled))
             # Flush any remaining samples held in the resampler
             for resampled in resampler.resample(None):
-                results.append(bytes(resampled.planes[0]))
+                results.append(_pcm_samples(resampled))
         finally:
             container.close()
 
     return results
+
+
+def _pcm_samples(frame: av.AudioFrame) -> bytes:
+    """Return packed s16 mono samples without PyAV's allocation padding."""
+    # Resampled planes can be larger than their audio payload for alignment.
+    # Sending the padding as PCM inserts non-audio samples between frames.
+    sample_bytes = frame.samples * _NUM_CHANNELS * 2
+    return bytes(frame.planes[0])[:sample_bytes]
