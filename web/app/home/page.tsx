@@ -123,6 +123,10 @@ export default async function HomePage() {
       {summary && hasHistory && <SummaryStrip summary={summary} />}
 
       <section className="grid gap-4 md:grid-cols-2">
+        <Link href="/drill" className="rounded-xl border p-6">
+          <h2 className="text-xl font-semibold">Práctica B · Gimnasia temporal sin llamada</h2>
+          <p>Presente, pasado y present perfect en 7 minutos, con revisión gramatical escrita.</p>
+        </Link>
         <ActionCard
           href="/call"
           icon={MicrophoneIcon}

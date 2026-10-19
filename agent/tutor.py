@@ -400,6 +400,9 @@ async def _run_session(ctx: JobContext) -> None:
     if mode not in {"daily", "diagnostic", "fluency"}:
         mode = "daily"
     practice = Practice(learner_id, ctx.room, settings.PROGRESS_DATABASE_URL, mode, language)
+    if mode == "fluency" and participant.attributes.get("practice_start_step") == "4":
+        # Explicit start at block 2; never fabricate completed clock steps.
+        practice.index = 4
     history = await practice.history()
 
     # Reliable data messages are not retained for clients that subscribe later.

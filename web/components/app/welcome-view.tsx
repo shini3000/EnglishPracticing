@@ -94,6 +94,11 @@ export const WelcomeView = ({
                 ? 'Tipo B: cambios de tiempo verbal, monólogo, escucha y réplica, rondas 4–3–2 y microauditoría.'
                 : 'Diagnóstico: evaluación inicial para identificar tu nivel aproximado y prioridades.'}
           </p>
+          {practiceMode === 'fluency' && (
+            <Link className="rounded border p-3 text-sm underline" href="/drill">
+              Bloque 1 · Gimnasia temporal sin llamada — empezar aquí
+            </Link>
+          )}
           <p className="text-muted-foreground text-xs">
             Puedes pausar o terminar antes. Las actividades pendientes se conservan como pendientes.
           </p>

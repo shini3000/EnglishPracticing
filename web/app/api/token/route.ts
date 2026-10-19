@@ -98,6 +98,8 @@ export async function POST(req: Request) {
           avatar_mode: avatarMode,
           native_language: nativeLanguage,
           practice_mode: practiceMode,
+          practice_start_step:
+            practiceMode === 'fluency' && body.startAtAnchors === true ? '4' : '0',
           target_language: 'en',
         },
       },

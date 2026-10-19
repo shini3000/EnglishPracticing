@@ -37,6 +37,8 @@ export function App({ appConfig, learnerName }: AppProps) {
   const [nativeLanguage, setNativeLanguage] = useState<NativeLanguage>('es');
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('daily');
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('practice') === 'fluency') setPracticeMode('fluency');
     const stored = localStorage.getItem('native-language');
     if (stored && ['es', 'en', 'pt', 'fr', 'de', 'it', 'zh', 'ja'].includes(stored)) {
       setNativeLanguage(stored as NativeLanguage);
@@ -82,7 +84,14 @@ export function App({ appConfig, learnerName }: AppProps) {
       const res = await fetch('/api/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ avatar: avatarChoice, nativeLanguage, practiceMode }),
+        body: JSON.stringify({
+          avatar: avatarChoice,
+          nativeLanguage,
+          practiceMode,
+          startAtAnchors:
+            practiceMode === 'fluency' &&
+            new URLSearchParams(window.location.search).get('start') === 'anchors',
+        }),
       });
       if (!res.ok) {
         throw new Error(`Token request failed with status ${res.status}`);
