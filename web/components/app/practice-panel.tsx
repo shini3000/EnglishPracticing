@@ -122,11 +122,11 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
   return (
     <aside
       aria-label="Cronómetro y paso de la práctica"
-      className="bg-background fixed top-[max(0.75rem,env(safe-area-inset-top))] right-3 left-3 z-[100] max-h-[70vh] overflow-auto rounded-xl border-2 border-emerald-500 p-4 shadow-xl sm:left-auto sm:w-96"
+      className="practice-console bg-card fixed top-[max(0.75rem,env(safe-area-inset-top))] right-3 left-3 z-[100] max-h-[70vh] overflow-auto rounded-2xl border p-5 shadow-lg sm:left-auto sm:w-96"
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold tracking-wide uppercase">Cronómetro de práctica</p>
-        <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-xs">
+        <p className="text-sm font-semibold">Tu práctica en curso</p>
+        <span className="bg-secondary rounded-full px-2 py-1 text-xs">
           {timer?.finished
             ? 'Finalizada'
             : !timer?.started

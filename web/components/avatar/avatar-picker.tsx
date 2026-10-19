@@ -62,7 +62,7 @@ export function AvatarPicker({ choice, photoSrc, onPick, onPickPhoto }: AvatarPi
   }, []);
   return (
     <div className="w-full">
-      <p className="text-foreground mb-2 text-sm font-medium">Choose your tutor</p>
+      <p className="text-foreground mb-2 text-sm font-medium">Elige tu tutor</p>
       {choice === 'photo' && (
         <label className="mb-3 block text-sm">
           Voz de tu avatar (sin analizar la foto)
@@ -82,7 +82,7 @@ export function AvatarPicker({ choice, photoSrc, onPick, onPickPhoto }: AvatarPi
       <div className="flex w-full gap-2.5">
         <Tile
           label="Ahmad"
-          sublabel="his voice"
+          sublabel="Voz de Ahmad"
           selected={choice === 'boy'}
           onClick={() => onPick('boy')}
         >
@@ -91,7 +91,7 @@ export function AvatarPicker({ choice, photoSrc, onPick, onPickPhoto }: AvatarPi
 
         <Tile
           label="Sara"
-          sublabel="her voice"
+          sublabel="Voz de Sara"
           selected={choice === 'girl'}
           onClick={() => onPick('girl')}
         >
@@ -99,15 +99,15 @@ export function AvatarPicker({ choice, photoSrc, onPick, onPickPhoto }: AvatarPi
         </Tile>
 
         <Tile
-          label="My photo"
-          sublabel={photoSrc ? 'ready' : 'passcode'}
+          label="Mi foto"
+          sublabel={photoSrc ? 'Lista' : 'Con clave'}
           selected={choice === 'photo'}
           onClick={onPickPhoto}
         >
           {photoSrc ? (
             <Image
               src={photoSrc}
-              alt="Your uploaded photo"
+              alt="Tu foto de avatar"
               width={56}
               height={56}
               unoptimized

@@ -38,7 +38,13 @@ export function App({ appConfig, learnerName }: AppProps) {
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('daily');
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
-    if (query.get('practice') === 'fluency') setPracticeMode('fluency');
+    const requestedPractice = query.get('practice');
+    if (
+      requestedPractice === 'fluency' ||
+      requestedPractice === 'daily' ||
+      requestedPractice === 'diagnostic'
+    )
+      setPracticeMode(requestedPractice);
     const stored = localStorage.getItem('native-language');
     if (stored && ['es', 'en', 'pt', 'fr', 'de', 'it', 'zh', 'ja'].includes(stored)) {
       setNativeLanguage(stored as NativeLanguage);
@@ -109,7 +115,7 @@ export function App({ appConfig, learnerName }: AppProps) {
   return (
     <AgentSessionProvider session={session}>
       <AppSetup />
-      <main className="grid h-svh grid-cols-1 place-content-center">
+      <main className="grid min-h-svh grid-cols-1 content-center py-8 pb-20">
         <ViewController
           appConfig={appConfig}
           learnerName={learnerName}

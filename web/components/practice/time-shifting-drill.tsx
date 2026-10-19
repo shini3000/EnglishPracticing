@@ -115,149 +115,202 @@ export function TimeShiftingDrill() {
     setRunning(false);
   }
   return (
-    <main className="mx-auto max-w-2xl space-y-5 p-6">
-      <Link href="/home">← Inicio</Link>
-      <h1 className="text-2xl font-semibold">Práctica B · Bloque 1 · Gimnasia temporal</h1>
-      <p>
-        7 minutos de ejercicio, sin llamada ni voz del tutor. Habla en inglés; la IA solo revisa
-        cuando pulsas el botón. El tiempo de revisión no cuenta como producción.
-      </p>
-      <label className="block">
-        Idioma de las explicaciones
-        <select
-          className="bg-background block rounded border p-2"
-          value={language}
-          disabled={busy || recording}
-          onChange={(e) => {
-            setLanguage(e.target.value as NativeLanguage);
-            localStorage.setItem('native-language', e.target.value);
-          }}
-        >
-          {Object.entries(NATIVE_LANGUAGES).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block">
-        Tu rutina o proceso (las mismas 3–4 acciones en A, B y C)
-        <input
-          className="block w-full rounded border p-2"
-          maxLength={500}
-          value={routine}
-          disabled={busy || step > 0 || recording}
-          onChange={(e) => setRoutine(e.target.value)}
-        />
-      </label>
-      <h2 className="text-xl">
-        {DRILL_STEPS[step].label} · paso {step + 1}/4
-      </h2>
-      <p>{DRILL_STEPS[step].instruction}</p>
-      <p className="font-mono text-4xl" role="timer">
-        {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}
-      </p>
-      <div className="flex flex-wrap gap-3">
-        <button
-          className="rounded border p-2"
-          disabled={busy || recording || remaining === 0}
-          onClick={() => setRunning((v) => !v)}
-        >
-          {running ? 'Pausar cronómetro' : 'Iniciar cronómetro'}
-        </button>
-        <button
-          className="rounded border p-2"
-          disabled={busy || !routine.trim() || remaining === 0}
-          onClick={() => (recording ? recorder.current?.stop() : void record())}
-        >
-          {recording ? 'Detener grabación' : 'Grabar respuesta'}
-        </button>
-        <button
-          className="rounded border p-2"
-          disabled={busy || recording}
-          onClick={() => {
-            setRunning(false);
-            setRemaining(DRILL_STEPS[step].seconds);
-          }}
-        >
-          Reiniciar tiempo del paso
-        </button>
-      </div>
-      {audio && (
-        <p>
-          Audio preparado. Puedes enviarlo a revisión o volver a grabar. No se guarda el archivo de
-          audio.
+    <main className="drill-workspace">
+      <Link className="study-text-link text-sm" href="/home">
+        Volver a las prácticas
+      </Link>
+      <header className="mt-8 mb-10 max-w-2xl">
+        <p className="text-muted-foreground mb-3 text-sm">Práctica B / Bloque 1 / 7 minutos</p>
+        <h1 className="study-title">
+          La misma idea.
+          <br />
+          En otro tiempo.
+        </h1>
+        <p className="text-muted-foreground mt-5 leading-7">
+          7 minutos de ejercicio, sin llamada ni voz del tutor. Habla en inglés; la IA solo revisa
+          cuando pulsas el botón. El tiempo de revisión no cuenta como producción.
         </p>
-      )}
-      <label className="block">
-        Respuesta o transcripción
-        <textarea
-          className="block min-h-32 w-full rounded border p-2"
-          placeholder="También puedes pegar una transcripción fiel. No se corrige mientras hablas."
-          value={text}
-          maxLength={8000}
-          disabled={busy || recording || !!audio}
-          onChange={(e) => setText(e.target.value)}
-        />
-      </label>
-      <button
-        className="rounded border p-2"
-        disabled={busy || recording || !routine.trim() || (!text.trim() && !audio)}
-        onClick={() => void review()}
-      >
-        {busy ? 'Transcribiendo / revisando…' : 'Revisar gramática por escrito'}
-      </button>
-      {error && (
-        <p role="alert" className="text-red-500">
-          {error}
-        </p>
-      )}
-      {result && (
-        <section className="space-y-3 rounded border p-4" aria-live="polite">
-          <h2>Revisión escrita</h2>
-          {result.reused && (
+      </header>
+      <div className="drill-layout">
+        <aside>
+          <h2 className="mb-4 font-semibold">Gimnasia temporal</h2>
+          <ol className="drill-step-list">
+            {DRILL_STEPS.map((item, index) => (
+              <li key={item.label} aria-current={step === index ? 'step' : undefined}>
+                <span className="text-muted-foreground mb-1 block text-xs">
+                  Paso {index + 1} · {item.seconds / 60} min{reviews[index] ? ' · revisado' : ''}
+                </span>
+                {item.label}
+              </li>
+            ))}
+          </ol>
+          <p className="text-muted-foreground mt-5 text-sm leading-6">
+            Mantén las mismas acciones en cada ronda. Lo que cambia es cuándo suceden.
+          </p>
+        </aside>
+        <div className="drill-content space-y-5">
+          <label className="block text-sm font-medium">
+            Idioma de las explicaciones
+            <select
+              className="study-field"
+              value={language}
+              disabled={busy || recording}
+              onChange={(e) => {
+                setLanguage(e.target.value as NativeLanguage);
+                localStorage.setItem('native-language', e.target.value);
+              }}
+            >
+              {Object.entries(NATIVE_LANGUAGES).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-medium">
+            Tu rutina o proceso (las mismas 3–4 acciones en A, B y C)
+            <input
+              className="study-field"
+              placeholder="Por ejemplo: despertar, preparar café, ir al trabajo…"
+              maxLength={500}
+              value={routine}
+              disabled={busy || step > 0 || recording}
+              onChange={(e) => setRoutine(e.target.value)}
+            />
+          </label>
+          <h2 className="pt-4 text-2xl font-semibold">
+            {DRILL_STEPS[step].label} · paso {step + 1}/4
+          </h2>
+          <p className="text-muted-foreground leading-7">{DRILL_STEPS[step].instruction}</p>
+          <div className="drill-clock">
+            <p
+              className="font-mono text-5xl tracking-tight"
+              role="timer"
+              aria-label="Tiempo restante del paso"
+            >
+              {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}
+            </p>
+            <span className="text-muted-foreground text-sm" role="status">
+              {recording
+                ? 'Grabando tu respuesta'
+                : busy
+                  ? 'Revisión en curso'
+                  : running
+                    ? 'Tiempo de práctica'
+                    : remaining === 0
+                      ? 'Tiempo del paso terminado'
+                      : 'A tu ritmo'}
+            </span>
+          </div>
+          <div className="drill-controls">
+            <button
+              className="rounded border p-2"
+              disabled={busy || recording || remaining === 0}
+              onClick={() => setRunning((v) => !v)}
+            >
+              {running ? 'Pausar cronómetro' : 'Iniciar cronómetro'}
+            </button>
+            <button
+              className="rounded border p-2"
+              disabled={busy || !routine.trim() || remaining === 0}
+              onClick={() => (recording ? recorder.current?.stop() : void record())}
+            >
+              {recording ? 'Detener grabación' : 'Grabar respuesta'}
+            </button>
+            <button
+              className="rounded border p-2"
+              disabled={busy || recording}
+              onClick={() => {
+                setRunning(false);
+                setRemaining(DRILL_STEPS[step].seconds);
+              }}
+            >
+              Reiniciar tiempo del paso
+            </button>
+          </div>
+          {audio && (
             <p>
-              Revisión guardada reutilizada: no se hicieron nuevas llamadas a la IA ni se contó otra
-              evidencia de aprendizaje.
+              Audio preparado. Puedes enviarlo a revisión o volver a grabar. No se guarda el archivo
+              de audio.
             </p>
           )}
-          <p>{result.feedback}</p>
-          {!result.corrections.length && (
-            <p>No se detectaron errores claros en esta revisión. Esto no certifica dominio.</p>
+          <label className="block text-sm font-medium">
+            Respuesta o transcripción
+            <textarea
+              className="study-field min-h-44 resize-y leading-7"
+              placeholder="También puedes pegar una transcripción fiel. No se corrige mientras hablas."
+              value={text}
+              maxLength={8000}
+              disabled={busy || recording || !!audio}
+              onChange={(e) => setText(e.target.value)}
+            />
+          </label>
+          <button
+            className="study-button"
+            disabled={busy || recording || !routine.trim() || (!text.trim() && !audio)}
+            onClick={() => void review()}
+          >
+            {busy ? 'Transcribiendo / revisando…' : 'Revisar gramática por escrito'}
+          </button>
+          {error && (
+            <p role="alert" className="text-red-500">
+              {error}
+            </p>
           )}
-          {result.corrections.map((c, i) => (
-            <article key={i} className="rounded border p-3">
-              <p>Tu frase: {c.original}</p>
-              <p>Corrección: {c.corrected}</p>
-              <p>{c.explanation}</p>
-              <p>Estructura: {c.pattern}</p>
-            </article>
-          ))}
-          <p>
-            Guardado como ensayo; no cuenta como aprendizaje consolidado. La transcripción puede
-            contener errores de reconocimiento.
+          {result && (
+            <section className="drill-review space-y-4" aria-live="polite">
+              <h2 className="text-xl font-semibold">Revisión escrita</h2>
+              {result.reused && (
+                <p>
+                  Revisión guardada reutilizada: no se hicieron nuevas llamadas a la IA ni se contó
+                  otra evidencia de aprendizaje.
+                </p>
+              )}
+              <p>{result.feedback}</p>
+              {!result.corrections.length && (
+                <p>No se detectaron errores claros en esta revisión. Esto no certifica dominio.</p>
+              )}
+              {result.corrections.map((c, i) => (
+                <article key={i} className="drill-correction space-y-3">
+                  <p>
+                    <span className="text-muted-foreground block text-xs">Tu frase</span>
+                    {c.original}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground block text-xs">Corrección</span>
+                    <strong>{c.corrected}</strong>
+                  </p>
+                  <p className="text-sm leading-6">{c.explanation}</p>
+                  <p className="text-sm">Estructura: {c.pattern}</p>
+                </article>
+              ))}
+              <p>
+                Guardado como ensayo; no cuenta como aprendizaje consolidado. La transcripción puede
+                contener errores de reconocimiento.
+              </p>
+            </section>
+          )}
+          {step < 3 ? (
+            <button
+              className="study-next-step"
+              disabled={!result || busy || recording}
+              onClick={next}
+            >
+              Siguiente paso
+            </button>
+          ) : (
+            result && (
+              <Link className="block underline" href="/call?practice=fluency&start=anchors">
+                Continuar al bloque 2 con el tutor (abrir preparación, sin llamar todavía)
+              </Link>
+            )
+          )}
+          <p className="text-muted-foreground border-t pt-5 text-xs leading-6">
+            Grabar utiliza Groq para transcripción; revisar utiliza DeepSeek. No consume minutos de
+            LiveKit, pero sí cuota/saldo de esas APIs. Las claves permanecen en el servidor.
           </p>
-        </section>
-      )}
-      {step < 3 ? (
-        <button
-          className="rounded border p-2"
-          disabled={!result || busy || recording}
-          onClick={next}
-        >
-          Siguiente paso
-        </button>
-      ) : (
-        result && (
-          <Link className="block underline" href="/call?practice=fluency&start=anchors">
-            Continuar al bloque 2 con el tutor (abrir preparación, sin llamar todavía)
-          </Link>
-        )
-      )}
-      <p className="text-muted-foreground text-sm">
-        Grabar utiliza Groq para transcripción; revisar utiliza DeepSeek. No consume minutos de
-        LiveKit, pero sí cuota/saldo de esas APIs. Las claves permanecen en el servidor.
-      </p>
+        </div>
+      </div>
     </main>
   );
 }

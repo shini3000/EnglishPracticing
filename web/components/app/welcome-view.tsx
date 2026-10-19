@@ -48,99 +48,101 @@ export const WelcomeView = ({
   const tutorName = tutorNameFor(avatarChoice);
 
   return (
-    <div ref={ref}>
-      <section className="mx-auto flex max-w-md flex-col items-center px-6 text-center">
-        <h1 className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
-          {learnerName ? `Ready when you are, ${learnerName}` : 'Ready when you are'}
-        </h1>
+    <div ref={ref} className="call-preparation">
+      <Link href="/home" className="study-text-link inline-flex items-center gap-2 text-sm">
+        <ArrowLeftIcon size={16} />
+        Volver a las prácticas
+      </Link>
+      <section className="call-preparation-grid">
+        <div>
+          <h1 className="study-title">
+            {learnerName ? `A tu ritmo, ${learnerName}.` : 'Prepara tu práctica.'}
+          </h1>
 
-        <p className="text-muted-foreground mt-3 text-sm leading-6 text-pretty">
-          {capitalize(tutorName)} guiará tu práctica de inglés, explicará las correcciones en tu
-          idioma nativo y te pedirá que vuelvas a usar lo aprendido.
-        </p>
-
-        <div className="mt-4 grid w-full gap-3 text-left">
-          <label className="text-sm">
-            Idioma nativo para explicaciones
-            <select
-              value={nativeLanguage}
-              onChange={(e) => onNativeLanguage(e.target.value as NativeLanguage)}
-              className="bg-background mt-1 w-full rounded-md border p-2"
-            >
-              {Object.entries(NATIVE_LANGUAGES).map(([code, label]) => (
-                <option key={code} value={code}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="text-muted-foreground text-xs">Idioma de aprendizaje: inglés.</p>
-          <label className="text-sm">
-            Tipo de sesión
-            <select
-              value={practiceMode}
-              onChange={(e) => onPracticeMode(e.target.value as PracticeMode)}
-              className="bg-background mt-1 w-full rounded-md border p-2"
-            >
-              <option value="daily">Práctica tipo A · 145 min · práctica integral</option>
-              <option value="diagnostic">Diagnóstico inicial · 30–40 min</option>
-              <option value="fluency">Práctica tipo B · 55 min · fluidez y resistencia</option>
-            </select>
-          </label>
-          <p className="text-muted-foreground text-xs">
-            {practiceMode === 'daily'
-              ? 'Tipo A: conversación, gramática aplicada, escucha, shadowing, vocabulario y transferencia.'
-              : practiceMode === 'fluency'
-                ? 'Tipo B: cambios de tiempo verbal, monólogo, escucha y réplica, rondas 4–3–2 y microauditoría.'
-                : 'Diagnóstico: evaluación inicial para identificar tu nivel aproximado y prioridades.'}
+          <p className="text-muted-foreground mt-5 leading-7 text-pretty">
+            Practicarás inglés con {capitalize(tutorName)}. Las correcciones gramaticales aparecerán
+            por escrito, con explicaciones en tu idioma nativo.
           </p>
-          {practiceMode === 'fluency' && (
-            <Link className="rounded border p-3 text-sm underline" href="/drill">
-              Bloque 1 · Gimnasia temporal sin llamada — empezar aquí
-            </Link>
-          )}
-          <p className="text-muted-foreground text-xs">
-            Puedes pausar o terminar antes. Las actividades pendientes se conservan como pendientes.
+          <div className="learning-note mt-8 border-t">
+            <h2 className="font-semibold">Antes de abrir el micrófono</h2>
+            <p className="text-muted-foreground mt-3 text-sm leading-6">
+              Elige un lugar tranquilo y, si puedes, usa auriculares. La llamada solo comenzará al
+              pulsar «{startButtonText}».
+            </p>
+            <p className="text-muted-foreground mt-3 text-sm leading-6">
+              Puedes hacer pausas y terminar antes. Las actividades pendientes se conservan como
+              pendientes.
+            </p>
+          </div>
+        </div>
+        <div className="preparation-form">
+          <h2 className="mb-5 text-xl font-semibold">Configura tu sesión</h2>
+          <div className="grid w-full gap-4 text-left">
+            <label className="text-sm">
+              Idioma nativo para explicaciones
+              <select
+                value={nativeLanguage}
+                onChange={(e) => onNativeLanguage(e.target.value as NativeLanguage)}
+                className="study-field"
+              >
+                {Object.entries(NATIVE_LANGUAGES).map(([code, label]) => (
+                  <option key={code} value={code}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="text-muted-foreground text-xs">Idioma de aprendizaje: inglés.</p>
+            <label className="text-sm">
+              Tipo de sesión
+              <select
+                value={practiceMode}
+                onChange={(e) => onPracticeMode(e.target.value as PracticeMode)}
+                className="study-field"
+              >
+                <option value="daily">Práctica tipo A · 145 min · práctica integral</option>
+                <option value="diagnostic">Diagnóstico inicial · 30–40 min</option>
+                <option value="fluency">Práctica tipo B · 55 min · fluidez y resistencia</option>
+              </select>
+            </label>
+            <p className="text-muted-foreground text-xs">
+              {practiceMode === 'daily'
+                ? 'Tipo A: conversación, gramática aplicada, escucha, shadowing, vocabulario y transferencia.'
+                : practiceMode === 'fluency'
+                  ? 'Tipo B: cambios de tiempo verbal, monólogo, escucha y réplica, rondas 4–3–2 y microauditoría.'
+                  : 'Diagnóstico: evaluación inicial para identificar tu nivel aproximado y prioridades.'}
+            </p>
+            {practiceMode === 'fluency' && (
+              <Link className="study-text-link bg-muted rounded-lg p-4 text-sm" href="/drill">
+                Empezar por el bloque 1: gimnasia temporal sin llamada
+              </Link>
+            )}
+          </div>
+
+          <div className="mt-6 w-full text-left">
+            <AvatarPicker
+              choice={avatarChoice}
+              photoSrc={photoSrc}
+              onPick={onPickAvatar}
+              onPickPhoto={onPickPhotoAvatar}
+            />
+          </div>
+
+          <Button
+            size="lg"
+            onClick={onStartCall}
+            className="mt-6 w-full gap-2 rounded-xl font-medium"
+          >
+            <MicrophoneIcon size={17} weight="bold" />
+            {startButtonText}
+          </Button>
+
+          <p className="text-muted-foreground mt-4 text-xs leading-5">
+            Tu navegador pedirá permiso para usar el micrófono. Elige «Permitir» para que el tutor
+            pueda escucharte.
           </p>
         </div>
-
-        <div className="mt-6 w-full text-left">
-          <AvatarPicker
-            choice={avatarChoice}
-            photoSrc={photoSrc}
-            onPick={onPickAvatar}
-            onPickPhoto={onPickPhotoAvatar}
-          />
-        </div>
-
-        <Button
-          size="lg"
-          onClick={onStartCall}
-          className="mt-6 w-full max-w-xs gap-2 rounded-full font-medium"
-        >
-          <MicrophoneIcon size={17} weight="bold" />
-          {startButtonText}
-        </Button>
-
-        <p className="text-muted-foreground mt-4 text-xs leading-5">
-          Your browser will ask to use your microphone. Choose &ldquo;Allow&rdquo; so{' '}
-          {tutorName === 'your tutor' ? 'your tutor' : tutorName} can hear you.
-        </p>
-
-        <Link
-          href="/home"
-          className="text-muted-foreground hover:text-foreground mt-6 flex items-center gap-1.5 text-sm transition-colors"
-        >
-          <ArrowLeftIcon size={14} weight="bold" />
-          Back to home
-        </Link>
       </section>
-
-      <div className="fixed bottom-5 left-0 flex w-full items-center justify-center">
-        <p className="text-muted-foreground max-w-prose px-6 text-center text-xs leading-5">
-          Works best with headphones, in a quiet room.
-        </p>
-      </div>
     </div>
   );
 };
