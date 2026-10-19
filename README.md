@@ -1,5 +1,212 @@
 # English Practicing
 
+## Uso necesario de modelos y ahorro
+
+- El reloj tiene controles directos en pantalla (iniciar, pausar, continuar,
+  terminar paso y finalizar) y guias fijas por etapa. No llaman al LLM. El avance
+  requiere confirmacion del alumno; no certifica aprendizaje ni verifica por si
+  solo que se haya realizado la tarea. Los comandos se aceptan solo del
+  participante de la sesion, con deduplicacion y rechazo de pasos obsoletos.
+- Gimnasia temporal reutiliza revisiones identicas del mismo alumno durante
+  7 dias. La clave incluye modelo, version del corrector, idioma, rutina, paso,
+  referencia y texto exacto o hash del audio. Reutilizar el mismo audio evita
+  tambien transcribirlo otra vez. Cambiar esos datos requiere revision nueva.
+  El reuso se guarda con fecha/hora nuevas, pero no es una evaluacion nueva
+  ni evidencia independiente de dominio. El ID de modelo puede ser un alias:
+  si cambia su version real, invalida el cache cambiando la version del corrector.
+- La voz de la foto se elige explicitamente (Ahmad/Sara). Se elimino la llamada
+  visual; `VISION_MODEL` queda como variable heredada sin uso. La animacion
+  opcional bitHuman sigue siendo un servicio separado y puede consumir creditos.
+- La busqueda pide fuentes sin sintesis de Tavily; el tutor prepara la respuesta.
+  No se hacen busquedas por contar dias, guardar avances o calcular metricas.
+- La evaluacion final sigue siendo una llamada necesaria para juicio global y
+  errores no observados. Reutiliza citas/correcciones/explicaciones ya guardadas
+  que realmente aparecen en la transcripcion: el evaluador solo referencia y
+  clasifica las validas, sin volver a redactarlas. Si una es incorrecta o ambigua
+  puede descartarla. No se reemplaza la evaluacion completa por un simple conteo.
+
+La conversacion libre, la correccion contextual y la transcripcion de audio
+siguen utilizando modelos. Texto pegado no llama a Whisper. Estadisticas,
+fechas, persistencia y reglas de consolidacion permanecen en codigo.
+El ahorro exacto depende del uso; no se garantiza un porcentaje ni cuota extra.
+
+## Fechas y dias de practica
+
+Se conservan instantes reales en UTC y se muestran fecha y hora en
+`America/Bogota` (Colombia), tanto en servidor como navegador. Dos llamadas o
+ejercicios el mismo dia se guardan por separado, pero no son dos dias de practica.
+El historial de `/progress` agrupa llamadas y revisiones sin llamada por fecha,
+con sus horas y correcciones desplegables. Las graficas por sesion siguen siendo
+por sesion, no por dia; varias mediciones diarias no prueban retencion entre dias.
+Las evidencias nuevas usan el timestamp del servidor para calcular la fecha;
+las antiguas sin timestamp conservan su fecha registrada. Los ejercicios sin
+llamada usan `created_at` de Postgres para el historial, incluso los anteriores
+al cambio. No se reescriben ni inventan fechas de practicas pasadas.
+
+## Practica B: bloque 1 sin llamada
+
+En Inicio o en la preparacion de la practica B abre **Gimnasia temporal sin
+llamada** (`/drill`). No necesita ejecutar el agente Python ni crear una sala.
+Cuatro pasos: presente 1 min, pasado 2 min, present perfect 2 min y segundo
+ejemplo 2 min. Las pausas no envian automaticamente la respuesta: detienes la
+grabacion y pulsas Revisar. Tambien acepta texto/transcripcion pegada.
+
+Next.js necesita las claves privadas `DEEPSEEK_API_KEY`,
+`DEEPSEEK_LLM_MODEL=deepseek-flash` y `GROQ_API_KEY` en `web/.env.local` o
+`web/.env`; el entorno del agente en la raiz NO se carga automaticamente en la
+web. Nunca uses prefijos `NEXT_PUBLIC_` para estas claves. Reinicia el frontend.
+Requiere `DATABASE_URL` y la tabla `practice_journal` ya instalada.
+
+El audio se envia a Groq/Whisper y se descarta en la aplicacion; DeepSeek revisa
+la transcripcion y devuelve tarjetas, sin TTS. El proveedor puede aplicar su
+propia politica de retencion. Se guardan texto y revision del alumno autenticado
+en el diario como `drill_attempt`, no como evidencia independiente de dominio.
+No modifica las estadisticas de llamadas ni certifica minutos de habla. Este
+endpoint tiene limites independientes de los presupuestos del agente: 3 intentos
+por minuto y 60 por 24h/alumno, incluidos fallos. La exclusión de peticiones
+simultaneas es por proceso; en despliegues multirreplica usa un limitador
+distribuido. No es un limite monetario garantizado y consume saldo de las APIs.
+
+Tras el cuarto paso puedes abrir la preparacion de llamada directamente en
+el bloque 2, sin marcar artificialmente el bloque 1 como completado por voz.
+Al recargar el ejercicio se reinicia su estado local; los envios guardados
+permanecen en el diario. Las grabaciones no enviadas se pierden al salir.
+
+## Modalidad: Fluidez y resistencia (55 minutos)
+
+En el selector previo a la llamada puedes elegir **Practica tipo A** (la practica
+integral anterior, 145 minutos) o **Practica tipo B** (este plan de fluidez y
+resistencia, 55 minutos). El diagnostico inicial permanece como opcion separada.
+
+Selecciona **Practica tipo B** antes de llamar. Es una alternativa a la
+practica diaria de 145 minutos y al diagnostico, no su reemplazo. Adapta el
+[plan de referencia](prompts/curriculum/fluidez-real.md) en cinco bloques:
+
+1. Gimnasia temporal, 7 min: misma rutina en presente, pasado y present perfect,
+   seguida de un segundo contexto cotidiano.
+2. Monologo con anclajes temporales, 10 min: circunloquio y ritmo comodo.
+3. Input y replica, 15 min: escucha real, sintesis, contraste y ejemplo PREP.
+4. Metodo 4–3–2, 15 min: 5 min de preparacion/reflexion, rondas de 4, 3 y 2 min,
+   con dos descansos de 30 segundos. El panel distingue cada ronda y descanso.
+5. Microauditoria, 8 min: produccion de 60–90 segundos, lectura de la transcripcion,
+   hasta dos correcciones escritas, ensayo y transferencia a un contexto nuevo.
+
+El horario suma 55 minutos, incluyendo 1 minuto de descanso; no equivale a 55
+minutos hablando. El reloj no avanza de paso sin evidencia y confirmacion.
+PREP ayuda a opiniones y STAR a narraciones. La progresion semanal se basa en
+evidencia, no en alcanzar automaticamente la meta de enero del documento.
+Repetir tres veces no demuestra dominio ni sustituye los repasos entre dias.
+Las explicaciones mantienen el idioma nativo seleccionado; se practica en ingles.
+La modalidad usa transcripcion, no activa grabacion de audio ni certifica
+pronunciacion o cadencia. Las afirmaciones neurocientificas del archivo son
+contexto del autor, no garantias del producto. Las pausas de STT siguen sujetas
+a la deteccion de turnos configurada; la guia pide no interrumpir los monologos.
+
+## Conversación con DeepSeek V4.1 Flash
+
+La API oficial sirve V4.1 Flash mediante el identificador `deepseek-flash`.
+En el `.env` de la raiz configura:
+
+```dotenv
+LLM_PROVIDER=deepseek
+DEEPSEEK_API_KEY=tu_clave_privada
+DEEPSEEK_LLM_MODEL=deepseek-flash
+GRADING_PROVIDER=deepseek
+DEEPSEEK_GRADING_MODEL=deepseek-flash
+```
+
+Reinicia el agente. Con esa configuracion DeepSeek lleva conversacion y evaluacion
+final, usando la misma clave y presupuestos compartidos cuando el modelo coincide.
+Conserva `GROQ_API_KEY`: Whisper sigue utilizando Groq. La voz del avatar se elige manualmente.
+LiveKit Cloud, las tarjetas y el progreso no cambian.
+No hay fallback automatico ni llamadas a Gemini al elegir DeepSeek.
+Si falta la clave se informa explicitamente; no se usa otro proveedor a escondidas.
+
+Se usa el plugin OpenAI-compatible oficial de LiveKit y la API de DeepSeek,
+sin intermediarios. El razonamiento esta desactivado para la conversacion por
+voz. El presupuesto local es 32.000 tokens por solicitud (incluyendo herramientas
+y reserva de salida de 1.024), hasta 48 turnos anteriores y 10 segundos maximos
+de espera por cuota local. Estos valores no garantizan latencia del proveedor.
+
+**La API de DeepSeek es de pago**, aunque su aplicacion de chat permita uso
+gratuito. Revisa saldo y [precios oficiales](https://api-docs.deepseek.com/quick_start/pricing/).
+Los limites `DEEPSEEK_*` son salvaguardas locales, no una cuota gratuita ni un
+tope monetario garantizado. No actives recargas ni hagas pruebas reales si no
+quieres consumir saldo. Para regresar usa `LLM_PROVIDER=groq` o `google`.
+
+## Logs del agente
+
+Se utiliza `logging` de Python con `python-json-logger`, `QueueHandler` /
+`QueueListener` para escritura en segundo plano y `RotatingFileHandler`.
+Arranca el agente normalmente: los registros se guardan automaticamente en
+`logs/agent-<PID>.jsonl`, ademas de la consola administrada por LiveKit.
+Cada linea es JSON, con fecha UTC, nivel, logger y campos de contexto.
+
+Las llamadas al modelo registran `request_id`, proveedor, modelo, duracion,
+consumo reportado, estado HTTP, esperas de cuota y reintentos. Las sesiones
+tienen `session_id` y sala. No se registran prompts ni transcripciones en estos
+eventos; los SDK HTTP se limitan a WARNING para evitar volcados de peticiones.
+Las claves del entorno, Bearer y conexiones Postgres se ocultan como defensa
+adicional, no como garantia de anonimizar cualquier dato arbitrario.
+
+Configuracion opcional en `.env`: `LOG_LEVEL=INFO`, `LOG_DIR=logs`,
+`LOG_MAX_BYTES=5242880`, `LOG_BACKUP_COUNT=5`. La rotacion conserva un archivo
+actual y cinco anteriores **por proceso**; archivos de procesos antiguos no
+se eliminan automaticamente. No se comparte un archivo rotativo entre procesos.
+En despliegues duraderos gestiona la retencion global con el recolector de logs
+o una politica externa y protege el acceso a la carpeta. Los archivos se excluyen
+de Git y Docker. Esto cubre el agente Python; no sustituye los logs de Next.js.
+
+Para ver el archivo mas reciente en PowerShell:
+
+```powershell
+$latestLog = Get-ChildItem .\logs\agent-*.jsonl | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+Get-Content -LiteralPath $latestLog.FullName -Tail 50 -Wait
+```
+
+La configuracion no corrige por si sola los fallos del proveedor: permite
+identificarlos y medir las esperas. Los JSONL pueden enviarse despues a Loki,
+Elastic u otro recolector; no se ha configurado ningun servicio externo.
+
+## Conversación con Gemini o Groq
+
+El agente admite ambos proveedores sin cambiar las herramientas de práctica,
+las correcciones escritas ni el progreso. Groq sigue encargado de Whisper,
+la evaluación final (`GRADING_MODEL`) y la visión del avatar: conserva su clave.
+No hay cambio automático de proveedor ni consumo de Google cuando eliges Groq.
+
+Para usar Google AI Studio, instala `requirements.txt` y agrega en el `.env`
+de la raíz (nunca en las variables públicas del frontend):
+
+```dotenv
+LLM_PROVIDER=google
+GOOGLE_API_KEY=tu_clave_nueva
+GOOGLE_LLM_MODEL=gemini-3-flash-preview
+GOOGLE_HISTORY_TURNS=48
+GOOGLE_MAX_REQUEST_TOKENS=32000
+GOOGLE_MAX_COMPLETION_TOKENS=2048
+```
+
+Reinicia el agente. Para volver al modelo existente, usa `LLM_PROVIDER=groq`;
+`LLM_MODEL` conserva el modelo de Groq y `GOOGLE_LLM_MODEL` el de Gemini.
+Gemini conserva hasta 48 turnos anteriores dentro del presupuesto, frente a 3
+con Groq; el diario persistente sigue guardando las evidencias completas.
+El presupuesto local de 32.000 tokens incluye entrada, herramientas y reserva
+de salida; no utiliza automaticamente toda la ventana del modelo. Cambiar de
+Flash Lite a Flash no implica por si solo una ventana mayor ni mas cuota gratis.
+Las cuotas mostradas para Flash Lite no son las de Gemini 3 Flash: verifica el
+modelo exacto en AI Studio antes de planificar sesiones de 150 minutos.
+
+Los presupuestos `GOOGLE_*` del ejemplo son límites locales ilustrativos, no
+una promesa de cuota gratis. Ajusta RPM, RPD y TPM a lo mostrado en
+[AI Studio](https://aistudio.google.com/). El contexto del modelo y la cuota por
+minuto/día son distintos. La estimación local usa un tokenizador aproximado;
+Google determina el consumo real. No se garantiza una práctica larga con el
+plan gratuito. La evaluación final de Groq mantiene su presupuesto independiente.
+Consulta los [modelos actuales](https://ai.google.dev/gemini-api/docs/models)
+y [límites de cuota](https://ai.google.dev/gemini-api/docs/rate-limits).
+Si compartiste una clave, revócala y genera otra antes de usarla.
+
 Tutor de inglés hablado con conversación por voz, correcciones escritas y práctica
 acumulativa. El estudiante elige a Ahmad o Sara, su idioma nativo y el tipo de
 sesión. **El idioma de aprendizaje siempre es inglés**: las explicaciones de las
