@@ -42,6 +42,10 @@ class PracticeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(output["state"], "EN PRÁCTICA")
             self.assertFalse(output["saved"])
         self.practice.entries[0]["date"] = "2020-01-01"
+        # Editing only the claimed day must not invent another practice day.
+        output = json.loads(await self.practice.record_learning("retrieval", json.dumps(result)))
+        self.assertEqual(output["state"], "EN PRÁCTICA")
+        self.practice.entries[0]["recorded_at"] = "2020-01-01T12:00:00+00:00"
         output = json.loads(await self.practice.record_learning("retrieval", json.dumps(result)))
         self.assertEqual(output["state"], "EN CONSOLIDACIÓN")
         result["result"] = "failed"

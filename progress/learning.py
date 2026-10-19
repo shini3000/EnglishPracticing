@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 POLICY = {"version": 1, "min_days": 3, "min_span_days": 7, "min_contexts": 2, "maintenance_days": 14,
           "review_offsets": [1, 3, 7, 14]}
@@ -27,7 +27,7 @@ def item_identity(entry: dict) -> tuple[str, str, str] | None:
 
 
 def build_learning_items(entries: list[dict], today: date | None = None) -> list[dict]:
-    today = today or date.today()
+    today = today or datetime.now(timezone(timedelta(hours=-5))).date()
     items: dict[tuple[str, str], dict] = {}
     seen = set()
     for index, entry in enumerate(entries):
@@ -41,7 +41,13 @@ def build_learning_items(entries: list[dict], today: date | None = None) -> list
             continue
         item_type, key, label = identity
         try:
-            day = date.fromisoformat(str(entry.get("date", "")))
+            if entry.get("recorded_at"):
+                timestamp = datetime.fromisoformat(str(entry["recorded_at"]).replace("Z", "+00:00"))
+                if timestamp.tzinfo is None:
+                    continue  # No guessing timezone for malformed new evidence.
+                day = timestamp.astimezone(timezone(timedelta(hours=-5))).date()
+            else:
+                day = date.fromisoformat(str(entry.get("date", "")))
         except ValueError:
             continue
         if day > today:
@@ -58,6 +64,7 @@ def build_learning_items(entries: list[dict], today: date | None = None) -> list
             continue
         item["attempts"].append({
             "date": day.isoformat(), "result": entry.get("result"),
+            "recorded_at": entry.get("recorded_at"),
             "attempt_type": entry.get("attempt_type", "legacy"),
             "observed": entry.get("observed") is True,
             "context": str(entry.get("context", "")).strip(),

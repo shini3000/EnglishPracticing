@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
+import { ActivityHistory } from '@/components/progress/activity-history';
 import { Dashboard } from '@/components/progress/dashboard';
 import { LearningDashboard } from '@/components/progress/learning-dashboard';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,7 @@ export default async function ProgressPage() {
   return (
     <AppShell learner={learner} active="progress">
       <LearningDashboard initial={await buildLearningSummary(sql, learnerId)} />
+      <ActivityHistory sql={sql} learnerId={learnerId} />
       <Dashboard summary={summary} />
     </AppShell>
   );

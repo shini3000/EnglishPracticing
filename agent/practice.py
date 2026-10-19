@@ -100,6 +100,7 @@ class Practice:
         }
         entry["event_id"] = str(uuid.uuid4())
         entry["recorded_at"] = datetime.now(timezone.utc).isoformat()
+        entry["date"] = datetime.fromisoformat(entry["recorded_at"]).astimezone(timezone(timedelta(hours=-5))).date().isoformat()
         entry["room_name"] = self.room.name
         self.entries.append(entry)
         if self.pending:

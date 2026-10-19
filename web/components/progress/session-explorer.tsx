@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { CaretDownIcon } from '@phosphor-icons/react/dist/ssr';
 import { ParameterCard } from '@/components/progress/parameter-card';
 import { buildParameters, isGraded } from '@/lib/progress/analysis';
-import { formatShortDate } from '@/lib/progress/dates';
+import { formatPracticeDateTime } from '@/lib/progress/dates';
 import { SESSION_FILTERS, type SessionFilterKey, errorsForSessions } from '@/lib/progress/filters';
 import { PARAMETER_GROUPS, formatterFor } from '@/lib/progress/parameters';
 import type { ProgressSummary, SessionRow } from '@/lib/progress/types';
@@ -216,7 +216,7 @@ function SessionListItem({
               Session #{fullIndex + 1}
             </span>
             <span className="text-muted-foreground text-xs">
-              {formatShortDate(session.started_at)}
+              {formatPracticeDateTime(session.started_at)} · Colombia
             </span>
           </div>
           <div className="text-muted-foreground mt-0.5 text-[11px] leading-4">

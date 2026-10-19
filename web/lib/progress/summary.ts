@@ -68,7 +68,7 @@ export async function buildSummary(sql: Sql, learnerId: string): Promise<Progres
            error_count, errors_per_100_words, cefr_estimate, cefr_confidence, summary
       FROM sessions
      WHERE learner_id = ${learnerId}
-     ORDER BY started_at ASC
+     ORDER BY started_at DESC
      LIMIT ${MAX_SESSIONS}
   `;
 
@@ -85,7 +85,7 @@ export async function buildSummary(sql: Sql, learnerId: string): Promise<Progres
     SELECT count(*)::int AS size FROM learner_vocabulary WHERE learner_id = ${learnerId}
   `;
 
-  const sessions: SessionRow[] = sessionRows.map((row) => ({
+  const sessions: SessionRow[] = [...sessionRows].reverse().map((row) => ({
     ...row,
     started_at: toIso(row.started_at),
   }));

@@ -1,4 +1,5 @@
 import { cefrToNumber, numberToCefr } from './cefr';
+import { practiceDay } from './dates';
 import { PARAMETERS, type ParameterSpec, type SeriesContext, describerFor } from './parameters';
 import taxonomy from './taxonomy.json';
 import {
@@ -732,7 +733,7 @@ export function currentStreakDays(sessions: SessionRow[]): number {
     return 0;
   }
 
-  const days = [...new Set(sessions.map((s) => s.started_at.slice(0, 10)))].sort().reverse();
+  const days = [...new Set(sessions.map((s) => practiceDay(s.started_at)))].sort().reverse();
 
   let streak = 1;
   for (let i = 1; i < days.length; i++) {
