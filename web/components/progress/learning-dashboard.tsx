@@ -33,7 +33,7 @@ export function LearningDashboard({ initial }: { initial: LearningSummary }) {
     <section className="mb-10 space-y-5" aria-label="Aprendizaje acumulativo">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Tu aprendizaje, práctica a práctica</h1>
+          <h2 className="text-2xl font-semibold">Tu aprendizaje, práctica a práctica</h2>
           <p className="text-muted-foreground mt-2 max-w-3xl text-sm">
             Usar una palabra una vez no demuestra que la aprendiste. Consolidación: al menos tres
             días correctos sin ayuda, siete días de separación y dos contextos. Una repetición o
@@ -70,7 +70,7 @@ export function LearningDashboard({ initial }: { initial: LearningSummary }) {
                 total.successRate === null ? 'Sin datos' : total.successRate + '%',
               ],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-xl border p-4">
+              <div key={label} className="bg-card rounded-xl border p-5">
                 <p className="text-muted-foreground text-xs">{label}</p>
                 <p className="mt-1 text-2xl font-semibold">{value}</p>
               </div>

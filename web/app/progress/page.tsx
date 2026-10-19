@@ -64,6 +64,13 @@ export default async function ProgressPage() {
 
   return (
     <AppShell learner={learner} active="progress">
+      <header className="mb-10 max-w-2xl">
+        <h1 className="study-title">Lo que estás construyendo.</h1>
+        <p className="text-muted-foreground mt-4 leading-7">
+          Tu constancia, el vocabulario que vuelves a usar y las estructuras que necesitan otro
+          intento. Una sola respuesta no equivale a aprendizaje consolidado.
+        </p>
+      </header>
       <LearningDashboard initial={await buildLearningSummary(sql, learnerId)} />
       <ActivityHistory sql={sql} learnerId={learnerId} />
       <Dashboard summary={summary} />
