@@ -15,3 +15,4 @@ htmlcov/
 
 # Private local learning evidence awaiting database recovery
 .data/
+logs/

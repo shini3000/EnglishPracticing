@@ -1,8 +1,13 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
+from typing import Literal
 
 
 class Settings(BaseSettings):
+    LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    LOG_DIR: str = "logs"
+    LOG_MAX_BYTES: int = Field(default=5242880, gt=0)
+    LOG_BACKUP_COUNT: int = Field(default=5, ge=1)
     # LiveKit — required, must be in .env
     LIVEKIT_URL: str
     LIVEKIT_API_KEY: str

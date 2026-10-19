@@ -14,6 +14,8 @@ import types
 
 from dotenv import load_dotenv
 load_dotenv()  # load .env into os.environ before livekit-agents reads it
+from utils.logger import configure_logging  # noqa: E402
+configure_logging()
 
 # Windows-only. The native .pyd is fine on Linux, and stubbing it there would needlessly
 # disable the end-of-turn model (EOT), degrading turn detection on deployed workers.
@@ -30,9 +32,6 @@ if sys.platform == "win32":
 from livekit.agents import WorkerOptions, cli  # noqa: E402
 
 from agent.tutor import entrypoint  # noqa: E402
-from utils.logger import configure_logging  # noqa: E402
-
-configure_logging()
 
 if __name__ == "__main__":
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
