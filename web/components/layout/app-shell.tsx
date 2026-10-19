@@ -13,15 +13,18 @@ import { cn } from '@/lib/shadcn/utils';
  */
 
 const TABS = [
-  { key: 'home', href: '/home', label: 'Home' },
-  { key: 'progress', href: '/progress', label: 'Dashboard' },
+  { key: 'home', href: '/home', label: 'Prácticas' },
+  { key: 'progress', href: '/progress', label: 'Mi progreso' },
 ] as const;
 
 export type ShellTab = (typeof TABS)[number]['key'];
 
 function NavTabs({ active }: { active: ShellTab }) {
   return (
-    <nav className="bg-muted/60 flex items-center gap-1 rounded-full p-1">
+    <nav
+      aria-label="Navegación principal"
+      className="bg-muted/60 flex items-center gap-1 rounded-full p-1"
+    >
       {TABS.map((tab) => (
         <Link
           key={tab.key}
@@ -66,9 +69,12 @@ interface AppShellProps {
 
 export function AppShell({ learner, active, children }: AppShellProps) {
   return (
-    <div className="bg-background min-h-svh">
+    <div className="study-shell bg-background min-h-svh">
+      <a href="#main-content" className="skip-link">
+        Saltar al contenido
+      </a>
       <header className="border-border/70 bg-background/85 sticky top-0 z-40 border-b backdrop-blur-md">
-        <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between gap-4 px-5 md:px-8">
+        <div className="mx-auto flex min-h-20 w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4 md:px-8">
           <Brand href="/home" />
 
           <div className="flex items-center gap-2 sm:gap-4">
@@ -80,7 +86,9 @@ export function AppShell({ learner, active, children }: AppShellProps) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-5 py-10 md:px-8">{children}</main>
+      <main id="main-content" className="mx-auto w-full max-w-6xl px-5 py-10 md:px-8 md:py-14">
+        {children}
+      </main>
     </div>
   );
 }

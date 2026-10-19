@@ -57,8 +57,8 @@ const commitMono = localFont({
  */
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+    { media: '(prefers-color-scheme: light)', color: '#f3f6fa' },
+    { media: '(prefers-color-scheme: dark)', color: '#141e2d' },
   ],
 };
 
@@ -74,7 +74,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <html
-      lang="en"
+      lang="es"
       suppressHydrationWarning
       className={cn(
         publicSans.variable,
@@ -106,7 +106,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="English Tutor" />
+        <meta name="apple-mobile-web-app-title" content="English Practicing" />
       </head>
       <body className="overflow-x-hidden">
         <ThemeProvider
@@ -123,8 +123,8 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             headers arguing about the same corner of the screen.
           */}
           {children}
-          <div className="group fixed bottom-0 left-1/2 z-50 mb-2 -translate-x-1/2">
-            <ThemeToggle className="translate-y-20 transition-transform delay-150 duration-300 group-hover:translate-y-0" />
+          <div className="flex justify-end px-4 py-3">
+            <ThemeToggle className="w-auto" />
           </div>
         </ThemeProvider>
       </body>

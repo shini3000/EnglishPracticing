@@ -30,7 +30,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: APP_CONFIG_DEFAULTS.pageTitle,
     short_name: APP_CONFIG_DEFAULTS.companyName,
     description: APP_CONFIG_DEFAULTS.pageDescription,
-    lang: 'en',
+    lang: 'es',
     categories: ['education'],
 
     start_url: '/',
@@ -41,8 +41,8 @@ export default function manifest(): MetadataRoute.Manifest {
     // --background; a dark-theme learner sees one pale frame before the app paints, which is
     // the lesser evil — a manifest carries exactly one background_color and cannot follow the
     // system theme. (theme_color CAN, via the <meta> in layout.tsx.)
-    background_color: '#ffffff',
-    theme_color: '#2f6f4e',
+    background_color: '#f3f6fa',
+    theme_color: '#2457bc',
 
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

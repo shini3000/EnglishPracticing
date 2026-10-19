@@ -39,7 +39,7 @@ export function LoginForm() {
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
-        setError(body?.error ?? 'Something went wrong. Try again.');
+        setError(body?.error ?? 'No se pudo iniciar sesión. Inténtalo de nuevo.');
         return;
       }
 
@@ -48,7 +48,7 @@ export function LoginForm() {
       router.push('/home');
       router.refresh();
     } catch {
-      setError('Could not reach the tutor. Check your connection.');
+      setError('No se pudo conectar. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
@@ -57,24 +57,24 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       <TextField
-        label="Username"
+        label="Nombre de usuario"
         value={username}
         onChange={(e) => {
           setUsername(e.target.value);
           setError(null);
         }}
-        placeholder="asad"
+        placeholder="Tu nombre de usuario"
         autoComplete="username"
         autoCapitalize="none"
         autoCorrect="off"
         spellCheck={false}
         maxLength={24}
         required
-        hint="Pick any name and use it every time — it's how your progress follows you between your phone and your laptop."
+        hint="Elige un nombre y úsalo siempre, también si cambias de dispositivo."
       />
 
       <TextField
-        label="Passcode"
+        label="Clave de acceso"
         type="password"
         value={passcode}
         onChange={(e) => {
@@ -98,7 +98,7 @@ export function LoginForm() {
       </p>
 
       <Button type="submit" size="lg" disabled={!canSubmit} className="w-full gap-2 rounded-lg">
-        {isSubmitting ? 'Signing in…' : 'Sign in'}
+        {isSubmitting ? 'Entrando…' : 'Entrar a practicar'}
         {!isSubmitting && <ArrowRightIcon size={16} weight="bold" />}
       </Button>
     </form>

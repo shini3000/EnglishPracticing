@@ -35,10 +35,11 @@ export function SignOutButton() {
       size="sm"
       onClick={signOut}
       disabled={isSigningOut}
+      aria-label="Cerrar sesión"
       className="text-muted-foreground hover:text-foreground gap-1.5"
     >
       <SignOutIcon size={16} weight="bold" />
-      <span className="hidden sm:inline">Sign out</span>
+      <span className="hidden sm:inline">Salir</span>
     </Button>
   );
 }

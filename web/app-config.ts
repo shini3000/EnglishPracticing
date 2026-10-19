@@ -33,11 +33,10 @@ export interface AppConfig {
 }
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'English Tutor',
-  pageTitle: 'Practice English with Ahmad',
+  companyName: 'English Practicing',
+  pageTitle: 'English Practicing | Tu espacio de práctica',
   pageDescription:
-    'Talk to Ahmad, a friendly AI English tutor. Just speak naturally — Ahmad listens, replies, ' +
-    'and corrects your mistakes as you go.',
+    'Practica inglés con un plan, recibe correcciones escritas y sigue tu aprendizaje a lo largo del tiempo.',
 
   supportsChatInput: true,
   // Ahmad is voice-only and has no eyes: camera and screen share would give the user
@@ -47,10 +46,10 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   isPreConnectBufferEnabled: true,
 
   logo: '/tutor-logo.svg',
-  accent: '#2f6f4e',
+  accent: '#2457bc',
   logoDark: '/tutor-logo-dark.svg',
-  accentDark: '#5fd39b',
-  startButtonText: 'Start talking',
+  accentDark: '#9bbcff',
+  startButtonText: 'Iniciar llamada',
 
   // optional: audio visualization configuration
   // audioVisualizerType: 'bar',

@@ -19,25 +19,38 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="bg-background flex min-h-svh flex-col items-center justify-center px-5 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center text-center">
+    <main className="bg-background flex min-h-svh flex-col items-center justify-center px-5 py-16">
+      <div className="login-layout">
+        <div className="max-w-lg">
           <Brand size="lg" />
-          <h1 className="text-foreground mt-6 text-2xl font-semibold tracking-tight">
-            Welcome back
+          <h1 className="study-title mt-10">
+            El inglés se entrena.
+            <br />
+            Un día a la vez.
           </h1>
-          <p className="text-muted-foreground mt-2 text-sm leading-6 text-balance">
-            Sign in to talk with Ahmad and pick up your progress where you left it.
+          <p className="text-muted-foreground mt-6 leading-7">
+            Conversaciones con un propósito, correcciones por escrito y un progreso que se construye
+            al volver a practicar.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3 text-sm">
+            <span className="bg-secondary rounded-lg px-3 py-2">Práctica integral</span>
+            <span className="bg-secondary rounded-lg px-3 py-2">Fluidez</span>
+            <span className="bg-secondary rounded-lg px-3 py-2">Ejercicios sin llamada</span>
+          </div>
+        </div>
+        <div>
+          <Card className="rounded-3xl p-6 shadow-none sm:p-8">
+            <h2 className="text-xl font-semibold">Entra a tu espacio</h2>
+            <p className="text-muted-foreground mb-6 text-sm leading-6">
+              Usa el mismo nombre para recuperar tu progreso.
+            </p>
+            <LoginForm />
+          </Card>
+          <p className="text-muted-foreground mt-6 text-center text-xs leading-5 text-balance">
+            Si es tu primera vez, elige un nombre de usuario. Tu perfil se crea al entrar con la
+            clave de acceso del proyecto.
           </p>
         </div>
-
-        <Card className="p-6 shadow-sm sm:p-7">
-          <LoginForm />
-        </Card>
-
-        <p className="text-muted-foreground mt-6 text-center text-xs leading-5 text-balance">
-          New here? Just choose a username — an account is created the first time you sign in.
-        </p>
       </div>
     </main>
   );

@@ -34,7 +34,7 @@ export function Brand({
           size === 'lg' ? 'text-xl' : 'text-base'
         )}
       >
-        English Tutor
+        English Practicing
       </span>
     </span>
   );
