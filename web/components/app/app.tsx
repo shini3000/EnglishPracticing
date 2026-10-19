@@ -91,6 +91,7 @@ export function App({ appConfig, learnerName }: AppProps) {
           startAtAnchors:
             practiceMode === 'fluency' &&
             new URLSearchParams(window.location.search).get('start') === 'anchors',
+          photoVoice: localStorage.getItem('photo-voice') === 'girl' ? 'girl' : 'boy',
         }),
       });
       if (!res.ok) {

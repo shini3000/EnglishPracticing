@@ -51,6 +51,8 @@ class Practice:
         self.latest_user_text = ""
         self._flush_lock = asyncio.Lock()
         self._modeled_examples: set[str] = set()
+        self._manual_lock = asyncio.Lock()
+        self._manual_ids: set[str] = set()
         try:
             self.pending = PendingEvidence() if learner_id else None
         except Exception:
@@ -83,6 +85,35 @@ class Practice:
             )
         except Exception:
             logger.warning("Could not publish practice timer", exc_info=True)
+
+    async def manual_control(self, payload: bytes) -> None:
+        """Authenticated participant commands, no LLM interpretation required."""
+        if len(payload) > 4096:
+            return
+        try:
+            data = json.loads(payload)
+        except (ValueError, UnicodeError):
+            return
+        if not isinstance(data, dict):
+            return
+        action, request_id = data.get("action"), data.get("request_id")
+        evidence = data.get("evidence", "")
+        if (action not in {"start", "pause", "resume", "next", "finish"}
+                or not isinstance(request_id, str) or not request_id or len(request_id) > 80
+                or not isinstance(evidence, str) or len(evidence) > 600):
+            return
+        async with self._manual_lock:
+            if data.get("step_index") != self.index:
+                return  # stale/double-click command cannot skip another step
+            if request_id in self._manual_ids:
+                return
+            if action in {"start", "next"} and not evidence.strip():
+                return
+            if action == "resume" and self.quota_status.get("state") in {"daily_limit", "waiting", "limited"}:
+                return
+            self._manual_ids.add(request_id)
+            await self.practice_control(action, evidence)
+            logger.info("practice.manual_control", extra={"action": action, "step_index": self.index})
 
     def model_status(self) -> str:
         state = self.status()

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { LockSimpleIcon } from '@phosphor-icons/react/dist/ssr';
 import { AnimatedTutor } from '@/components/avatar/animated-tutor';
@@ -55,9 +56,29 @@ function Tile({ label, sublabel, selected, onClick, children }: TileProps) {
 }
 
 export function AvatarPicker({ choice, photoSrc, onPick, onPickPhoto }: AvatarPickerProps) {
+  const [voice, setVoice] = useState('boy');
+  useEffect(() => {
+    setVoice(localStorage.getItem('photo-voice') === 'girl' ? 'girl' : 'boy');
+  }, []);
   return (
     <div className="w-full">
       <p className="text-foreground mb-2 text-sm font-medium">Choose your tutor</p>
+      {choice === 'photo' && (
+        <label className="mb-3 block text-sm">
+          Voz de tu avatar (sin analizar la foto)
+          <select
+            className="bg-background ml-2 rounded border p-2"
+            value={voice}
+            onChange={(e) => {
+              setVoice(e.target.value);
+              localStorage.setItem('photo-voice', e.target.value);
+            }}
+          >
+            <option value="boy">Ahmad</option>
+            <option value="girl">Sara</option>
+          </select>
+        </label>
+      )}
       <div className="flex w-full gap-2.5">
         <Tile
           label="Ahmad"

@@ -2,9 +2,8 @@
 The two tutor personas, and how a session picks one.
 
 The learner chooses on the pre-call screen: the boy character is Ahmad with a male voice, the
-girl is Sara with a female voice. A personalized photo avatar picks whichever persona matches
-the person in the uploaded picture (agent/avatars.py::detect_gender), so the face on screen
-and the voice in the ear never disagree.
+girl is Sara with a female voice. A personalized photo uses the learner's explicit
+voice selection; no model infers a voice from appearance.
 """
 
 from __future__ import annotations

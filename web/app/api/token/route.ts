@@ -96,6 +96,7 @@ export async function POST(req: Request) {
         name: participantName,
         attributes: {
           avatar_mode: avatarMode,
+          photo_voice: body.photoVoice === 'girl' ? 'girl' : 'boy',
           native_language: nativeLanguage,
           practice_mode: practiceMode,
           practice_start_step:

@@ -1,0 +1,47 @@
+import type { PracticeMode } from './practice-options';
+
+// Fixed exercise instructions: no model request needed to display the plan.
+export const PRACTICE_GUIDANCE: Record<PracticeMode, string[]> = {
+  daily: [
+    'Elige un tema y un objetivo oral. Confírmalos para iniciar.',
+    'Recupera vocabulario y estructuras pendientes sin leer respuestas.',
+    'Conversa sobre tu experiencia sin preparar vocabulario antes.',
+    'Selecciona una estructura y vocabulario que realmente hayas necesitado.',
+    'Lee la tarjeta gramatical y produce ejemplos propios en contextos nuevos.',
+    'Elige un video breve en inglés y confirma duración y reproducción.',
+    'Escucha sin transcripción e identifica tema e idea principal.',
+    'Escucha otra vez, identifica detalles y expresiones útiles.',
+    'Repite un fragmento comprendido, primero con audio y luego sin él.',
+    'Explica lo escuchado con tus propias palabras y aplícalo a tu experiencia.',
+    'Desarrolla narraciones, opiniones y problemas usando lo trabajado.',
+    'Completa las tarjetas de vocabulario y una transferencia nueva.',
+    'Da una respuesta final sin notas y revisa evidencias y próximos repasos.',
+  ],
+  diagnostic: [
+    'Preséntate y describe tu rutina y actividades actuales en inglés.',
+    'Narra acciones pasadas y realiza la tarea indicada de terminaciones -ed.',
+    'Explica planes y predicciones en inglés.',
+    'Resuelve un problema y contrasta palabras con tus propios ejemplos.',
+    'Desarrolla una opinión o narración y responde preguntas imprevistas.',
+    'Pide aclaración y describe una palabra sin nombrarla.',
+    'Revisa las evidencias y objetivos; el nivel es provisional.',
+  ],
+  fluency: [
+    'Describe las mismas 3–4 acciones de una rutina en presente durante 1 minuto.',
+    'Narra esas mismas acciones como pasado terminado durante 2 minutos.',
+    'Exprésalas como experiencia hasta hoy en present perfect durante 2 minutos.',
+    'Practica los tres marcos temporales con una segunda rutina durante 2 minutos.',
+    'Habla usando anclajes temporales y circunloquio. Pausa entre ideas sin apresurarte.',
+    'Escucha 5 minutos de material real en inglés, sin subtítulos en español.',
+    'Sintetiza el argumento del hablante con tus palabras durante 3 minutos.',
+    'Expresa tu postura y contrástala con tu experiencia durante 3 minutos.',
+    'Aplica PREP: punto, razón, ejemplo y cierre. Tienes 4 minutos.',
+    'Elige una pregunta abierta y unas pocas palabras clave, sin escribir un guion.',
+    'Desarrolla tu argumento durante 4 minutos. Indica cuándo terminaste.',
+    'Descansa y respira durante 30 segundos; no es tiempo de producción oral.',
+    'Repite las mismas ideas en 3 minutos, reduciendo divagaciones.',
+    'Descansa otros 30 segundos y confirma cuándo estés listo.',
+    'Expresa el núcleo de las mismas ideas en 2 minutos.',
+    'Produce 60–90 segundos sin preparar, revisa la transcripción y dos errores prioritarios; ensaya y transfiere a otro contexto.',
+  ],
+};

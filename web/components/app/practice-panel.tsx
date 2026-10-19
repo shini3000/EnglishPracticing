@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useDataChannel, useSessionContext } from '@livekit/components-react';
 import { CorrectionCard } from '@/components/app/correction-card';
+import { PRACTICE_GUIDANCE } from '@/lib/practice-guidance';
 import type { PracticeMode } from '@/lib/practice-options';
 
 type Timer = {
@@ -35,6 +36,27 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
   const [queued, setQueued] = useState(false);
   const [material, setMaterial] = useState<{ url: string; title: string } | null>(null);
   const [correctionVisible, setCorrectionVisible] = useState(true);
+  const [controlEvidence, setControlEvidence] = useState('');
+  const [controlError, setControlError] = useState('');
+  const { send: sendControl, isSending } = useDataChannel('practice-control');
+  async function control(action: string) {
+    setControlError('');
+    try {
+      await sendControl(
+        new TextEncoder().encode(
+          JSON.stringify({
+            action,
+            request_id: crypto.randomUUID(),
+            step_index: timer?.step_index,
+            evidence: controlEvidence.trim(),
+          })
+        ),
+        { reliable: true }
+      );
+    } catch {
+      setControlError('No se pudo enviar el control. Inténtalo de nuevo.');
+    }
+  }
   useDataChannel('practice', (message) => {
     try {
       setTimer(JSON.parse(new TextDecoder().decode(message.payload)));
@@ -132,6 +154,55 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
               ? 'Presentación y presente'
               : 'Preparación')}
       </p>
+      {timer && !timer.finished && (
+        <div className="my-3 space-y-2 rounded border p-2">
+          <p className="text-sm">{PRACTICE_GUIDANCE[mode][timer.step_index]}</p>
+          <p className="text-xs">
+            Controles directos: no hacen peticiones al modelo. Cambiar de paso no certifica dominio.
+          </p>
+          <input
+            aria-label="Tema o evidencia de actividad terminada"
+            className="w-full rounded border p-2 text-sm"
+            maxLength={600}
+            value={controlEvidence}
+            onChange={(e) => setControlEvidence(e.target.value)}
+            placeholder={
+              timer.started
+                ? 'Qué terminaste y cómo lo practicaste'
+                : 'Tema y objetivo de la práctica'
+            }
+          />
+          <div className="flex flex-wrap gap-2 text-xs">
+            {!timer.started ? (
+              <button
+                disabled={isSending || !controlEvidence.trim()}
+                onClick={() => void control('start')}
+              >
+                Iniciar
+              </button>
+            ) : (
+              <>
+                <button
+                  disabled={isSending}
+                  onClick={() => void control(timer.running ? 'pause' : 'resume')}
+                >
+                  {timer.running ? 'Pausar' : 'Continuar'}
+                </button>
+                <button
+                  disabled={isSending || !controlEvidence.trim()}
+                  onClick={() => void control('next')}
+                >
+                  Terminé este paso
+                </button>
+              </>
+            )}
+            <button disabled={isSending} onClick={() => void control('finish')}>
+              Finalizar práctica
+            </button>
+          </div>
+          {controlError && <p role="alert">{controlError}</p>}
+        </div>
+      )}
       <p className="mt-2 font-mono text-4xl font-bold tabular-nums" aria-live="off">
         {timer?.started
           ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`

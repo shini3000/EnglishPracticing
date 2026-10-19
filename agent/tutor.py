@@ -315,14 +315,13 @@ def _learner_id_from(identity: str) -> str | None:
         return None
 
 
-async def _resolve_photo_session(learner_id: str | None) -> tuple[personas.Persona, bytes] | None:
+async def _resolve_photo_session(learner_id: str | None, voice: str = "boy") -> tuple[personas.Persona, bytes] | None:
     """
     Everything the photo avatar needs, gathered up front, or None to fall back to a character.
 
     Runs before the AgentSession is built because the persona decides the TTS voice, and the
-    voice cannot change once the session exists. The photo decides the persona: a one-off
-    vision call looks at who is in the picture so that the face on screen gets the matching
-    voice — a male photo speaking with Sara's voice would be worse than no avatar at all.
+    voice cannot change once the session exists. The learner chooses the voice;
+    no vision model is called to infer personal attributes from the picture.
     """
     if learner_id is None:
         return None
@@ -335,13 +334,8 @@ async def _resolve_photo_session(learner_id: str | None) -> tuple[personas.Perso
         logger.warning("photo avatar requested but no photo found for learner %s", learner_id)
         return None
 
-    gender = await avatars.detect_gender(
-        photo,
-        groq_api_key=settings.GROQ_API_KEY,
-        model=settings.VISION_MODEL,
-    )
-    persona = personas.FEMALE if gender == "female" else personas.MALE
-    logger.info("photo avatar: detected %s, speaking as %s", gender or "unknown", persona.name)
+    persona = personas.BY_CHARACTER.get(voice, personas.DEFAULT)
+    logger.info("photo avatar: user-selected voice %s", persona.name)
     return persona, photo
 
 
@@ -400,6 +394,25 @@ async def _run_session(ctx: JobContext) -> None:
     if mode not in {"daily", "diagnostic", "fluency"}:
         mode = "daily"
     practice = Practice(learner_id, ctx.room, settings.PROGRESS_DATABASE_URL, mode, language)
+    control_tasks: set[asyncio.Task] = set()
+    control_times: list[float] = []
+    def receive_control(packet):
+        if (packet.topic != "practice-control" or packet.participant is None
+                or packet.participant.identity != participant.identity):
+            return
+        now = time.monotonic()
+        control_times[:] = [stamp for stamp in control_times if stamp > now - 60]
+        if len(control_times) >= 20:
+            return
+        control_times.append(now)
+        task = asyncio.create_task(practice.manual_control(packet.data))
+        control_tasks.add(task)
+        def control_done(done):
+            control_tasks.discard(done)
+            if not done.cancelled() and done.exception() is not None:
+                logger.warning("practice.control.failed", extra={"error_type": type(done.exception()).__name__})
+        task.add_done_callback(control_done)
+    ctx.room.on("data_received", receive_control)
     if mode == "fluency" and participant.attributes.get("practice_start_step") == "4":
         # Explicit start at block 2; never fabricate completed clock steps.
         practice.index = 4
@@ -415,6 +428,9 @@ async def _run_session(ctx: JobContext) -> None:
     practice_sync = asyncio.create_task(_sync_practice())
 
     async def _close_practice() -> None:
+        ctx.room.off("data_received", receive_control)
+        if control_tasks:
+            await asyncio.gather(*control_tasks, return_exceptions=True)
         practice_sync.cancel()
         try:
             await practice_sync
@@ -427,7 +443,7 @@ async def _run_session(ctx: JobContext) -> None:
 
     photo: bytes | None = None
     if avatar_mode == "photo":
-        resolved = await _resolve_photo_session(learner_id)
+        resolved = await _resolve_photo_session(learner_id, participant.attributes.get("photo_voice", "boy"))
         if resolved is not None:
             persona, photo = resolved
         else:

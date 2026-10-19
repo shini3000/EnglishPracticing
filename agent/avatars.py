@@ -1,5 +1,5 @@
 """
-The personalized photo avatar: loading the learner's picture, and matching a voice to it.
+The personalized photo avatar: loading and encoding the learner's picture.
 
 The photo arrives here through the database, not through LiveKit. The web half stores it in
 `learner_avatars` when the learner unlocks the feature with the avatar passcode
@@ -18,7 +18,6 @@ import logging
 
 import asyncpg
 from progress.connection import connect as connect_database
-from groq import AsyncGroq
 
 logger = logging.getLogger(__name__)
 
@@ -61,65 +60,6 @@ async def load_avatar_photo(learner_id: str, *, dsn: str | None) -> bytes | None
     finally:
         if conn is not None:
             await conn.close()
-
-
-async def detect_gender(
-    image: bytes,
-    *,
-    groq_api_key: str,
-    model: str,
-) -> str | None:
-    """
-    Whether the person in the photo appears male or female, so the tutor's voice can match
-    the face the learner chose. Returns "male", "female", or None when the model can't tell
-    (no person in the picture, an animal, an object) — the caller falls back to the default
-    persona rather than guessing.
-    """
-    data_url = "data:image/jpeg;base64," + base64.b64encode(image).decode("ascii")
-
-    try:
-        client = AsyncGroq(api_key=groq_api_key)
-        response = await client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": (
-                                "This photo will be animated as a talking avatar and needs a "
-                                "matching voice. Does the main person in it appear male or "
-                                "female? Answer with exactly one word: male, female, or unknown."
-                            ),
-                        },
-                        {"type": "image_url", "image_url": {"url": data_url}},
-                    ],
-                }
-            ],
-            temperature=0.0,
-            # Qwen 3 thinks out loud in a <think> block before the one-word answer, so the
-            # budget covers the monologue. Capping at a handful of tokens truncates inside
-            # the think block and the answer never arrives.
-            max_tokens=512,
-        )
-        content = (response.choices[0].message.content or "").strip().lower()
-
-        # Only the text AFTER the reasoning is the answer. The think block narrates the
-        # decision ("...could be female, but...") and would trip a substring match.
-        answer = content.rsplit("</think>", 1)[-1].strip()
-
-        # "female" first — "male" is a substring of it.
-        if "female" in answer:
-            return "female"
-        if "male" in answer:
-            return "male"
-        logger.info("vision model could not sex the avatar photo (said %r)", answer)
-        return None
-
-    except Exception:  # noqa: BLE001 — fall back to the default voice, don't kill the call
-        logger.exception("gender detection for the avatar photo failed")
-        return None
 
 
 def photo_as_base64(image: bytes) -> str:

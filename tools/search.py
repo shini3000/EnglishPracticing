@@ -1,9 +1,8 @@
 """
 Web search, exposed to the LLM as a function tool.
 
-Tavily is used rather than a raw search API because it returns a synthesized
-`answer` string alongside the hits — a voice agent wants a sentence to read
-aloud, not ten blue links.
+Tavily returns bounded source snippets; generated answers are disabled because
+the conversational model already synthesizes the reply.
 """
 import logging
 import re
@@ -107,7 +106,7 @@ async def search_web(ctx: RunContext, query: str) -> str:
                 query,
                 search_depth="basic",
                 max_results=_MAX_RESULTS,
-                include_answer=True,
+                include_answer=False,  # raw sources: the tutor already synthesizes the reply
                 timeout=_SEARCH_TIMEOUT,
             )
     # Tavily wraps httpx.TimeoutException in its own TimeoutError, which is unrelated
