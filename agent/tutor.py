@@ -13,6 +13,7 @@ from livekit.plugins import groq, silero
 import progress
 from agent import avatars, personas
 from agent.practice import Practice
+from agent.models import model_policy, create_llm
 from agent.quota import QuotaLedger, compact_context, request_tokens, retry_delay, quota_message
 from agent.text_filters import strip_tool_call_leakage
 from agent.text_feedback import correction_was_shown, audio_safe_chunks, recovery_invitation
@@ -21,6 +22,7 @@ from plugins.edge_tts import EdgeTTS
 from prompts.tutor import LANGUAGES, tutor_prompt
 from tools import search_web
 from tools.search import find_listening_video
+from utils.logger import configure_logging, bind_log_context, reset_log_context
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +48,11 @@ class EnglishTutor(Agent):
         self._name = persona.name
         self._history = history
         self._quota_paused = False
+        self.model_policy = model_policy(settings)
+        p = self.model_policy
         self.quota = QuotaLedger(
-            settings.GROQ_API_KEY, settings.LLM_MODEL,
-            settings.GROQ_TPM_BUDGET, settings.GROQ_TPD_BUDGET,
-            settings.GROQ_RPM_BUDGET, settings.GROQ_RPD_BUDGET,
+            p.provider + ":" + p.api_key, p.model,
+            p.tpm, p.tpd, p.rpm, p.rpd,
         )
         super().__init__(
             instructions=tutor_prompt(persona.name, practice.language, practice.mode, history),
@@ -156,21 +159,29 @@ class EnglishTutor(Agent):
         # Account for schema size and the completion allowance before choosing history.
         from livekit.agents import llm
         schema_cost = request_tokens(llm.ChatContext.empty(), tools)
-        budget = settings.GROQ_MAX_REQUEST_TOKENS - settings.GROQ_MAX_COMPLETION_TOKENS - schema_cost
+        budget = self.model_policy.max_request - self.model_policy.max_output - schema_cost
         try:
-            context = compact_context(chat_ctx, policy, self._learning_memory(), budget)
+            context = compact_context(chat_ctx, policy, self._learning_memory(), budget,
+                                      history_turns=(getattr(settings, f"{self.model_policy.provider.upper()}_HISTORY_TURNS")
+                                                     if self.model_policy.provider != "groq" else 3))
         except ValueError:
             await self._quota_notice("input_too_long")
             yield quota_message(self.practice.language, "input_too_long")
             return
-        cost = request_tokens(context, tools) + settings.GROQ_MAX_COMPLETION_TOKENS
+        cost = request_tokens(context, tools) + self.model_policy.max_output
+        request_started = time.monotonic()
+        log_fields = {"request_id": uuid.uuid4().hex, "provider": self.model_policy.provider,
+                      "model": self.model_policy.model, "estimated_tokens": cost}
+        logger.info("llm.request.started", extra=log_fields)
         for attempt in range(2):
             wait_started = time.monotonic()
             while True:
                 reservation, wait, reason = await asyncio.to_thread(self.quota.reserve, cost)
                 if reservation:
                     break
-                if reason in {"daily", "oversized"} or time.monotonic() - wait_started + wait > settings.GROQ_MAX_WAIT_SECONDS:
+                logger.info("llm.quota.wait", extra={**log_fields, "reason": reason,
+                            "wait_seconds": round(wait, 2), "attempt": attempt + 1})
+                if reason in {"daily", "oversized"} or time.monotonic() - wait_started + wait > self.model_policy.max_wait:
                     await self._quota_notice("daily_limit" if reason == "daily" else "limited", wait, reason)
                     if self.practice.since is not None:
                         await self.practice.practice_control("pause")
@@ -213,11 +224,21 @@ class EnglishTutor(Agent):
                     self.practice.quota_status.update({"last_input_tokens": usage.prompt_tokens,
                                                       "last_output_tokens": usage.completion_tokens})
                     await self.practice.publish()
+                logger.info("llm.request.completed", extra={**log_fields,
+                            "duration_ms": round((time.monotonic() - request_started) * 1000),
+                            "input_tokens": usage.prompt_tokens if usage else None,
+                            "output_tokens": usage.completion_tokens if usage else None})
                 return
             except APIStatusError as exc:
+                logger.warning("llm.request.failed", extra={**log_fields,
+                    "status_code": exc.status_code, "error_type": type(exc).__name__,
+                    "error_category": "empty_response" if "no response generated" in str(exc) else "provider_status",
+                    "attempt": attempt + 1, "partial_response": emitted,
+                    "duration_ms": round((time.monotonic() - request_started) * 1000)})
                 if exc.status_code == 429 and not emitted:
                     await asyncio.to_thread(self.quota.settle, reservation, 0)
                     delay = retry_delay(exc)
+                    logger.warning("llm.request.retry", extra={**log_fields, "wait_seconds": delay})
                     await asyncio.to_thread(self.quota.cooldown, delay)
                     if attempt == 0:
                         continue
@@ -225,14 +246,16 @@ class EnglishTutor(Agent):
                 if exc.status_code == 429 and self.practice.since is not None:
                     await self.practice.practice_control("pause")
                     self._quota_paused = True
-                logger.warning("Groq request failed (status %s)", exc.status_code)
+                logger.warning("%s request failed (status %s)", self.model_policy.provider, exc.status_code)
                 for chunk in audio_safe_chunks(pending):
                     yield chunk
                 if not emitted:
                     yield quota_message(self.practice.language, "error")
                 return
-            except APIError:
-                logger.warning("Groq connection failed; preserving practice context", exc_info=True)
+            except APIError as exc:
+                logger.warning("llm.connection.failed", extra={**log_fields,
+                    "error_type": type(exc).__name__,
+                    "duration_ms": round((time.monotonic() - request_started) * 1000)})
                 await self._quota_notice("limited", reason="connection")
                 for chunk in audio_safe_chunks(pending):
                     yield chunk
@@ -344,6 +367,20 @@ async def _start_photo_avatar(session: AgentSession, ctx: JobContext, photo: byt
 
 
 async def entrypoint(ctx: JobContext) -> None:
+    configure_logging()
+    token = bind_log_context(room=ctx.room.name, session_id=uuid.uuid4().hex)
+    logger.info("session.started")
+    try:
+        await _run_session(ctx)
+    except Exception:
+        logger.exception("session.failed")
+        raise
+    finally:
+        logger.info("session.entrypoint.finished")
+        reset_log_context(token)
+
+
+async def _run_session(ctx: JobContext) -> None:
     """LiveKit job entrypoint — called once per room session."""
     logger.info("English Tutor agent starting for room: %s", ctx.room.name)
 
@@ -397,9 +434,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     session = AgentSession(
         stt=groq.STT(model=settings.STT_MODEL, detect_language=True),
-        llm=groq.LLM(model=settings.LLM_MODEL,
-                     max_completion_tokens=settings.GROQ_MAX_COMPLETION_TOKENS,
-                     max_retries=0),
+        llm=create_llm(settings),
         tts=EdgeTTS(voice="en-US-AndrewMultilingualNeural" if persona.name == "Ahmad" else "en-US-AvaMultilingualNeural"),
         vad=_load_vad(),
         turn_handling=_turn_handling_options(),
@@ -431,8 +466,12 @@ async def entrypoint(ctx: JobContext) -> None:
             await progress.run_analysis(
                 collector,
                 dsn=settings.PROGRESS_DATABASE_URL,
-                groq_api_key=settings.GROQ_API_KEY,
-                grading_model=settings.GRADING_MODEL,
+                # Legacy parameter name retained for compatibility; key belongs
+                # to the explicitly selected grading provider.
+                groq_api_key=(settings.DEEPSEEK_API_KEY or "") if settings.GRADING_PROVIDER == "deepseek" else settings.GROQ_API_KEY,
+                grading_model=settings.DEEPSEEK_GRADING_MODEL if settings.GRADING_PROVIDER == "deepseek" else settings.GRADING_MODEL,
+                grading_provider=settings.GRADING_PROVIDER,
+                known_corrections=[entry for entry in practice.entries if entry.get("kind") == "correction"],
             )
 
         ctx.add_shutdown_callback(_record_progress)

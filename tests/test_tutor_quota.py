@@ -6,6 +6,7 @@ from unittest.mock import Mock, PropertyMock, patch, AsyncMock
 with patch.dict(os.environ, {
     "LIVEKIT_URL": "wss://test.livekit.cloud", "LIVEKIT_API_KEY": "test",
     "LIVEKIT_API_SECRET": "test", "GROQ_API_KEY": "test", "TAVILY_API_KEY": "test",
+    "LLM_PROVIDER": "groq",
 }):
     import main as bootstrap
 from agent.tutor import EnglishTutor, _turn_handling_options, _load_vad

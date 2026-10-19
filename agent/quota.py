@@ -47,7 +47,8 @@ def request_tokens(context: llm.ChatContext, tools: list) -> int:
     return estimate_tokens(json.dumps({"messages": payload, "tools": schemas}, ensure_ascii=False)) + 128
 
 
-def compact_context(context: llm.ChatContext, instructions: str, memory: str, budget: int) -> llm.ChatContext:
+def compact_context(context: llm.ChatContext, instructions: str, memory: str, budget: int,
+                    history_turns: int = 3) -> llm.ChatContext:
     """Keep the current turn intact, and atomic tool call/result groups.
 
     Never modify the full session context. Old evidence belongs in the journal and
@@ -67,7 +68,7 @@ def compact_context(context: llm.ChatContext, instructions: str, memory: str, bu
     if request_tokens(out, []) > budget:
         raise ValueError("Current learner turn exceeds request budget")
     # Keep up to three preceding user turns, never orphan a tool result.
-    for earlier in reversed(starts[:-1][-3:]):
+    for earlier in reversed(starts[:-1][-history_turns:]):
         candidate = llm.ChatContext(out.items[:2] if memory else out.items[:1])
         candidate.items.extend(source[earlier:])
         if request_tokens(candidate, []) <= budget:

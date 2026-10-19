@@ -43,6 +43,8 @@ async def build_report(
     *,
     groq_api_key: str,
     grading_model: str,
+    grading_provider: str = "groq",
+    known_corrections: list[dict] | None = None,
 ) -> SessionReport:
     """
     Analyse a finished session.
@@ -64,6 +66,8 @@ async def build_report(
             transcript.text,
             api_key=groq_api_key,
             model=grading_model,
+            provider=grading_provider,
+            known_corrections=known_corrections,
         )
     else:
         logger.info(

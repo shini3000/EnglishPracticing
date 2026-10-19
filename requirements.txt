@@ -1,6 +1,8 @@
 # `lk agent create` rejects a floor below 1.2.0. These match what the image was built against.
 livekit-agents>=1.6.4
 livekit-plugins-groq>=1.6.4
+livekit-plugins-openai>=1.8.7
+livekit-plugins-google>=1.8.7
 livekit-plugins-silero>=1.6.4  # onnxruntime VAD; see agent/tutor.py::_load_vad
 edge-tts>=6.1.9
 livekit-plugins-bithuman>=1.6.6  # personalized photo avatar (cloud mode); see agent/tutor.py

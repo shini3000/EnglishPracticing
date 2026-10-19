@@ -15,6 +15,31 @@ class Settings(BaseSettings):
 
     # Groq — required, must be in .env
     GROQ_API_KEY: str
+    # Groq supplies transcription and optional grading; photo voice is user-selected.
+    LLM_PROVIDER: Literal["groq", "google", "deepseek"] = "groq"
+    DEEPSEEK_API_KEY: str | None = None
+    DEEPSEEK_LLM_MODEL: str = "deepseek-flash"
+    GRADING_PROVIDER: Literal["groq", "deepseek"] = "groq"
+    DEEPSEEK_GRADING_MODEL: str = "deepseek-flash"
+    DEEPSEEK_HISTORY_TURNS: int = Field(default=48, ge=1, le=200)
+    # Local safeguards, not provider quotas or a hard monetary spending cap.
+    DEEPSEEK_TPM_BUDGET: int = Field(default=60000, gt=0)
+    DEEPSEEK_TPD_BUDGET: int = Field(default=300000, gt=0)
+    DEEPSEEK_RPM_BUDGET: int = Field(default=10, gt=0)
+    DEEPSEEK_RPD_BUDGET: int = Field(default=300, gt=0)
+    DEEPSEEK_MAX_REQUEST_TOKENS: int = Field(default=32000, gt=0)
+    DEEPSEEK_MAX_COMPLETION_TOKENS: int = Field(default=1024, gt=0)
+    DEEPSEEK_MAX_WAIT_SECONDS: int = Field(default=10, ge=0)
+    GOOGLE_API_KEY: str | None = None
+    GOOGLE_LLM_MODEL: str = "gemini-3-flash-preview"
+    GOOGLE_HISTORY_TURNS: int = Field(default=48, ge=1, le=200)
+    GOOGLE_TPM_BUDGET: int = Field(default=60000, gt=0)
+    GOOGLE_TPD_BUDGET: int = Field(default=300000, gt=0)
+    GOOGLE_RPM_BUDGET: int = Field(default=5, gt=0)
+    GOOGLE_RPD_BUDGET: int = Field(default=20, gt=0)
+    GOOGLE_MAX_REQUEST_TOKENS: int = Field(default=32000, gt=0)
+    GOOGLE_MAX_COMPLETION_TOKENS: int = Field(default=2048, gt=0)
+    GOOGLE_MAX_WAIT_SECONDS: int = Field(default=60, ge=0)
 
     # Tavily — required, must be in .env. Backs the agent's search_web tool.
     TAVILY_API_KEY: str
@@ -60,7 +85,7 @@ class Settings(BaseSettings):
 
     # TTS — Microsoft Edge Neural voices (free, no key needed). One per persona: the learner
     # picks a boy or girl tutor on the pre-call screen, and an uploaded photo avatar picks
-    # whichever voice matches the person in the picture (agent/avatars.py::detect_gender).
+    # whichever voice the learner explicitly selects for their photo.
     TTS_VOICE_MALE: str = "en-US-ChristopherNeural"
     TTS_VOICE_FEMALE: str = "en-US-JennyNeural"
 
@@ -69,10 +94,7 @@ class Settings(BaseSettings):
     # for it. Missing key = no photo avatars, never a crashloop.
     BITHUMAN_API_SECRET: str | None = None
 
-    # Vision model used once per photo-avatar session to match the voice to the person in the
-    # uploaded picture. Groq's only vision-capable model since Llama 4 Scout was retired
-    # (June 2026). It is a preview model, so it may be swapped out under us — a failed or
-    # missing model degrades to the default voice, never to a failed call.
+    # Legacy setting accepted for old .env files; unused (no photo vision request).
     VISION_MODEL: str = "qwen/qwen3.6-27b"
 
     # Greeting spoken when a user joins the room. {name} is replaced with the persona the

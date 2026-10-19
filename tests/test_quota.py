@@ -9,6 +9,17 @@ from agent.quota import QuotaLedger, compact_context, request_tokens, retry_dela
 
 
 class QuotaTests(unittest.TestCase):
+    def test_larger_history_retains_more_turns_within_budget(self):
+        context = llm.ChatContext.empty()
+        for index in range(55):
+            context.add_message(role="user", content=f"My practice answer number {index}")
+            context.add_message(role="assistant", content="Please continue.")
+        short = compact_context(context, "Teach English", "", 30000)
+        long = compact_context(context, "Teach English", "", 30000, history_turns=48)
+        self.assertEqual(sum(x.type == "message" and x.role == "user" for x in short.items), 4)
+        self.assertEqual(sum(x.type == "message" and x.role == "user" for x in long.items), 49)
+        self.assertLessEqual(request_tokens(long, []), 30000)
+
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.path = str(Path(self.folder.name) / "quota.sqlite")

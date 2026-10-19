@@ -76,6 +76,8 @@ async def run_analysis(
     dsn: str | None,
     groq_api_key: str,
     grading_model: str,
+    grading_provider: str = "groq",
+    known_corrections: list[dict] | None = None,
 ) -> str | None:
     """
     Close the transcript, analyse it, store it. Called once, after the call has ended.
@@ -100,6 +102,8 @@ async def run_analysis(
         transcript,
         groq_api_key=groq_api_key,
         grading_model=grading_model,
+        grading_provider=grading_provider,
+        known_corrections=known_corrections,
     )
 
     if dsn is None:
