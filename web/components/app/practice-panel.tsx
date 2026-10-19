@@ -116,19 +116,30 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
       </div>
       <p className="text-muted-foreground mt-2 text-xs">
         {timer?.block ??
-          (mode === 'diagnostic' ? 'Diagnóstico' : 'Bloque 1 · Recuperación y diagnóstico')}
+          (mode === 'fluency'
+            ? 'Bloque 1 · Gimnasia temporal'
+            : mode === 'diagnostic'
+              ? 'Diagnóstico'
+              : 'Bloque 1 · Recuperación y diagnóstico')}
         {' · '}Paso {(timer?.step_index ?? 0) + 1} de{' '}
-        {timer?.step_count ?? (mode === 'diagnostic' ? 7 : 13)}
+        {timer?.step_count ?? (mode === 'fluency' ? 16 : mode === 'diagnostic' ? 7 : 13)}
       </p>
       <p className="mt-1 text-base font-semibold" aria-live="polite">
-        {timer?.step ?? (mode === 'diagnostic' ? 'Presentación y presente' : 'Preparación')}
+        {timer?.step ??
+          (mode === 'fluency'
+            ? 'Rutina en presente'
+            : mode === 'diagnostic'
+              ? 'Presentación y presente'
+              : 'Preparación')}
       </p>
       <p className="mt-2 font-mono text-4xl font-bold tabular-nums" aria-live="off">
         {timer?.started
           ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`
-          : mode === 'diagnostic'
-            ? '04:00'
-            : '05:00'}
+          : mode === 'fluency'
+            ? '01:00'
+            : mode === 'diagnostic'
+              ? '04:00'
+              : '05:00'}
       </p>
       <p className="text-muted-foreground mt-1 text-xs">
         {!timer

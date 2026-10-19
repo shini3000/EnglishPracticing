@@ -1,4 +1,5 @@
 """Small stage-specific teaching policy; full references live in curriculum/."""
+from prompts.fluency import FLUENCY_STAGES, FLUENCY_POLICY
 LANGUAGES = {
     "es": "Spanish", "en": "English", "pt": "Portuguese", "fr": "French",
     "de": "German", "it": "Italian", "zh": "Mandarin Chinese", "ja": "Japanese",
@@ -30,7 +31,8 @@ DIAGNOSTIC_TASKS = [
 
 
 def tutor_prompt(name: str, native_language: str = "es", mode: str = "daily", history: str = "", step: int = 0) -> str:
-    tasks = DIAGNOSTIC_TASKS if mode == "diagnostic" else DAILY_TASKS
+    tasks = ([stage[3] for stage in FLUENCY_STAGES] if mode == "fluency" else
+             DIAGNOSTIC_TASKS if mode == "diagnostic" else DAILY_TASKS)
     task = tasks[min(max(step, 0), len(tasks) - 1)]
     return f"""
 You are {name}, a rigorous, patient spoken English teacher.
@@ -60,7 +62,7 @@ record_learning derives state; never assign it yourself. A later failure restart
 Retrieval fields: element (reuse the exact stored label), item_type vocabulary/structure,
 attempt_type repetition/review/transfer, context (stable topic label), result, evidence (exact current learner quote).
 Register corrected grammar as structures, and retrieve them across future practices too.
-Daily plan: 145 effective minutes in 3 blocks, rest excluded; oral production 60–75 minutes,
+{FLUENCY_POLICY if mode == 'fluency' else 'Daily plan: 145 effective minutes in 3 blocks, rest excluded; oral production 60–75 minutes,'}
 6 days/week + light/rest day, new biweekly assessment and monthly review. No guaranteed level.
 Prefer real student experiences. No new words before spontaneous production.
 find_listening_video checks page only: learner confirms playback/duration/captions.

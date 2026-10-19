@@ -397,7 +397,7 @@ async def _run_session(ctx: JobContext) -> None:
     if language not in LANGUAGES:
         language = "es"
     mode = participant.attributes.get("practice_mode", "daily")
-    if mode not in {"daily", "diagnostic"}:
+    if mode not in {"daily", "diagnostic", "fluency"}:
         mode = "daily"
     practice = Practice(learner_id, ctx.room, settings.PROGRESS_DATABASE_URL, mode, language)
     history = await practice.history()

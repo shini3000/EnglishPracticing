@@ -13,6 +13,7 @@ from livekit.agents import function_tool
 from progress.learning import build_learning_items, save_learning_projection, item_identity
 from progress.pending import PendingEvidence
 from progress.connection import connect as connect_database
+from prompts.fluency import FLUENCY_STAGES
 
 logger = logging.getLogger(__name__)
 DAILY_STEPS = [
@@ -35,7 +36,8 @@ class Practice:
     def __init__(self, learner_id: str | None, room, dsn: str | None, mode: str, language: str):
         self.learner_id, self.room, self.dsn = learner_id, room, dsn
         self.mode, self.language = mode, language
-        self.steps = DIAGNOSTIC_STEPS if mode == "diagnostic" else DAILY_STEPS
+        self.steps = ([(label, minutes) for label, minutes, _, _ in FLUENCY_STAGES]
+                      if mode == "fluency" else DIAGNOSTIC_STEPS if mode == "diagnostic" else DAILY_STEPS)
         self.index = 0
         self.elapsed = 0.0
         self.since: float | None = None
@@ -63,7 +65,8 @@ class Practice:
             "step_index": self.index, "elapsed_seconds": int(elapsed),
             "step_count": len(self.steps),
             "step_duration_seconds": self.steps[self.index][1] * 60,
-            "block": ("Diagnóstico" if self.mode == "diagnostic" else
+            "block": ("Bloque " + FLUENCY_STAGES[self.index][2] if self.mode == "fluency" else
+                      "Diagnóstico" if self.mode == "diagnostic" else
                       "Bloque 1 · Recuperación y diagnóstico" if self.index < 4 else
                       "Bloque 2 · Estructura y escucha" if self.index < 10 else
                       "Bloque 3 · Transferencia y cierre"),

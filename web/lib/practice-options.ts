@@ -9,4 +9,4 @@ export const NATIVE_LANGUAGES = {
   ja: '日本語',
 } as const;
 export type NativeLanguage = keyof typeof NATIVE_LANGUAGES;
-export type PracticeMode = 'daily' | 'diagnostic';
+export type PracticeMode = 'daily' | 'diagnostic' | 'fluency';

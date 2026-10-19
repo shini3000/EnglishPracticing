@@ -82,10 +82,18 @@ export const WelcomeView = ({
               onChange={(e) => onPracticeMode(e.target.value as PracticeMode)}
               className="bg-background mt-1 w-full rounded-md border p-2"
             >
-              <option value="daily">Práctica diaria · 145 min en tres bloques</option>
+              <option value="daily">Práctica tipo A · 145 min · práctica integral</option>
               <option value="diagnostic">Diagnóstico inicial · 30–40 min</option>
+              <option value="fluency">Práctica tipo B · 55 min · fluidez y resistencia</option>
             </select>
           </label>
+          <p className="text-muted-foreground text-xs">
+            {practiceMode === 'daily'
+              ? 'Tipo A: conversación, gramática aplicada, escucha, shadowing, vocabulario y transferencia.'
+              : practiceMode === 'fluency'
+                ? 'Tipo B: cambios de tiempo verbal, monólogo, escucha y réplica, rondas 4–3–2 y microauditoría.'
+                : 'Diagnóstico: evaluación inicial para identificar tu nivel aproximado y prioridades.'}
+          </p>
           <p className="text-muted-foreground text-xs">
             Puedes pausar o terminar antes. Las actividades pendientes se conservan como pendientes.
           </p>
