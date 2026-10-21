@@ -89,6 +89,79 @@ no reconstruir o volver a publicar la imagen. Un administrador del host/Docker
 sí puede inspeccionar las credenciales de un contenedor en ejecución: el archivo
 local y el servidor deben protegerse, o usar un gestor de secretos.
 
+## Versiones estables manuales
+
+El workflow `.github/workflows/release.yml` empieza en **1.0.0**. No aumenta
+la versión con cada commit: cada lanzamiento requiere una acción manual.
+Ambas imágenes comparten el mismo número y no se publica `latest`.
+
+### Lanzar desde GitHub
+
+1. Guarda todos los cambios y súbelos a una rama autorizada.
+2. Abre **Actions → Release → Run workflow** y selecciona `develop`, `main`
+   o `master`, según el commit que quieras publicar.
+3. Elige `patch`, `minor` o `major`. Sin versiones previas, cualquiera empieza
+   en `1.0.0`. Después de `1.2.3`, producen `1.2.4`, `1.3.0` o `2.0.0`.
+4. Espera a que termine: primero calcula la versión, reutiliza las pruebas de
+   CI sin publicar etiquetas de rama, construye y comprueba ambas imágenes,
+   verifica que ninguna imagen versionada exista y reserva la etiqueta Git.
+   Solo después publica las imágenes y crea una Release con notas automáticas.
+
+El botón requiere que el workflow exista en la rama predeterminada de GitHub
+(actualmente `production`).
+Mientras solo esté en `develop`, usa el lanzamiento por etiqueta descrito abajo;
+no se cambia la rama predeterminada automáticamente.
+
+### Lanzar mediante una etiqueta Git
+
+Desde un commit ya subido de una rama autorizada:
+
+```powershell
+git tag -a v1.0.0 -m "Release 1.0.0"
+git push origin v1.0.0
+```
+
+Esto dispara el mismo workflow, usando el número de la etiqueta en lugar de
+calcularlo. La etiqueta debe tener el formato exacto `vX.Y.Z`, sin ceros a la
+izquierda ni sufijos. Se rechazan versiones anteriores a `1.0.0` o a una
+etiqueta estable ya existente. No se permiten commits ajenos al historial de
+las ramas autorizadas. No subas etiquetas desde commits que aún no estén allí.
+
+### Resultado y protección contra sobrescrituras
+
+```text
+ghcr.io/shini3000/english-practicing-agent:1.0.0
+ghcr.io/shini3000/english-practicing-web:1.0.0
+```
+
+Las siguientes versiones se calculan con la mayor etiqueta estable `vX.Y.Z`
+existente, no con la fecha de los commits. Los lanzamientos se serializan y
+no se cancela uno que esté publicando. GitHub puede sustituir una ejecución
+pendiente por otra más reciente: no acumules varios lanzamientos manuales.
+
+El workflow rechaza la publicación si cualquiera de las dos imágenes ya
+existe. Los errores de autenticación o red también detienen la comprobación;
+no se interpretan como una versión disponible. Se guarda el SHA de origen
+en las etiquetas OCI de las imágenes y en la etiqueta Git de la Release.
+La protección es del pipeline, no una política de inmutabilidad de GHCR:
+un administrador con acceso al registry aún podría modificar las etiquetas.
+
+La subida de ambos paquetes no es atómica. Si falla tras reservar la etiqueta
+Git, esta se conserva como evidencia; si solo se subió una imagen, tampoco se
+borra ni se sobrescribe automáticamente. Si no se subió ninguna, puedes
+reintentar el lanzamiento desde esa etiqueta. Si ya existe alguna imagen,
+resuelve el fallo y lanza una versión nueva (por ejemplo `1.0.1`). No reutilices
+el número. Si ambas imágenes se publicaron pero falló únicamente la creación
+de la Release, crea la Release desde la etiqueta existente en GitHub sin
+volver a publicar las imágenes. El workflow solo crea la Release después de
+ambas subidas; notas automáticas pueden ser escuetas si los cambios se subieron
+directamente y no mediante pull requests.
+
+La autenticación usa únicamente el `GITHUB_TOKEN` temporal, con permisos de
+escritura de contenido y paquetes en el job de lanzamiento. No requiere PAT
+ni claves de servicios de IA. No despliega nada. Las imágenes se ejecutan con
+los mismos comandos `--env-file`, sustituyendo `:develop` por `:1.0.0`.
+
 ## Descargar archivos de imagen opcionales
 
 En una ejecución manual, activa `export_images` si necesitas descargar ambas

@@ -1,5 +1,26 @@
 # English Practicing
 
+## Versiones publicadas
+
+La primera versión estable es **1.0.0**. Las versiones estables se publican
+solo por decisión manual; subir un commit no aumenta el número. En GitHub,
+**Actions → Release → Run workflow**, elige `patch` (corrección), `minor`
+(funcionalidad compatible) o `major` (cambio incompatible). El pipeline calcula
+el siguiente número, valida el proyecto y publica ambas imágenes con la misma
+versión, además de una Release con notas. El workflow debe existir en la rama
+predeterminada para que aparezca el botón. También se puede lanzar subiendo
+una etiqueta Git `v1.0.0`, `v1.0.1`, etc.
+
+```text
+ghcr.io/shini3000/english-practicing-agent:1.0.0
+ghcr.io/shini3000/english-practicing-web:1.0.0
+```
+
+`develop` sigue siendo una etiqueta móvil para pruebas. Las versiones numeradas
+no se sobrescriben mediante el pipeline. Las claves privadas se proporcionan
+al ejecutar el contenedor, nunca al construirlo.
+Consulta [lanzamientos y recuperación ante fallos](docs/ci-cd.md#versiones-estables-manuales).
+
 ## Uso necesario de modelos y ahorro
 
 - El reloj tiene controles directos en pantalla (iniciar, pausar, continuar,
