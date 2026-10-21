@@ -1,10 +1,12 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PracticeHome } from '@/components/home/practice-home';
+import { PracticeOverview } from '@/components/home/practice-overview';
+import { OverviewSkeleton } from '@/components/layout/page-skeletons';
 import { getDb } from '@/lib/db';
 import { requireLearnerId } from '@/lib/guard';
 import { getLearner } from '@/lib/learners';
-import { buildSummary } from '@/lib/progress/summary';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +28,14 @@ export default async function HomePage() {
     );
   const learner = await getLearner(sql, learnerId);
   if (!learner) redirect('/login');
-  const summary = await buildSummary(sql, learnerId);
-  return <PracticeHome learner={learner} summary={summary} />;
+  return (
+    <PracticeHome
+      learner={learner}
+      overview={
+        <Suspense fallback={<OverviewSkeleton />}>
+          <PracticeOverview sql={sql} learnerId={learnerId} />
+        </Suspense>
+      }
+    />
+  );
 }

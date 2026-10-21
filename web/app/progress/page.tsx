@@ -1,15 +1,18 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
+import {
+  ChartsSkeleton,
+  HistorySkeleton,
+  LearningSkeleton,
+} from '@/components/layout/page-skeletons';
 import { ActivityHistory } from '@/components/progress/activity-history';
-import { Dashboard } from '@/components/progress/dashboard';
-import { LearningDashboard } from '@/components/progress/learning-dashboard';
+import { LearningSection, StatisticsSection } from '@/components/progress/progress-sections';
 import { Button } from '@/components/ui/button';
 import { getDb } from '@/lib/db';
 import { requireLearnerId } from '@/lib/guard';
 import { getLearner } from '@/lib/learners';
-import { buildLearningSummary } from '@/lib/progress/learning';
-import { buildSummary } from '@/lib/progress/summary';
 
 /**
  * /progress — the learner's dashboard.
@@ -55,13 +58,6 @@ export default async function ProgressPage() {
     redirect('/login');
   }
 
-  const summary = await buildSummary(sql, learnerId);
-  if (!summary) {
-    // getLearner just found the row, so buildSummary can only miss it in a genuine race with a
-    // deletion. Rare enough to treat as a stale session rather than model as a real state.
-    redirect('/login');
-  }
-
   return (
     <AppShell learner={learner} active="progress">
       <header className="mb-10 max-w-2xl">
@@ -71,9 +67,15 @@ export default async function ProgressPage() {
           intento. Una sola respuesta no equivale a aprendizaje consolidado.
         </p>
       </header>
-      <LearningDashboard initial={await buildLearningSummary(sql, learnerId)} />
-      <ActivityHistory sql={sql} learnerId={learnerId} />
-      <Dashboard summary={summary} />
+      <Suspense fallback={<LearningSkeleton />}>
+        <LearningSection sql={sql} learnerId={learnerId} />
+      </Suspense>
+      <Suspense fallback={<HistorySkeleton />}>
+        <ActivityHistory sql={sql} learnerId={learnerId} />
+      </Suspense>
+      <Suspense fallback={<ChartsSkeleton />}>
+        <StatisticsSection sql={sql} learnerId={learnerId} />
+      </Suspense>
     </AppShell>
   );
 }

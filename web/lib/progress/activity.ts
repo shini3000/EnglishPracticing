@@ -23,10 +23,10 @@ export function groupActivity(items: Activity[]) {
 }
 
 export async function getActivity(sql: Sql, learnerId: string): Promise<Activity[]> {
-  const calls = await sql<{ id: string; started_at: string | Date }>`
+  const callsPromise = sql<{ id: string; started_at: string | Date }>`
     SELECT id, started_at FROM sessions WHERE learner_id = ${learnerId}
     ORDER BY started_at DESC LIMIT 200`;
-  const drills = await sql<{
+  const drillsPromise = sql<{
     id: string;
     created_at: string | Date;
     entry: {
@@ -37,6 +37,7 @@ export async function getActivity(sql: Sql, learnerId: string): Promise<Activity
     };
   }>`SELECT id, created_at, entry FROM practice_journal WHERE learner_id = ${learnerId}
       AND entry->>'kind' = 'drill_review' ORDER BY created_at DESC LIMIT 200`;
+  const [calls, drills] = await Promise.all([callsPromise, drillsPromise]);
   const iso = (value: string | Date) => new Date(value).toISOString();
   return [
     ...calls.map((c) => ({

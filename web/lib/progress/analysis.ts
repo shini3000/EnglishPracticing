@@ -96,9 +96,11 @@ export function isGraded(session: SessionRow): boolean {
  *
  * `sessions` must be newest-first.
  */
-export function estimateLevel(sessions: SessionRow[]): LevelEstimate {
+type LevelSession = Pick<SessionRow, 'cefr_estimate' | 'cefr_confidence'>;
+
+export function estimateLevel(sessions: LevelSession[]): LevelEstimate {
   const graded = sessions.filter(
-    (s): s is SessionRow & { cefr_estimate: CefrLevel } => s.cefr_estimate !== null
+    (s): s is LevelSession & { cefr_estimate: CefrLevel } => s.cefr_estimate !== null
   );
 
   if (graded.length === 0) {
@@ -728,7 +730,7 @@ export function buildTrend(sessions: SessionRow[]): TrendPoint[] {
  * count that quietly means something different depending on the day you look at it is worse
  * than no streak at all.
  */
-export function currentStreakDays(sessions: SessionRow[]): number {
+export function currentStreakDays(sessions: Pick<SessionRow, 'started_at'>[]): number {
   if (sessions.length === 0) {
     return 0;
   }

@@ -57,13 +57,12 @@ function LearnerChip({ learner }: { learner: Learner }) {
   );
 }
 
-interface AppShellProps {
-  learner: Learner;
+type AppShellProps = {
   active: ShellTab;
   children: React.ReactNode;
-}
+} & ({ learner: Learner; loading?: false } | { learner?: never; loading: true });
 
-export function AppShell({ learner, active, children }: AppShellProps) {
+export function AppShell({ learner, active, children, loading }: AppShellProps) {
   return (
     <div className="study-shell bg-background min-h-svh">
       <a href="#main-content" className="skip-link">
@@ -76,8 +75,17 @@ export function AppShell({ learner, active, children }: AppShellProps) {
           <div className="flex items-center gap-2 sm:gap-4">
             <NavTabs active={active} />
             <span className="bg-border hidden h-6 w-px sm:block" aria-hidden />
-            <LearnerChip learner={learner} />
-            <SignOutButton />
+            {loading ? (
+              <span
+                aria-hidden="true"
+                className="bg-muted size-8 rounded-full motion-safe:animate-pulse"
+              />
+            ) : (
+              <>
+                <LearnerChip learner={learner} />
+                <SignOutButton />
+              </>
+            )}
           </div>
         </div>
       </header>

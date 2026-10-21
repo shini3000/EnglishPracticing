@@ -72,11 +72,11 @@ const blankTotals = {
 
 export async function buildLearningSummary(sql: Sql, learnerId: string): Promise<LearningSummary> {
   try {
-    const rows = await sql<{ snapshot: LearningItem }>`
+    const rowsPromise = sql<{ snapshot: LearningItem }>`
       SELECT snapshot FROM learner_learning_items WHERE learner_id = ${learnerId}
       ORDER BY item_type, item_key
     `;
-    const sessions = await sql<{
+    const sessionsPromise = sql<{
       room_name: string;
       entry: {
         timer?: {
@@ -90,6 +90,7 @@ export async function buildLearningSummary(sql: Sql, learnerId: string): Promise
       WHERE learner_id = ${learnerId} AND entry->>'kind' = 'session'
       ORDER BY room_name, created_at DESC
     `;
+    const [rows, sessions] = await Promise.all([rowsPromise, sessionsPromise]);
     const today = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Bogota',
       year: 'numeric',

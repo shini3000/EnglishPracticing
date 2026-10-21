@@ -7,17 +7,14 @@ import {
 } from '@phosphor-icons/react/dist/ssr';
 import { AppShell } from '@/components/layout/app-shell';
 import type { Learner } from '@/lib/learners';
-import type { ProgressSummary } from '@/lib/progress/types';
 
 export function PracticeHome({
   learner,
-  summary,
+  overview,
 }: {
   learner: Learner;
-  summary: ProgressSummary | null;
+  overview: React.ReactNode;
 }) {
-  const hasHistory = (summary?.totals.sessions ?? 0) > 0;
-
   return (
     <AppShell learner={learner} active="home">
       <header className="study-intro">
@@ -34,36 +31,8 @@ export function PracticeHome({
           </p>
         </div>
         <div className="study-summary">
-          <h2 className="font-semibold">
-            {hasHistory ? 'Lo que llevas recorrido' : 'Tu punto de partida'}
-          </h2>
-          {hasHistory && summary ? (
-            <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5">
-              <div>
-                <dt>Tiempo practicado</dt>
-                <dd>
-                  {summary.totals.practiceMinutes} <span>min</span>
-                </dd>
-              </div>
-              <div>
-                <dt>Días consecutivos</dt>
-                <dd>{summary.totals.currentStreakDays}</dd>
-              </div>
-              <div>
-                <dt>Sesiones</dt>
-                <dd>{summary.totals.sessions}</dd>
-              </div>
-              <div>
-                <dt>Nivel estimado{summary.level.isProvisional ? ' (provisional)' : ''}</dt>
-                <dd>{summary.level.band ?? 'Por conocer'}</dd>
-              </div>
-            </dl>
-          ) : (
-            <p className="text-muted-foreground mt-4 text-sm leading-6">
-              Todavía no hay sesiones registradas. Empieza con el diagnóstico o elige una práctica;
-              aquí verás tu recorrido real.
-            </p>
-          )}
+          <h2 className="font-semibold">Tu recorrido</h2>
+          {overview}
           <Link href="/progress" className="study-text-link mt-5 inline-flex items-center gap-2">
             <ChartLineUpIcon size={18} />
             Ver mi progreso

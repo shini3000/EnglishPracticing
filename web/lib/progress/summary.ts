@@ -60,7 +60,7 @@ export async function buildSummary(sql: Sql, learnerId: string): Promise<Progres
   // OLDEST-FIRST, and every function in analysis.ts depends on it. The ordering *is* the
   // analysis: "you fixed this and it came back" is only meaningful against a timeline. Sorted
   // once, here, rather than re-sorted at each call site where one could be forgotten.
-  const sessionRows = await sql<SessionRow>`
+  const sessionRowsPromise = sql<SessionRow>`
     SELECT id, started_at, duration_seconds, user_turns, word_count,
            unique_word_count, type_token_ratio, advanced_word_ratio, new_word_count,
            mean_sentence_length, sentence_length_stdev, complex_sentence_ratio,
@@ -72,7 +72,7 @@ export async function buildSummary(sql: Sql, learnerId: string): Promise<Progres
      LIMIT ${MAX_SESSIONS}
   `;
 
-  const errorRows = await sql<ErrorRow>`
+  const errorRowsPromise = sql<ErrorRow>`
     SELECT e.session_id, e.category, e.learner_text, e.corrected_text, e.explanation,
            e.created_at
       FROM session_errors e
@@ -81,9 +81,15 @@ export async function buildSummary(sql: Sql, learnerId: string): Promise<Progres
      ORDER BY s.started_at ASC
   `;
 
-  const vocabulary = await sql<{ size: number }>`
+  const vocabularyPromise = sql<{ size: number }>`
     SELECT count(*)::int AS size FROM learner_vocabulary WHERE learner_id = ${learnerId}
   `;
+
+  const [sessionRows, errorRows, vocabulary] = await Promise.all([
+    sessionRowsPromise,
+    errorRowsPromise,
+    vocabularyPromise,
+  ]);
 
   const sessions: SessionRow[] = [...sessionRows].reverse().map((row) => ({
     ...row,
