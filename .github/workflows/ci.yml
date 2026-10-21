@@ -94,7 +94,12 @@ jobs:
       - name: Type check (after Next generates its types)
         run: pnpm typecheck
 
+  # PRs/forks/untrusted manual branches: build and test with read-only access.
   docker:
+    if: >-
+      ${{ github.repository != 'shini3000/EnglishPracticing' ||
+          github.event_name == 'pull_request' ||
+          !contains(fromJSON('["refs/heads/develop","refs/heads/main","refs/heads/master"]'), github.ref) }}
     name: Docker / ${{ matrix.image }}
     needs: [python, web]
     runs-on: ubuntu-24.04
@@ -102,59 +107,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - image: agent
-            dockerfile: Dockerfile
-          - image: web
-            dockerfile: web/Dockerfile
+        image: [agent, web]
     env:
+      SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
       IMAGE: english-practicing-${{ matrix.image }}:${{ github.sha }}
       ARCHIVE: english-practicing-${{ matrix.image }}.tar.gz
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-      - name: Build image (no registry push)
+      - name: Build and verify image without production credentials
         env:
-          DOCKERFILE: ${{ matrix.dockerfile }}
-        run: docker build --pull --file "$DOCKERFILE" --tag "$IMAGE" .
-      - name: Verify non-root image user
-        run: |
-          user=$(docker image inspect --format '{{.Config.User}}' "$IMAGE")
-          test -n "$user" && test "$user" != root && test "$user" != 0
-      - name: Agent import smoke test without network or real keys
-        if: matrix.image == 'agent'
-        run: |
-          docker run --rm --network none \
-            -e LIVEKIT_URL=wss://test.invalid \
-            -e LIVEKIT_API_KEY=ci-placeholder-key \
-            -e LIVEKIT_API_SECRET=ci-placeholder-secret \
-            -e GROQ_API_KEY=ci-placeholder-groq \
-            -e TAVILY_API_KEY=ci-placeholder-tavily \
-            --entrypoint python "$IMAGE" \
-            -c "import main; print('Agent imports OK; worker not started')"
-      - name: Web startup smoke test without network or secrets
-        if: matrix.image == 'web'
-        run: |
-          trap 'docker logs ci-web; docker rm -f ci-web' EXIT
-          docker run --detach --name ci-web --network none "$IMAGE"
-          docker exec ci-web node -e '
-            (async () => {
-              for (let attempt = 0; attempt < 30; attempt++) {
-                try {
-                  const response = await fetch("http://127.0.0.1:3000/login", {
-                    signal: AbortSignal.timeout(2000),
-                  });
-                  if (response.status === 200) {
-                    console.log("Web login page OK; no call started");
-                    return;
-                  }
-                } catch {}
-                await new Promise(resolve => setTimeout(resolve, 1000));
-              }
-              throw new Error("Web did not become healthy");
-            })().catch(error => { console.error(error); process.exit(1); });
-          '
+          IMAGE_KIND: ${{ matrix.image }}
+        run: bash .github/scripts/build-image.sh "$IMAGE_KIND"
       - name: Export image for manual download
         if: github.event_name == 'workflow_dispatch' && inputs.export_images
         run: docker save "$IMAGE" | gzip -1 > "$RUNNER_TEMP/$ARCHIVE"
@@ -168,19 +133,89 @@ jobs:
           compression-level: 0
           retention-days: 1
 
+  # Trusted branch pushes: test both exact images BEFORE exposing the publish token.
+  publish:
+    name: Publish GHCR
+    if: >-
+      ${{ github.repository == 'shini3000/EnglishPracticing' &&
+          github.event_name != 'pull_request' &&
+          contains(fromJSON('["refs/heads/develop","refs/heads/main","refs/heads/master"]'), github.ref) }}
+    needs: [python, web]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    env:
+      SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
+      CHANNEL: ${{ github.ref_name }}
+      DOCKER_CONFIG: /tmp/english-practicing-ghcr
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Build and verify agent without production credentials
+        run: bash .github/scripts/build-image.sh agent
+      - name: Build and verify web without production credentials
+        run: bash .github/scripts/build-image.sh web
+      - name: Authenticate to GHCR (temporary GitHub token, never a build argument)
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      - name: Publish the verified images
+        run: |
+          # Upload both commit tags first. Channel tags are updated afterwards.
+          for kind in agent web; do
+            target="ghcr.io/shini3000/english-practicing-$kind"
+            docker tag "english-practicing-$kind:$GITHUB_SHA" "$target:sha-$GITHUB_SHA"
+            docker push "$target:sha-$GITHUB_SHA"
+          done
+          for kind in agent web; do
+            target="ghcr.io/shini3000/english-practicing-$kind"
+            docker tag "english-practicing-$kind:$GITHUB_SHA" "$target:$CHANNEL"
+            docker push "$target:$CHANNEL"
+            printf '\nPublished %s:%s\n' "$target" "$CHANNEL"
+          done
+      - name: Log out of GHCR
+        if: always()
+        run: docker logout ghcr.io
+      - name: Export images for manual download
+        if: github.event_name == 'workflow_dispatch' && inputs.export_images
+        run: |
+          for kind in agent web; do
+            docker save "english-practicing-$kind:$GITHUB_SHA" |
+              gzip -1 > "$RUNNER_TEMP/english-practicing-$kind.tar.gz"
+          done
+      - name: Upload image archives
+        if: github.event_name == 'workflow_dispatch' && inputs.export_images
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: english-practicing-images-${{ github.sha }}
+          path: ${{ runner.temp }}/english-practicing-*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
   required:
     name: CI required
     if: always()
-    needs: [python, web, docker]
+    needs: [python, web, docker, publish]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     env:
       PYTHON_RESULT: ${{ needs.python.result }}
       WEB_RESULT: ${{ needs.web.result }}
       DOCKER_RESULT: ${{ needs.docker.result }}
+      PUBLISH_RESULT: ${{ needs.publish.result }}
     steps:
       - name: Require all checks to pass (including image builds)
         run: |
           test "$PYTHON_RESULT" = success
           test "$WEB_RESULT" = success
-          test "$DOCKER_RESULT" = success
+          if [ "$DOCKER_RESULT" = success ]; then
+            test "$PUBLISH_RESULT" = skipped
+          else
+            test "$DOCKER_RESULT" = skipped
+            test "$PUBLISH_RESULT" = success
+          fi
