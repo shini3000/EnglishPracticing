@@ -1,7 +1,7 @@
 # Validación continua e imágenes Docker
 
 El workflow `.github/workflows/ci.yml` valida el proyecto y construye dos imágenes.
-**No despliega, no publica en Docker Hub/GHCR y no usa credenciales reales.**
+**Publica en GHCR desde ramas autorizadas, pero no despliega ni usa tus claves de IA.**
 
 ## Cuándo se ejecuta
 
@@ -23,12 +23,20 @@ solo de documentación.
    lint, pruebas de regresión, compilación Next.js y comprobación de tipos.
    Next descarga la fuente de Google durante la compilación; se necesita red
    para instalar dependencias y compilar, pero no claves de proveedores.
-3. **Docker / agent** y **Docker / web**: solo después de aprobar ambas etapas.
-   Construyen las imágenes y comprueban que no ejecuten como root. El agente
+3. **Docker / agent** y **Docker / web**: en pull requests, forks y ejecuciones
+   manuales desde otras ramas, solo después de aprobar ambas etapas.
+   Construyen las imágenes con permisos de lectura y comprueban que no ejecuten como root. El agente
    debe poder importar su aplicación; la web debe responder en `/login`.
    Estas comprobaciones de contenedores se hacen con `--network none`:
    no registran workers, no crean llamadas y no consumen cuota de IA.
-4. **CI required**: solo aprueba si pruebas y ambas imágenes aprobaron. Este es
+4. **Publish GHCR**: sustituye las comprobaciones Docker anteriores en pushes
+   y ejecuciones manuales de `develop`, `main` o `master` del repositorio
+   `shini3000/EnglishPracticing`. Construye y comprueba ambas imágenes con el
+   mismo script antes de autenticarse y publicarlas. No se reconstruyen para
+   publicar: se suben exactamente las imágenes que pasaron las comprobaciones.
+   Solo este job tiene `packages: write` y usa el `GITHUB_TOKEN` temporal.
+5. **CI required**: solo aprueba si pruebas y ambas imágenes aprobaron y, cuando
+   corresponde publicar, la publicación también terminó correctamente. Este es
    el check que conviene exigir en la protección de ramas. La protección se
    configura en GitHub; el archivo por sí solo no impide hacer merge.
 
@@ -37,7 +45,51 @@ credenciales. Dependabot revisa semanalmente **solo GitHub Actions** y propone
 actualizaciones mediante PR; no las fusiona automáticamente. No se usa
 `pull_request_target` ni se comparten secretos con código de pull requests.
 
-## Descargar las imágenes
+## Imágenes en GHCR: sin claves incluidas
+
+Se publican dos paquetes:
+
+```text
+ghcr.io/shini3000/english-practicing-agent:develop
+ghcr.io/shini3000/english-practicing-web:develop
+```
+
+También se publica `sha-<SHA completo del commit>`. `develop`, `main` y `master`
+son etiquetas móviles de su propia rama; no se crea `latest`. Para ejecutar las
+dos imágenes de una misma versión, usa en ambas la etiqueta del mismo SHA.
+La subida de los dos paquetes no es una transacción atómica: si una subida
+falla, el workflow falla y puede haber quedado solo uno de los paquetes nuevos.
+
+Las imágenes llevan etiquetas OCI con repositorio de origen y revisión. Al
+publicarse con `GITHUB_TOKEN`, GHCR puede vincularlas al repositorio. Los paquetes
+nuevos son privados por defecto; el workflow no cambia su visibilidad. Se ven
+en **Packages** de la cuenta o del repositorio. Un paquete preexistente sin
+permisos para este repositorio necesita autorizarlo en **Manage Actions access**.
+
+Para imágenes privadas, inicia sesión en `ghcr.io` desde Docker con una cuenta
+autorizada (para uso local, un token clásico con `read:packages`). Ese acceso al
+registry es distinto de tus claves LiveKit, Groq, DeepSeek y base de datos.
+No hace falta crear ni guardar un PAT para que este workflow publique.
+
+```powershell
+docker pull ghcr.io/shini3000/english-practicing-agent:develop
+docker pull ghcr.io/shini3000/english-practicing-web:develop
+
+# Desde la raíz del proyecto. Las claves permanecen en tu equipo.
+docker run --rm --env-file .env ghcr.io/shini3000/english-practicing-agent:develop
+docker run --rm -p 3000:3000 --env-file web/.env ghcr.io/shini3000/english-practicing-web:develop
+```
+
+No se copian archivos `.env` a las imágenes ni se pasan claves de producción a
+`docker build`. Las pruebas de las imágenes comprueban además la ausencia de
+archivos `.env*` en `/app`. La autenticación del registry ocurre después de la
+construcción y las pruebas; el token solo se proporciona al paso de login y se
+cierra la sesión al terminar. Cambiar las claves requiere recrear el contenedor,
+no reconstruir o volver a publicar la imagen. Un administrador del host/Docker
+sí puede inspeccionar las credenciales de un contenedor en ejecución: el archivo
+local y el servidor deben protegerse, o usar un gestor de secretos.
+
+## Descargar archivos de imagen opcionales
 
 En una ejecución manual, activa `export_images` si necesitas descargar ambas
 imágenes. Tras aprobar las verificaciones, la sección **Artifacts** contendrá
@@ -95,8 +147,9 @@ No se incluyen pruebas reales de micrófono, llamadas, modelos remotos ni
 migraciones de PostgreSQL. Construir una imagen no demuestra por sí solo que
 las credenciales y la conectividad de un futuro despliegue funcionen.
 
-Por ahora no hay publicación en registros, despliegue automático ni promoción
-a producción. Ese paso se configurará cuando se elija un destino.
+No hay despliegue automático ni promoción a producción. Guardar una imagen en
+GHCR no inicia la aplicación ni configura credenciales de ejecución.
 
 Referencias: [seguridad de GitHub Actions](https://docs.github.com/en/actions/reference/security/secure-use),
-[salida standalone de Next.js](https://nextjs.org/docs/app/api-reference/config/next-config-js/output).
+[salida standalone de Next.js](https://nextjs.org/docs/app/api-reference/config/next-config-js/output),
+[autenticación y visibilidad de GHCR](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).

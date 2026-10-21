@@ -600,7 +600,15 @@ pnpm build
 
 El workflow de GitHub Actions ejecuta las pruebas de Python y web, comprueba la
 compilación y después construye imágenes separadas para el agente y la web.
-No despliega ni publica imágenes en un registro. No necesita secretos reales.
+En pushes a `develop`, `main` o `master` de este fork publica ambas imágenes en
+GHCR, después de probarlas, usando el token temporal de GitHub. Los pull requests
+no publican. No despliega ni necesita tus claves reales de LiveKit o de IA.
+
+Imágenes: `ghcr.io/shini3000/english-practicing-agent:develop` y
+`ghcr.io/shini3000/english-practicing-web:develop`. También hay etiquetas por SHA
+para fijar una versión. Tus credenciales se proporcionan solo al ejecutar los
+contenedores, mediante `--env-file` u otro mecanismo de secretos del servidor;
+no forman parte de la imagen publicada.
 
 En una ejecución manual puedes activar `export_images` para descargarlas como
 artefactos con un día de retención. No se guardan imágenes en cada push.
