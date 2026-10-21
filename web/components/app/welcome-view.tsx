@@ -114,7 +114,7 @@ export const WelcomeView = ({
             </p>
             {practiceMode === 'fluency' && (
               <Link className="study-text-link bg-muted rounded-lg p-4 text-sm" href="/drill">
-                Empezar por el bloque 1: gimnasia temporal sin llamada
+                Empezar por el bloque 1: llamada con transcripción automática
               </Link>
             )}
           </div>

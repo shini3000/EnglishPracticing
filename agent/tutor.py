@@ -386,6 +386,11 @@ async def _run_session(ctx: JobContext) -> None:
     # and the avatar choice decides the TTS voice, which is fixed at session construction.
     participant = await ctx.wait_for_participant()
     learner_id = _learner_id_from(participant.identity)
+    if (learner_id and participant.attributes.get("practice_mode") == "fluency"
+            and participant.attributes.get("practice_capture") == "time-shifting"):
+        from agent.drill_call import run_drill_call
+        await run_drill_call(ctx, participant, settings, _load_vad())
+        return
     avatar_mode = participant.attributes.get(AVATAR_MODE_ATTRIBUTE, "")
     language = participant.attributes.get("native_language", "es")
     if language not in LANGUAGES:

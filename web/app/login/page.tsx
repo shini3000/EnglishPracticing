@@ -35,7 +35,7 @@ export default async function LoginPage() {
           <div className="mt-8 flex flex-wrap gap-3 text-sm">
             <span className="bg-secondary rounded-lg px-3 py-2">Práctica integral</span>
             <span className="bg-secondary rounded-lg px-3 py-2">Fluidez</span>
-            <span className="bg-secondary rounded-lg px-3 py-2">Ejercicios sin llamada</span>
+            <span className="bg-secondary rounded-lg px-3 py-2">Correcciones escritas</span>
           </div>
         </div>
         <div>

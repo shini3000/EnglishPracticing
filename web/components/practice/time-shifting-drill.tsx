@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useDrillCall } from '@/hooks/use-drill-call';
 import { NATIVE_LANGUAGES, type NativeLanguage } from '@/lib/practice-options';
 import { DRILL_STEPS, type DrillCorrection } from '@/lib/time-shifting';
 
@@ -12,32 +13,24 @@ type Review = {
   saved: boolean;
   reused?: boolean;
 };
-export function TimeShiftingDrill() {
+export function TimeShiftingDrill({ agentName }: { agentName?: string }) {
+  const call = useDrillCall();
   const [step, setStep] = useState(0);
   const [routine, setRoutine] = useState('');
   const [language, setLanguage] = useState<NativeLanguage>('es');
   const [text, setText] = useState('');
   const [remaining, setRemaining] = useState<number>(60);
   const [running, setRunning] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [audio, setAudio] = useState<Blob | null>(null);
+  const recording = call.capturing;
+  const [captured, setCaptured] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [reviews, setReviews] = useState<Record<number, Review>>({});
-  const recorder = useRef<MediaRecorder | null>(null);
-  const stream = useRef<MediaStream | null>(null);
   const stopAt = useRef(0);
   useEffect(() => {
     const stored = localStorage.getItem('native-language');
     if (stored && Object.hasOwn(NATIVE_LANGUAGES, stored)) setLanguage(stored as NativeLanguage);
   }, []);
-  useEffect(
-    () => () => {
-      if (recorder.current?.state === 'recording') recorder.current.stop();
-      stream.current?.getTracks().forEach((t) => t.stop());
-    },
-    []
-  );
   useEffect(() => {
     if (!running) return;
     stopAt.current = Date.now() + remaining * 1000;
@@ -46,7 +39,7 @@ export function TimeShiftingDrill() {
       setRemaining(left);
       if (!left) {
         setRunning(false);
-        if (recorder.current?.state === 'recording') recorder.current.stop();
+        // Time expiry never cuts off speech. The learner explicitly finishes.
       }
     }, 250);
     return () => clearInterval(id);
@@ -54,31 +47,27 @@ export function TimeShiftingDrill() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
   const result = reviews[step];
+  useEffect(() => {
+    if (recording) setText(call.text);
+  }, [call.text, recording]);
+  useEffect(() => {
+    if (!call.connected) setRunning(false);
+  }, [call.connected]);
   async function record() {
     setError('');
     try {
-      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder)
-        throw new Error('Tu navegador no permite grabar. Usa texto o una transcripción.');
-      stream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const media = new MediaRecorder(stream.current);
-      recorder.current = media;
-      const chunks: BlobPart[] = [];
-      media.ondataavailable = (e) => {
-        if (e.data.size) chunks.push(e.data);
-      };
-      media.onstop = () => {
-        setAudio(new Blob(chunks, { type: media.mimeType }));
-        setRecording(false);
-        setRunning(false);
-        stream.current?.getTracks().forEach((t) => t.stop());
-      };
-      media.start();
-      setAudio(null);
-      setRecording(true);
+      await call.begin();
+      setText('');
+      setReviews((previous) => {
+        const next = { ...previous };
+        delete next[step];
+        return next;
+      });
+      setCaptured(false);
+      setRemaining(DRILL_STEPS[step].seconds);
       setRunning(true);
-    } catch (e) {
-      stream.current?.getTracks().forEach((t) => t.stop());
-      setError(e instanceof Error ? e.message : 'No se pudo abrir el micrófono.');
+    } catch {
+      setRunning(false);
     }
   }
   async function review() {
@@ -86,20 +75,20 @@ export function TimeShiftingDrill() {
     setError('');
     setRunning(false);
     try {
+      const transcript = recording ? await call.finish() : text;
+      setText(transcript);
+      setCaptured(true);
       const form = new FormData();
       form.set('step', String(step));
       form.set('routine', routine);
       form.set('language', language);
       form.set('previousPresent', reviews[0]?.text ?? '');
-      if (audio)
-        form.set('audio', audio, audio.type.includes('mp4') ? 'answer.mp4' : 'answer.webm');
-      else form.set('text', text);
+      form.set('text', transcript);
       const response = await fetch('/api/time-shifting', { method: 'POST', body: form });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Falló la revisión.');
       setReviews((prev) => ({ ...prev, [step]: data }));
       setText(data.text);
-      setAudio(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error de conexión.');
     } finally {
@@ -110,7 +99,7 @@ export function TimeShiftingDrill() {
     const index = step + 1;
     setStep(index);
     setText('');
-    setAudio(null);
+    setCaptured(false);
     setRemaining(DRILL_STEPS[index].seconds);
     setRunning(false);
   }
@@ -127,8 +116,9 @@ export function TimeShiftingDrill() {
           En otro tiempo.
         </h1>
         <p className="text-muted-foreground mt-5 leading-7">
-          7 minutos de ejercicio, sin llamada ni voz del tutor. Habla en inglés; la IA solo revisa
-          cuando pulsas el botón. El tiempo de revisión no cuenta como producción.
+          7 minutos de ejercicio con llamada y transcripción automática. Habla en inglés a tu ritmo:
+          el tutor escucha sin interrumpir. Pulsa «Terminé este paso» para recibir la revisión
+          escrita.
         </p>
       </header>
       <div className="drill-layout">
@@ -149,12 +139,51 @@ export function TimeShiftingDrill() {
           </p>
         </aside>
         <div className="drill-content space-y-5">
+          <section
+            className="space-y-3 rounded-xl border p-4"
+            aria-label="Llamada de transcripción"
+          >
+            <h2 className="font-semibold">Habla; el texto aparece aquí</h2>
+            <p className="text-muted-foreground text-sm" role="status">
+              {call.pending
+                ? 'Preparando llamada o transcripción…'
+                : !call.connected
+                  ? 'Conecta la llamada antes de empezar.'
+                  : !call.ready
+                    ? 'Llamada conectada. Esperando al agente de transcripción…'
+                    : recording
+                      ? 'Micrófono abierto. Las pausas no terminan el paso.'
+                      : 'Llamada lista. Micrófono cerrado hasta que empieces un paso.'}
+            </p>
+            {!call.connected ? (
+              <button
+                className="study-button"
+                disabled={busy || call.pending}
+                onClick={() => void call.connect(language, agentName)}
+              >
+                Conectar llamada
+              </button>
+            ) : (
+              <button
+                className="study-next-step"
+                disabled={busy || call.pending}
+                onClick={() => void call.disconnect()}
+              >
+                {recording ? 'Colgar sin revisar este paso' : 'Cerrar llamada'}
+              </button>
+            )}
+            {call.error && (
+              <p role="alert" className="text-destructive text-sm">
+                {call.error}
+              </p>
+            )}
+          </section>
           <label className="block text-sm font-medium">
             Idioma de las explicaciones
             <select
               className="study-field"
               value={language}
-              disabled={busy || recording}
+              disabled={busy || call.pending || call.connected}
               onChange={(e) => {
                 setLanguage(e.target.value as NativeLanguage);
                 localStorage.setItem('native-language', e.target.value);
@@ -174,7 +203,7 @@ export function TimeShiftingDrill() {
               placeholder="Por ejemplo: despertar, preparar café, ir al trabajo…"
               maxLength={500}
               value={routine}
-              disabled={busy || step > 0 || recording}
+              disabled={busy || call.pending || step > 0 || recording || captured}
               onChange={(e) => setRoutine(e.target.value)}
             />
           </label>
@@ -204,53 +233,42 @@ export function TimeShiftingDrill() {
           </div>
           <div className="drill-controls">
             <button
-              className="rounded border p-2"
-              disabled={busy || recording || remaining === 0}
+              disabled={busy || call.pending || !call.ready || recording || !routine.trim()}
+              onClick={() => void record()}
+            >
+              {captured || text ? 'Repetir captura del paso' : 'Empezar a hablar'}
+            </button>
+            <button
+              disabled={busy || call.pending || !recording || remaining === 0}
               onClick={() => setRunning((v) => !v)}
             >
-              {running ? 'Pausar cronómetro' : 'Iniciar cronómetro'}
-            </button>
-            <button
-              className="rounded border p-2"
-              disabled={busy || !routine.trim() || remaining === 0}
-              onClick={() => (recording ? recorder.current?.stop() : void record())}
-            >
-              {recording ? 'Detener grabación' : 'Grabar respuesta'}
-            </button>
-            <button
-              className="rounded border p-2"
-              disabled={busy || recording}
-              onClick={() => {
-                setRunning(false);
-                setRemaining(DRILL_STEPS[step].seconds);
-              }}
-            >
-              Reiniciar tiempo del paso
+              {running ? 'Pausar cronómetro' : 'Continuar cronómetro'}
             </button>
           </div>
-          {audio && (
-            <p>
-              Audio preparado. Puedes enviarlo a revisión o volver a grabar. No se guarda el archivo
-              de audio.
-            </p>
-          )}
+          <p className="text-muted-foreground text-xs leading-6">
+            Pausar el cronómetro no cierra el micrófono. Al terminar el paso se cierra para revisar.
+            La transcripción llega por fragmentos al detectar pausas; puede tardar unos segundos.
+          </p>
           <label className="block text-sm font-medium">
-            Respuesta o transcripción
+            Transcripción automática de tu respuesta
             <textarea
               className="study-field min-h-44 resize-y leading-7"
-              placeholder="También puedes pegar una transcripción fiel. No se corrige mientras hablas."
+              placeholder="Lo que digas durante este paso aparecerá aquí. No necesitas escribirlo."
               value={text}
               maxLength={8000}
-              disabled={busy || recording || !!audio}
-              onChange={(e) => setText(e.target.value)}
+              readOnly
             />
           </label>
           <button
             className="study-button"
-            disabled={busy || recording || !routine.trim() || (!text.trim() && !audio)}
+            disabled={busy || call.pending || !routine.trim() || (!recording && !captured)}
             onClick={() => void review()}
           >
-            {busy ? 'Transcribiendo / revisando…' : 'Revisar gramática por escrito'}
+            {busy
+              ? 'Cerrando transcripción / revisando…'
+              : recording || !captured
+                ? 'Terminé este paso'
+                : 'Reintentar revisión escrita'}
           </button>
           {error && (
             <p role="alert" className="text-red-500">
@@ -293,21 +311,24 @@ export function TimeShiftingDrill() {
           {step < 3 ? (
             <button
               className="study-next-step"
-              disabled={!result || busy || recording}
+              disabled={!result || busy || call.pending || recording}
               onClick={next}
             >
               Siguiente paso
             </button>
           ) : (
-            result && (
+            result &&
+            !busy &&
+            !recording && (
               <Link className="block underline" href="/call?practice=fluency&start=anchors">
                 Continuar al bloque 2 con el tutor (abrir preparación, sin llamar todavía)
               </Link>
             )
           )}
           <p className="text-muted-foreground border-t pt-5 text-xs leading-6">
-            Grabar utiliza Groq para transcripción; revisar utiliza DeepSeek. No consume minutos de
-            LiveKit, pero sí cuota/saldo de esas APIs. Las claves permanecen en el servidor.
+            Esta llamada consume minutos de LiveKit y transcripción de Groq. DeepSeek solo revisa al
+            terminar el paso; no hay voz del tutor ni peticiones al modelo durante tus pausas. Las
+            claves permanecen en el servidor.
           </p>
         </div>
       </div>

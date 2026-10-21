@@ -20,7 +20,8 @@ export async function ActivityHistory({ sql, learnerId }: { sql: Sql; learnerId:
       <p>
         {days.length} días distintos en el historial mostrado ·{' '}
         {activities.filter((a) => a.type === 'call').length} llamadas ·{' '}
-        {activities.filter((a) => a.type === 'drill').length} respuestas revisadas sin llamada.
+        {activities.filter((a) => a.type === 'drill').length} respuestas de gimnasia temporal
+        revisadas.
       </p>
       <p className="text-muted-foreground text-sm">
         Varias prácticas en una fecha cuentan como un solo día. Cada envío conserva su hora y

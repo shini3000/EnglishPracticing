@@ -117,7 +117,7 @@ export function PracticeHome({
             <h3>Fluidez y resistencia</h3>
             <p>Entrena los cambios de tiempo verbal y aprende a sostener una idea sin detenerte.</p>
             <ul>
-              <li>Gimnasia temporal sin llamada</li>
+              <li>Gimnasia temporal con transcripción automática</li>
               <li>Anclas temporales, escucha y réplica</li>
               <li>Rondas 4–3–2 y microauditoría</li>
             </ul>
@@ -139,8 +139,8 @@ export function PracticeHome({
           <div>
             <h2 className="text-lg font-semibold">¿Tienes siete minutos?</h2>
             <p className="text-muted-foreground mt-2 text-sm leading-6">
-              Practica presente, pasado y present perfect. Graba o escribe tu respuesta y pide la
-              revisión cuando estés listo. Sin llamada.
+              Practica presente, pasado y present perfect. Habla en una llamada: tu respuesta se
+              transcribe automáticamente y se revisa por escrito al terminar.
             </p>
             <Link href="/drill" className="study-text-link mt-4 inline-block">
               Abrir gimnasia temporal

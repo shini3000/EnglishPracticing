@@ -99,6 +99,8 @@ export async function POST(req: Request) {
           photo_voice: body.photoVoice === 'girl' ? 'girl' : 'boy',
           native_language: nativeLanguage,
           practice_mode: practiceMode,
+          practice_capture:
+            practiceMode === 'fluency' && body.capture === 'time-shifting' ? 'time-shifting' : '',
           practice_start_step:
             practiceMode === 'fluency' && body.startAtAnchors === true ? '4' : '0',
           target_language: 'en',
