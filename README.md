@@ -43,34 +43,44 @@ las antiguas sin timestamp conservan su fecha registrada. Los ejercicios sin
 llamada usan `created_at` de Postgres para el historial, incluso los anteriores
 al cambio. No se reescriben ni inventan fechas de practicas pasadas.
 
-## Practica B: bloque 1 sin llamada
+## Practica B: bloque 1 con llamada y transcripcion automatica
 
-En Inicio o en la preparacion de la practica B abre **Gimnasia temporal sin
-llamada** (`/drill`). No necesita ejecutar el agente Python ni crear una sala.
+En Inicio o en la preparacion de la practica B abre **Gimnasia temporal**
+(`/drill`). Ejecuta el agente Python y el frontend, conecta la llamada y pulsa
+**Empezar a hablar**. El microfono solo se abre al comenzar cada captura.
 Cuatro pasos: presente 1 min, pasado 2 min, present perfect 2 min y segundo
-ejemplo 2 min. Las pausas no envian automaticamente la respuesta: detienes la
-grabacion y pulsas Revisar. Tambien acepta texto/transcripcion pegada.
+ejemplo 2 min. El texto aparece automaticamente por fragmentos, tras las pausas
+y el procesamiento de Whisper; no es dictado palabra por palabra. Las pausas y
+el fin del cronometro NO terminan el paso. Pulsa **Termine este paso** para
+cerrar el microfono, esperar la transcripcion final y solicitar revision escrita.
+No hay respuestas habladas ni correcciones durante la captura.
 
 Next.js necesita las claves privadas `DEEPSEEK_API_KEY`,
-`DEEPSEEK_LLM_MODEL=deepseek-flash` y `GROQ_API_KEY` en `web/.env.local` o
+`DEEPSEEK_LLM_MODEL=deepseek-flash` en `web/.env.local` o
 `web/.env`; el entorno del agente en la raiz NO se carga automaticamente en la
 web. Nunca uses prefijos `NEXT_PUBLIC_` para estas claves. Reinicia el frontend.
 Requiere `DATABASE_URL` y la tabla `practice_journal` ya instalada.
 
+El agente usa `GROQ_API_KEY` y `STT_MODEL` de la raiz para transcribir la llamada.
+El endpoint web conserva la opcion de audio para clientes anteriores, que si
+requiere `GROQ_API_KEY` en el entorno web. La pantalla nueva envia solo texto.
 El audio se envia a Groq/Whisper y se descarta en la aplicacion; DeepSeek revisa
 la transcripcion y devuelve tarjetas, sin TTS. El proveedor puede aplicar su
 propia politica de retencion. Se guardan texto y revision del alumno autenticado
-en el diario como `drill_attempt`, no como evidencia independiente de dominio.
+en el diario como `drill_review` (y `drill_attempt` por peticion nueva), no como evidencia independiente de dominio.
 No modifica las estadisticas de llamadas ni certifica minutos de habla. Este
 endpoint tiene limites independientes de los presupuestos del agente: 3 intentos
 por minuto y 60 por 24h/alumno, incluidos fallos. La exclusión de peticiones
 simultaneas es por proceso; en despliegues multirreplica usa un limitador
-distribuido. No es un limite monetario garantizado y consume saldo de las APIs.
+distribuido. No es un limite monetario garantizado y consume saldo de las APIs
+y minutos de LiveKit. La sesion de captura no crea un LLM, TTS, avatar ni una
+segunda evaluacion al colgar. Un fallo de STT impide revisar una captura incompleta.
 
 Tras el cuarto paso puedes abrir la preparacion de llamada directamente en
 el bloque 2, sin marcar artificialmente el bloque 1 como completado por voz.
 Al recargar el ejercicio se reinicia su estado local; los envios guardados
-permanecen en el diario. Las grabaciones no enviadas se pierden al salir.
+permanecen en el diario. El texto no enviado se pierde al salir; si se corta la
+conexion, lo ya recibido permanece en pantalla mientras no cierres la pagina.
 
 ## Modalidad: Fluidez y resistencia (55 minutos)
 
@@ -585,6 +595,17 @@ pnpm build
 | No aparece la foto animada | Clave, plan y créditos de bitHuman; usar Ahmad o Sara como alternativa |
 
 ## Despliegue y procedencia
+
+### GitHub Actions e imágenes Docker
+
+El workflow de GitHub Actions ejecuta las pruebas de Python y web, comprueba la
+compilación y después construye imágenes separadas para el agente y la web.
+No despliega ni publica imágenes en un registro. No necesita secretos reales.
+
+En una ejecución manual puedes activar `export_images` para descargarlas como
+artefactos con un día de retención. No se guardan imágenes en cada push.
+Consulta [CI e imágenes Docker](docs/ci-cd.md) para ver las etapas, comandos
+locales, el check obligatorio y los límites de las pruebas.
 
 El frontend y el agente se despliegan por separado; sus variables también deben
 configurarse por separado en el alojamiento. No reutilices sin revisar las referencias
