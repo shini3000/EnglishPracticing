@@ -89,6 +89,12 @@ no reconstruir o volver a publicar la imagen. Un administrador del host/Docker
 sí puede inspeccionar las credenciales de un contenedor en ejecución: el archivo
 local y el servidor deben protegerse, o usar un gestor de secretos.
 
+El acceso usa Clerk: `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`,
+`CLERK_AUTHORIZED_PARTIES` se suministran al ejecutar
+la web, no al construirla. Sin configuración, `/login` muestra el estado de
+configuración y las APIs privadas rechazan el acceso; no hay modo anónimo de
+práctica. Ver [cuentas individuales y migración](authentication.md).
+
 ## Versiones estables manuales
 
 El workflow `.github/workflows/release.yml` empieza en **1.0.0**. No aumenta

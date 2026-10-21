@@ -2,7 +2,12 @@
 
 ## Versiones publicadas
 
-La primera versión estable es **1.0.0**. Las versiones estables se publican
+La versión **1.1.0** incorpora cuentas individuales con Clerk, registro sin
+aprobación manual y navegación con carga progresiva y esqueletos. Requiere
+configurar Clerk y aplicar el esquema ampliado antes de usar la web; consulta
+[las notas de versión](CHANGELOG.md#110---2026-10-21).
+
+La primera versión estable fue **1.0.0**. Las versiones estables se publican
 solo por decisión manual; subir un commit no aumenta el número. En GitHub,
 **Actions → Release → Run workflow**, elige `patch` (corrección), `minor`
 (funcionalidad compatible) o `major` (cambio incompatible). El pipeline calcula
@@ -12,8 +17,8 @@ predeterminada para que aparezca el botón. También se puede lanzar subiendo
 una etiqueta Git `v1.0.0`, `v1.0.1`, etc.
 
 ```text
-ghcr.io/shini3000/english-practicing-agent:1.0.0
-ghcr.io/shini3000/english-practicing-web:1.0.0
+ghcr.io/shini3000/english-practicing-agent:1.1.0
+ghcr.io/shini3000/english-practicing-web:1.1.0
 ```
 
 `develop` sigue siendo una etiqueta móvil para pruebas. Las versiones numeradas
@@ -22,6 +27,25 @@ al ejecutar el contenedor, nunca al construirlo.
 Consulta [lanzamientos y recuperación ante fallos](docs/ci-cd.md#versiones-estables-manuales).
 
 ## Uso necesario de modelos y ahorro
+
+### Navegación y carga del progreso
+
+Prácticas muestra las opciones después de verificar la cuenta y el perfil;
+no espera al análisis completo del historial. Sus cuatro indicadores se cargan
+por separado mediante una sola consulta de cuatro columnas sobre las últimas
+200 sesiones, con las mismas reglas de nivel y racha que Mi progreso. Si ese
+resumen falla, las prácticas permanecen disponibles y no se muestran ceros falsos.
+
+Al navegar entre Prácticas y Mi progreso aparecen esqueletos que respetan el
+diseño de destino, con anuncios accesibles y sin animación si se solicita reducir
+movimiento. En Mi progreso, aprendizaje, historial y estadísticas se cargan
+independientemente y las consultas independientes se ejecutan en paralelo.
+No se comparte una caché de datos personales entre usuarios ni se omite la
+verificación de sesión. Estas cargas no llaman a modelos de IA. El modo de
+desarrollo aún puede tardar más en compilar la primera visita que una imagen
+de producción ya construida.
+
+### Uso de IA durante las prácticas
 
 - El reloj tiene controles directos en pantalla (iniciar, pausar, continuar,
   terminar paso y finalizar) y guias fijas por etapa. No llaman al LLM. El avance
@@ -462,8 +486,8 @@ Hay **dos archivos independientes**; no se sincronizan automáticamente.
 |---|---|
 | Raíz: `.env` | LiveKit, Groq, Tavily, modelos, límites y tolerancia a pausas |
 | Raíz: `.env`, opcionales | `PROGRESS_DATABASE_URL`, `BITHUMAN_API_SECRET` |
-| Frontend: `web/.env.local` | LiveKit, `APP_PASSCODE`, `AGENT_NAME` vacío |
-| Frontend, opcionales | `DATABASE_URL`, `AVATAR_PASSCODE` |
+| Frontend: `web/.env.local` | LiveKit, `DATABASE_URL`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_AUTHORIZED_PARTIES`, `AGENT_NAME` vacío |
+| Frontend, opcionales | `AVATAR_PASSCODE` |
 
 Usa [.env.example](.env.example) para el agente y
 [web/.env.example](web/.env.example) para el sitio. El frontend también admite
@@ -472,13 +496,20 @@ archivo de mayor prioridad.
 
 Las tres credenciales LiveKit deben coincidir en ambos archivos.
 `PROGRESS_DATABASE_URL` y `DATABASE_URL` apuntan a la misma base, con nombres
-distintos. **No pongas `DATABASE_URL`, `APP_PASSCODE` ni `AGENT_NAME` en el
+distintos. **No pongas `DATABASE_URL`, `CLERK_*` ni `AGENT_NAME` en el
 `.env` de la raíz:** el agente rechaza campos desconocidos.
 
-`APP_PASSCODE` lo eliges tú para entrar al sitio. `AVATAR_PASSCODE` protege la
-carga de fotos. El inicio de sesión usa un nombre y un código compartido: no es
-un sistema de contraseñas individuales. Mantén `AGENT_NAME` vacío para que el
-agente se asigne automáticamente a las salas.
+El acceso usa **cuentas individuales de Clerk**, no `APP_PASSCODE` (ya no se usa).
+Cada identidad se vincula a un UUID interno; las prácticas, vocabulario,
+correcciones y estadísticas se consultan solo para esa persona. La foto del
+menú abre la gestión de cuenta de Clerk. Cualquier persona que complete el
+registro e inicie sesión puede practicar, sin listas manuales de usuarios.
+`AVATAR_PASSCODE` sigue protegiendo la carga de fotos opcional.
+Mantén `AGENT_NAME` vacío para asignar automáticamente el agente a las salas.
+
+Antes de arrancar esta versión, configura Clerk y aplica la ampliación del
+esquema. **No se vincula el progreso anterior por nombre ni correo.** Consulta
+[configuración y migración segura de cuentas](docs/authentication.md).
 
 El ejemplo de la raíz selecciona GPT-OSS 20B para conversar, GPT-OSS 120B para
 evaluar, Whisper Turbo para transcribir y Qwen 3.8 para la foto opcional. Copia
@@ -527,9 +558,10 @@ pnpm install
 pnpm dev
 ```
 
-Abre [http://localhost:3000](http://localhost:3000), entra con tu nombre y
-`APP_PASSCODE`, selecciona idioma nativo, modo y personaje, y permite el micrófono.
-Usa el mismo nombre para recuperar tu historial. Detén cada proceso con `Ctrl+C`.
+Abre [http://localhost:3000](http://localhost:3000), entra con tu cuenta de Clerk
+verificada, selecciona idioma nativo, modo y personaje, y permite el micrófono.
+La misma cuenta recupera su historial en otro dispositivo; el nombre no es la
+identidad. Detén cada proceso con `Ctrl+C`.
 
 `main.py console` sirve para probar audio en la terminal; no sustituye al agente
 en modo `dev` que atiende las llamadas del sitio.

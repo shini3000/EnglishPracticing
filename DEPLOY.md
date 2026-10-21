@@ -205,9 +205,9 @@ This is the single most common source of "it works locally and fails in producti
 | Where | Holds | Set with |
 |---|---|---|
 | `.env` (repo root, gitignored) | everything, for local agent runs | edit the file |
-| `web/.env.local` (gitignored) | `LIVEKIT_*`, `APP_PASSCODE`, `AVATAR_PASSCODE`, `DATABASE_URL`, empty `AGENT_NAME` | edit the file |
+| `web/.env.local` (gitignored) | `LIVEKIT_*`, `CLERK_*`, `AVATAR_PASSCODE`, `DATABASE_URL`, empty `AGENT_NAME` | edit the file |
 | LiveKit Cloud agent secrets | `GROQ_API_KEY`, `TAVILY_API_KEY`, `PROGRESS_DATABASE_URL`, `BITHUMAN_API_SECRET` | `lk agent update-secrets --secrets "K=V"` |
-| Vercel project env | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `APP_PASSCODE`, `AVATAR_PASSCODE`, `DATABASE_URL` | `vercel env add K production` |
+| Vercel project env | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `CLERK_*`, `AVATAR_PASSCODE`, `DATABASE_URL` | `vercel env add K production` |
 
 **Adding a key to `.env` alone works locally and then fails in production**, and your terminal will
 not tell you.
@@ -219,11 +219,11 @@ Two things worth knowing:
   That is deliberate — `DATABASE_URL` is the name the Neon integration sets automatically.
 - `lk agent update-secrets` **merges**. It does not replace. Changing one key leaves the rest alone.
 
-### Rotating the passcodes
+### Clerk and the separate avatar permission
 
 ```bash
 cd web
-printf '%s' 'NEW_VALUE' | vercel env add APP_PASSCODE production --force     # from bash, NOT PowerShell
+printf '%s' 'NEW_VALUE' | vercel env add AVATAR_PASSCODE production --force  # from bash, NOT PowerShell
 vercel deploy --prod --yes          # REQUIRED — env changes do NOT apply to existing deployments
 ```
 
@@ -231,14 +231,16 @@ vercel deploy --prod --yes          # REQUIRED — env changes do NOT apply to e
 and `vercel env add` stores it verbatim — the stored passcode then ends in `\r\n` and no typed
 input can ever match it. This has already happened once (see ARCHITECTURE.md §5).
 
-**Rotating `APP_PASSCODE` signs everybody out**, including you. The passcode is part of the session
-cookie's HMAC key, so rotating it invalidates every live session. That is the point of a rotation —
-not a bug.
+`APP_PASSCODE` and the old `tutor_session` cookie are no longer accepted. Configure
+Clerk's runtime keys and authorized origins instead. All signed-in users can practice. Apply the
+additive schema migration before starting the new web. Existing progress must
+be linked explicitly by the administrator, never claimed by typing a name.
+See [individual accounts and migration](docs/authentication.md).
 
-`AVATAR_PASSCODE` rotates the same way but signs nobody out — it is not part of any HMAC key; it
+`AVATAR_PASSCODE` rotates as shown above but signs nobody out; it
 only gates new photo uploads (the metered bitHuman credits).
 
-Also update `web/.env.local` and `ARCHITECTURE.md` §9 to match, or local and deployed will disagree.
+Update local and deployed secret stores separately. Never document secret values in tracked files.
 
 ---
 
@@ -283,12 +285,11 @@ a newer `motion` whose stricter types reject the template's own code, and `pnpm 
 a type error in a file you never touched.
 
 **`vercel integration add` DESTROYS `web/.env.local`.** It rewrites the file with only the
-integration's own variables, wiping `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` and
-`APP_PASSCODE`.
+integration's own variables, potentially wiping `LIVEKIT_*` and `CLERK_*`.
 
 `vercel env pull` **cannot repair it** — those four are marked *sensitive*, so the pull writes them
 back as empty strings. **The file then looks fixed and is not.** Check value *lengths*, not key
-presence. Recover `LIVEKIT_*` from the repo-root `.env` and the passcode from `ARCHITECTURE.md` §9.
+presence. Recover `LIVEKIT_*` from the repo-root `.env` and Clerk keys from its dashboard.
 
 **Back the file up before adding any integration.**
 
@@ -306,7 +307,7 @@ a live voice call. Nothing errors. Apply the schema **before** deploying the cod
 | | |
 |---|---|
 | Live URL | <https://english-tutor-nine-green.vercel.app> |
-| Sign-in | any username + the shared passcode (`ARCHITECTURE.md` §9) |
+| Sign-in | Verified Clerk account, self-service registration; see docs/authentication.md |
 | Vercel project | `english-tutor` |
 | LiveKit project | `demo-yygoau1f`, region `ap-south` |
 | LiveKit agent | `CA_e4HZqEcBFotF` |
