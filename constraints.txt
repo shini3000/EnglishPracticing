@@ -1,0 +1,9 @@
+# LiveKit versions exercised by the regression suite. This constrains the voice
+# API surface, not the complete transitive dependency tree. Update intentionally
+# and run CI before changing these; do not regenerate from a Windows pip freeze.
+livekit-agents==1.8.7
+livekit-plugins-groq==1.8.7
+livekit-plugins-openai==1.8.7
+livekit-plugins-google==1.8.7
+livekit-plugins-silero==1.8.7
+livekit-plugins-bithuman==1.8.8

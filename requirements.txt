@@ -1,3 +1,5 @@
+-c constraints.txt
+
 # `lk agent create` rejects a floor below 1.2.0. These match what the image was built against.
 livekit-agents>=1.6.4
 livekit-plugins-groq>=1.6.4

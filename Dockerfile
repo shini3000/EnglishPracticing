@@ -11,10 +11,17 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY requirements.txt constraints.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY main.py ./
+COPY agent ./agent
+COPY config ./config
+COPY plugins ./plugins
+COPY progress ./progress
+COPY prompts ./prompts
+COPY tools ./tools
+COPY utils ./utils
 
 # Don't run as root.
 RUN useradd -m -u 1000 agent && chown -R agent:agent /app
