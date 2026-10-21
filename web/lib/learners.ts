@@ -1,5 +1,4 @@
 import type { Sql } from '@/lib/db';
-import type { SubmittedName } from '@/lib/session';
 
 /**
  * Learner rows — the only module in the web half that writes to `learners`.
@@ -25,41 +24,38 @@ function toLearner(row: LearnerRow): Learner {
 }
 
 /**
- * Resolve a username to a learner, creating one on first sight.
- *
- * This is the whole cross-device story in one query: the same username on a phone and a laptop
- * lands on the same row, because the row is keyed by the name and not by the browser.
- *
- * The upsert is a single statement rather than SELECT-then-INSERT on purpose — two learners
- * claiming the same new username at the same moment would both find nothing and both insert,
- * and one of them would get a unique-violation 500 on their first ever login. ON CONFLICT makes
- * the loser of that race a normal sign-in instead.
- *
- * `display_name` is refreshed from what was typed, so a learner who signs in as "ASAD" is
- * greeted as "ASAD". The username — the key — is untouched by that, so no history moves.
+ * Resolve an immutable Clerk subject to the existing internal UUID. New users get
+ * fresh rows even when they have the same name as another user. Unique-index upsert
+ * makes simultaneous first requests safe. Legacy rows require explicit admin linking.
  */
-export async function signInLearner(sql: Sql, name: SubmittedName): Promise<Learner> {
-  const rows = await sql<LearnerRow>`
-    INSERT INTO learners (username, display_name)
-         VALUES (${name.username}, ${name.displayName})
-    ON CONFLICT (username) DO UPDATE
-            SET display_name = EXCLUDED.display_name,
-                last_seen_at = now()
-      RETURNING id, username, display_name
+export async function resolveClerkLearner(
+  sql: Sql,
+  userId: string,
+  displayName: () => Promise<string>
+): Promise<string> {
+  const existing = await sql<{ id: string }>`
+    SELECT id FROM learners WHERE clerk_user_id = ${userId}
   `;
-  return toLearner(rows[0]);
+  if (existing.length) return existing[0].id;
+  const name = (await displayName()).slice(0, 100);
+  const rows = await sql<{ id: string }>`
+    INSERT INTO learners (clerk_user_id, display_name)
+    VALUES (${userId}, ${name})
+    ON CONFLICT (clerk_user_id) DO UPDATE SET last_seen_at = now()
+    RETURNING id
+  `;
+  return rows[0].id;
 }
 
 /**
  * Look up a signed-in learner by id, or null if the row is gone.
  *
- * Null is reachable in normal operation: a cookie outlives the database it points into, so a
- * reset or a deleted row leaves a perfectly valid signature naming a learner who no longer
- * exists. Callers treat that as "signed out", not as a crash.
+ * A missing row is never a reason to select a different learner by name.
  */
 export async function getLearner(sql: Sql, learnerId: string): Promise<Learner | null> {
   const rows = await sql<LearnerRow>`
-    SELECT id, username, display_name FROM learners WHERE id = ${learnerId}
+    SELECT id, coalesce(username, display_name) AS username, display_name
+    FROM learners WHERE id = ${learnerId}
   `;
   return rows.length > 0 ? toLearner(rows[0]) : null;
 }

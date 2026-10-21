@@ -24,9 +24,8 @@ export const revalidate = 0;
 export async function POST(req: Request) {
   // The upstream template threw here in production, because this route mints a room token for
   // anyone who asks and every token starts a real agent session that costs Groq, Tavily and
-  // LiveKit quota. The session cookie (lib/session.ts) is the authentication layer that warning
-  // demanded: it exists only if the holder passed the passcode at /api/login. No cookie, no
-  // token, no quota burnt by a crawler.
+  // LiveKit quota. A verified Clerk session establishes the learner identity.
+  // A shared passcode or legacy cookie cannot authorize tokens.
   const learnerId = await currentLearnerId();
   if (!learnerId) {
     return new NextResponse('Not signed in', { status: 401 });
@@ -80,8 +79,7 @@ export async function POST(req: Request) {
     // simply unreachable.
     //
     // The id is safe to expose here: it is an opaque uuid, and possessing it grants nothing.
-    // Reading a learner's progress requires the signed session cookie (lib/session.ts), which
-    // cannot be produced from the uuid alone.
+    // Reading progress requires an authorized Clerk session mapped to this UUID.
     const participantName = 'user';
     const participantIdentity = `learner_${learnerId}`;
 

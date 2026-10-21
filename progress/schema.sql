@@ -24,19 +24,9 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- ---------------------------------------------------------------------------
 -- learners
 -- ---------------------------------------------------------------------------
--- Identity is the USERNAME. It is what a learner types at /login, and it is the reason their
--- history follows them from phone to laptop: the same username resolves to the same row on
--- any device, which a browser cookie could never do.
---
--- `username` is the canonical form (lowercased, restricted charset — see normalizeUsername in
--- web/lib/session.ts) and is what we match on. `display_name` is the same name as the learner
--- actually typed it, and exists only to be shown back to them.
---
--- There are still no per-user passwords. The shared passcode gates the app; the username then
--- says whose locker you are opening. Anyone holding the passcode can type someone else's
--- username, so this is a boundary against mix-ups, not against a determined snoop. That is the
--- correct strength for a link shared with friends, and the wrong strength for a public app —
--- see the note in web/lib/session.ts before opening this up.
+-- Internal UUIDs keep all progress stable. Clerk supplies the unique external subject.
+-- Names/emails are display data, never identity or evidence of ownership. The legacy
+-- username column remains for historical profiles; Clerk accounts never claim it.
 CREATE TABLE IF NOT EXISTS learners (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   display_name text        NOT NULL,
@@ -47,6 +37,11 @@ CREATE TABLE IF NOT EXISTS learners (
 -- Added after the cookie-only era. Nullable, because the rows that predate it have no
 -- username — and a NULL is exempt from the unique index, so any number of them can coexist.
 ALTER TABLE learners ADD COLUMN IF NOT EXISTS username text;
+
+-- Clerk subjects, independent from mutable names/emails. Legacy rows stay unclaimed.
+-- Apply before starting the Clerk-enabled web. No history is deleted or reassigned.
+ALTER TABLE learners ADD COLUMN IF NOT EXISTS clerk_user_id text;
+CREATE UNIQUE INDEX IF NOT EXISTS learners_clerk_user_id_uq ON learners (clerk_user_id);
 
 -- Backfill: give each pre-username learner the username their display name implies, so that
 -- someone who practiced as "Asad" before the login screen existed gets their old history back
@@ -77,7 +72,7 @@ UPDATE learners AS l
                  ORDER BY created_at
                ) AS rn
           FROM learners
-         WHERE username IS NULL
+         WHERE username IS NULL AND clerk_user_id IS NULL
        ) AS c
  WHERE l.id = c.id
    AND c.rn = 1

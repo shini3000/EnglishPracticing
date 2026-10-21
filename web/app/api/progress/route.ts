@@ -6,8 +6,8 @@ import { currentLearnerId } from '@/lib/session';
 /**
  * The dashboard's data, as JSON.
  *
- * Reads only the learner named by the session cookie. There is no `?learnerId=` parameter and
- * there must never be one — the cookie's HMAC is the only thing between one learner's history
+ * Reads only the learner mapped from the verified Clerk session. No `?learnerId=` parameter:
+ * server authorization separates one learner's history
  * and another's, and a query parameter would hand it away for free.
  *
  * The /progress page does not call this route; both call buildSummary directly. This exists
@@ -29,7 +29,7 @@ export async function GET() {
 
   const summary = await buildSummary(sql, learnerId);
   if (!summary) {
-    // Signed cookie, missing row: the database was reset under a live session.
+    // The profile disappeared after session resolution; never select somebody else.
     return NextResponse.json({ error: 'no-profile' }, { status: 404 });
   }
 

@@ -50,6 +50,13 @@ else
             signal: AbortSignal.timeout(2000),
           });
           if (response.status === 200) {
+            const denied = await fetch("http://127.0.0.1:3000/api/token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: "{}",
+              signal: AbortSignal.timeout(2000),
+            });
+            if (denied.status !== 401) throw new Error("Anonymous token access must be denied");
             console.log("Web login page OK; no env files; no call started");
             return;
           }
@@ -59,4 +66,5 @@ else
       throw new Error("Web did not become healthy");
     })().catch(error => { console.error(error); process.exit(1); });
   '
+  bash .github/scripts/check-clerk-runtime.sh "$image"
 fi

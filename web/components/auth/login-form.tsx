@@ -1,106 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowRightIcon } from '@phosphor-icons/react/dist/ssr';
-import { Button } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
+import { SignIn, SignUp } from '@clerk/nextjs';
 
-/**
- * Sign in with a username and the shared passcode.
- *
- * One request. The old flow made two (unlock, then create-profile) and the call could start
- * before the second finished, which produced a tutor that worked perfectly and recorded
- * nothing — the worst kind of bug, because it looks like success. There is now no order to get
- * wrong: /api/login either returns a session or it doesn't.
- */
-export function LoginForm() {
-  const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [passcode, setPasscode] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const canSubmit = username.trim().length > 0 && passcode.trim().length > 0 && !isSubmitting;
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!canSubmit) return;
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, passcode }),
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        setError(body?.error ?? 'No se pudo iniciar sesión. Inténtalo de nuevo.');
-        return;
-      }
-
-      // push() then refresh(): /home is server-rendered per learner, and without the refresh a
-      // previously-cached copy of it — someone else's, on a shared browser — can be shown.
-      router.push('/home');
-      router.refresh();
-    } catch {
-      setError('No se pudo conectar. Comprueba tu conexión e inténtalo de nuevo.');
-    } finally {
-      setIsSubmitting(false);
-    }
+/** Hash routing keeps Clerk callback steps inside /login and /register. */
+export function LoginForm({ register = false }: { register?: boolean }) {
+  const appearance = {
+    elements: {
+      rootBox: 'w-full',
+      cardBox: 'w-full shadow-none',
+      card: 'bg-transparent shadow-none',
+    },
   };
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-      <TextField
-        label="Nombre de usuario"
-        value={username}
-        onChange={(e) => {
-          setUsername(e.target.value);
-          setError(null);
-        }}
-        placeholder="Tu nombre de usuario"
-        autoComplete="username"
-        autoCapitalize="none"
-        autoCorrect="off"
-        spellCheck={false}
-        maxLength={24}
-        required
-        hint="Elige un nombre y úsalo siempre, también si cambias de dispositivo."
-      />
-
-      <TextField
-        label="Clave de acceso"
-        type="password"
-        value={passcode}
-        onChange={(e) => {
-          setPasscode(e.target.value);
-          setError(null);
-        }}
-        placeholder="••••••••"
-        autoComplete="current-password"
-        required
-        className="font-mono tracking-widest"
-      />
-
-      {/* Reserved space, not a conditional element: a message that appears out of nowhere
-          shoves the button down under the user's thumb as they reach for it. */}
-      <p
-        role="status"
-        aria-live="polite"
-        className="text-destructive min-h-8 text-sm leading-5 [&:empty]:min-h-0"
-      >
-        {error}
-      </p>
-
-      <Button type="submit" size="lg" disabled={!canSubmit} className="w-full gap-2 rounded-lg">
-        {isSubmitting ? 'Entrando…' : 'Entrar a practicar'}
-        {!isSubmitting && <ArrowRightIcon size={16} weight="bold" />}
-      </Button>
-    </form>
+  return register ? (
+    <SignUp routing="hash" signInUrl="/login" forceRedirectUrl="/home" appearance={appearance} />
+  ) : (
+    <SignIn routing="hash" signUpUrl="/register" forceRedirectUrl="/home" appearance={appearance} />
   );
 }

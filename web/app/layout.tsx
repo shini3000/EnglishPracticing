@@ -2,9 +2,12 @@ import type { Viewport } from 'next';
 import { Public_Sans } from 'next/font/google';
 import localFont from 'next/font/local';
 import { headers } from 'next/headers';
+import { esES } from '@clerk/localizations';
+import { ClerkProvider } from '@clerk/nextjs';
 import { ServiceWorker } from '@/components/app/service-worker';
 import { ThemeProvider } from '@/components/app/theme-provider';
 import { ThemeToggle } from '@/components/app/theme-toggle';
+import { clerkConfiguration } from '@/lib/auth-config';
 import { cn } from '@/lib/shadcn/utils';
 import { getAppConfig, getStyles } from '@/lib/utils';
 import '@/styles/globals.css';
@@ -71,6 +74,35 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   const appConfig = await getAppConfig(hdrs);
   const styles = getStyles(appConfig);
   const { pageTitle, pageDescription } = appConfig;
+  const clerk = clerkConfiguration();
+  const content = clerk.configured ? (
+    <ClerkProvider
+      dynamic
+      publishableKey={clerk.publishableKey}
+      localization={esES}
+      signInUrl="/login"
+      signUpUrl="/register"
+      signInForceRedirectUrl="/home"
+      signUpForceRedirectUrl="/home"
+      appearance={{
+        variables: {
+          colorPrimary: 'var(--primary)',
+          colorPrimaryForeground: 'var(--primary-foreground)',
+          colorBackground: 'var(--card)',
+          colorForeground: 'var(--foreground)',
+          colorMutedForeground: 'var(--muted-foreground)',
+          colorInput: 'var(--background)',
+          colorInputForeground: 'var(--foreground)',
+          fontFamily: 'var(--font-public-sans)',
+          borderRadius: '0.75rem',
+        },
+      }}
+    >
+      {children}
+    </ClerkProvider>
+  ) : (
+    children
+  );
 
   return (
     <html
@@ -122,7 +154,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             (components/layout/app-shell.tsx), and a second fixed bar on top of it was two
             headers arguing about the same corner of the screen.
           */}
-          {children}
+          {content}
           <div className="flex justify-end px-4 py-3">
             <ThemeToggle className="w-auto" />
           </div>

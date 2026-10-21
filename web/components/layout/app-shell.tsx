@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AccountButton } from '@/components/auth/account-button';
 import { Brand } from '@/components/layout/brand';
 import { SignOutButton } from '@/components/layout/sign-out-button';
 import type { Learner } from '@/lib/learners';
@@ -47,13 +48,8 @@ function NavTabs({ active }: { active: ShellTab }) {
 /** The learner's initial in a circle. Cheap identity confirmation at a glance. */
 function LearnerChip({ learner }: { learner: Learner }) {
   return (
-    <span className="flex items-center gap-2" title={`Signed in as ${learner.username}`}>
-      <span
-        aria-hidden
-        className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-full text-xs font-semibold"
-      >
-        {learner.displayName.slice(0, 1).toUpperCase()}
-      </span>
+    <span className="flex items-center gap-2" title={`Tu perfil: ${learner.displayName}`}>
+      <AccountButton />
       <span className="text-foreground hidden text-sm font-medium md:inline">
         {learner.displayName}
       </span>

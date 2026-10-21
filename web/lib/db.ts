@@ -33,10 +33,8 @@ let cached: Sql | null = null;
 /**
  * Returns the query function, or null when no database is configured.
  *
- * Null is a supported state, deliberately mirroring PROGRESS_DATABASE_URL being optional on
- * the agent side: the tutor is the product and must keep working when the progress feature
- * cannot. Callers degrade — the dashboard says "progress tracking isn't set up" — rather than
- * throwing a 500 over a chart.
+ * With Clerk, a database is required to resolve the internal learner UUID.
+ * Missing configuration disables practice access rather than creating untracked sessions.
  */
 export function getDb(): Sql | null {
   const url = process.env.DATABASE_URL;
