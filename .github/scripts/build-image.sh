@@ -10,7 +10,8 @@ esac
 image="english-practicing-$1:${GITHUB_SHA:?GITHUB_SHA is required}"
 docker build --pull --file "$dockerfile" --tag "$image" \
   --label "org.opencontainers.image.source=${SOURCE_URL:?SOURCE_URL is required}" \
-  --label "org.opencontainers.image.revision=$GITHUB_SHA" .
+  --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+  --label "org.opencontainers.image.version=${VERSION:-$GITHUB_SHA}" .
 
 user=$(docker image inspect --format '{{.Config.User}}' "$image")
 case "$user" in

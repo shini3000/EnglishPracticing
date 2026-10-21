@@ -1,0 +1,139 @@
+name: Release
+run-name: Release / ${{ github.event_name == 'push' && github.ref_name || inputs.bump }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Incremento: patch=corrección, minor=función, major=incompatible (primera: 1.0.0)'
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+        required: true
+  push:
+    tags: ['v[0-9]*']
+
+permissions:
+  contents: read
+
+# Serialize releases across all branches; never cancel a running publication.
+concurrency:
+  group: stable-release
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  version:
+    if: >-
+      ${{ github.repository == 'shini3000/EnglishPracticing' &&
+          (github.event_name == 'push' ||
+           contains(fromJSON('["refs/heads/develop","refs/heads/main","refs/heads/master"]'), github.ref)) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      number: ${{ steps.plan.outputs.number }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require a commit from an authorized branch
+        run: |
+          allowed=false
+          for branch in develop main master; do
+            if git show-ref --verify --quiet "refs/remotes/origin/$branch" &&
+              git merge-base --is-ancestor "$GITHUB_SHA" "origin/$branch"; then
+              allowed=true
+            fi
+          done
+          test "$allowed" = true
+      - name: Calculate the approved version
+        id: plan
+        env:
+          BUMP: ${{ inputs.bump || 'patch' }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            number=$(python .github/scripts/release-version.py --tag "$GITHUB_REF_NAME")
+          else
+            number=$(python .github/scripts/release-version.py --bump "$BUMP")
+          fi
+          printf 'number=%s\n' "$number" >> "$GITHUB_OUTPUT"
+          printf '## Version selected: %s\n' "$number" >> "$GITHUB_STEP_SUMMARY"
+
+  checks:
+    needs: version
+    uses: ./.github/workflows/ci.yml
+    with:
+      validation_only: true
+    permissions:
+      contents: read
+      # Upper bound required by the reusable workflow; its publish job is disabled.
+      packages: write
+
+  publish:
+    needs: [version, checks]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      packages: write
+    env:
+      SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
+      VERSION: ${{ needs.version.outputs.number }}
+      DOCKER_CONFIG: /tmp/english-practicing-release-ghcr
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Build and verify agent without production credentials
+        run: bash .github/scripts/build-image.sh agent
+      - name: Build and verify web without production credentials
+        run: bash .github/scripts/build-image.sh web
+      - name: Authenticate to GHCR after verification
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      - name: Refuse to overwrite either versioned image
+        run: |
+          for kind in agent web; do
+            image="ghcr.io/shini3000/english-practicing-$kind:$VERSION"
+            if docker manifest inspect "$image" > /dev/null 2> "$RUNNER_TEMP/manifest-error"; then
+              printf 'Refusing to overwrite existing image: %s\n' "$image" >&2
+              exit 1
+            fi
+            # Authentication/network errors are not evidence of an unused version.
+            if ! grep -Eiq 'manifest unknown|no such manifest' "$RUNNER_TEMP/manifest-error"; then
+              cat "$RUNNER_TEMP/manifest-error" >&2
+              exit 1
+            fi
+          done
+      - name: Reserve the Git tag before uploading images
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" != tag ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f "ref=refs/tags/v$VERSION" -f "sha=$GITHUB_SHA" > /dev/null
+          fi
+      - name: Publish the two versioned images
+        run: |
+          for kind in agent web; do
+            image="ghcr.io/shini3000/english-practicing-$kind:$VERSION"
+            docker tag "english-practicing-$kind:$GITHUB_SHA" "$image"
+            docker push "$image"
+            printf -- '- `%s`\n' "$image" >> "$GITHUB_STEP_SUMMARY"
+          done
+      - name: Create release notes only after both uploads succeed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "v$VERSION" --generate-notes \
+            --notes "Docker: ghcr.io/shini3000/english-practicing-agent:$VERSION and ghcr.io/shini3000/english-practicing-web:$VERSION. Credentials are supplied at runtime; no deployment."
+      - name: Log out of GHCR
+        if: always()
+        run: docker logout ghcr.io

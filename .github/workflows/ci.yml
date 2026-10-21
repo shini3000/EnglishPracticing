@@ -1,6 +1,11 @@
 name: CI
 
 on:
+  workflow_call:
+    inputs:
+      validation_only:
+        type: boolean
+        default: false
   push:
     branches: [main, master, develop]
   pull_request:
@@ -97,9 +102,9 @@ jobs:
   # PRs/forks/untrusted manual branches: build and test with read-only access.
   docker:
     if: >-
-      ${{ github.repository != 'shini3000/EnglishPracticing' ||
+      ${{ !inputs.validation_only && (github.repository != 'shini3000/EnglishPracticing' ||
           github.event_name == 'pull_request' ||
-          !contains(fromJSON('["refs/heads/develop","refs/heads/main","refs/heads/master"]'), github.ref) }}
+          !contains(fromJSON('["refs/heads/develop","refs/heads/main","refs/heads/master"]'), github.ref)) }}
     name: Docker / ${{ matrix.image }}
     needs: [python, web]
     runs-on: ubuntu-24.04
@@ -137,7 +142,7 @@ jobs:
   publish:
     name: Publish GHCR
     if: >-
-      ${{ github.repository == 'shini3000/EnglishPracticing' &&
+      ${{ !inputs.validation_only && github.repository == 'shini3000/EnglishPracticing' &&
           github.event_name != 'pull_request' &&
           contains(fromJSON('["refs/heads/develop","refs/heads/main","refs/heads/master"]'), github.ref) }}
     needs: [python, web]
@@ -208,12 +213,17 @@ jobs:
       WEB_RESULT: ${{ needs.web.result }}
       DOCKER_RESULT: ${{ needs.docker.result }}
       PUBLISH_RESULT: ${{ needs.publish.result }}
+      VALIDATION_ONLY: ${{ inputs.validation_only || false }}
     steps:
       - name: Require all checks to pass (including image builds)
         run: |
           test "$PYTHON_RESULT" = success
           test "$WEB_RESULT" = success
-          if [ "$DOCKER_RESULT" = success ]; then
+          if [ "$VALIDATION_ONLY" = true ]; then
+            # Release builds and checks both images in its own publish job.
+            test "$DOCKER_RESULT" = skipped
+            test "$PUBLISH_RESULT" = skipped
+          elif [ "$DOCKER_RESULT" = success ]; then
             test "$PUBLISH_RESULT" = skipped
           else
             test "$DOCKER_RESULT" = skipped
