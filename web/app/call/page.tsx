@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { App } from '@/components/app/app';
 import { getDb } from '@/lib/db';
 import { requireLearnerId } from '@/lib/guard';
@@ -8,9 +9,9 @@ import { getAppConfig } from '@/lib/utils';
 /**
  * /call — the voice session itself.
  *
- * Guarded, but only by the cheap cookie check: /api/token re-checks the session before it mints
- * anything, so this guard is here to spare a signed-out visitor a broken-looking page, not to
- * protect the room. The security boundary is the token route, and it stands on its own.
+ * Clerk session and learner checks run before showing the preparation screen.
+ * /api/token independently re-checks the session before minting a room token.
+ * loading.tsx provides feedback while these server checks and configuration load.
  *
  * The learner's name is looked up purely so the pre-call screen can greet them. A failed lookup
  * is not fatal — a missing name costs a nicety, and taking the tutor down over it would be
@@ -19,13 +20,29 @@ import { getAppConfig } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-export default async function CallPage() {
+export default async function CallPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ start?: string }>;
+}) {
+  const { start } = await searchParams;
   const learnerId = await requireLearnerId();
+  if (start === 'input') redirect('/practice-b/input');
+  if (start === 'agility') redirect('/practice-b/agility');
+  const startStep =
+    ({ anchors: 4, agility: 9, audit: 15 } as Record<string, number>)[start ?? ''] ?? 0;
   const hdrs = await headers();
   const appConfig = await getAppConfig(hdrs);
 
   const sql = getDb();
   const learner = sql ? await getLearner(sql, learnerId) : null;
 
-  return <App appConfig={appConfig} learnerName={learner?.displayName ?? null} />;
+  return (
+    <App
+      key={startStep}
+      startStep={startStep}
+      appConfig={appConfig}
+      learnerName={learner?.displayName ?? null}
+    />
+  );
 }

@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDataChannel, useSessionContext } from '@livekit/components-react';
 import { CorrectionCard } from '@/components/app/correction-card';
+import { PracticeRoadmap, type RouteStep } from '@/components/app/practice-roadmap';
 import { PRACTICE_GUIDANCE } from '@/lib/practice-guidance';
 import type { PracticeMode } from '@/lib/practice-options';
 
@@ -17,6 +19,7 @@ type Timer = {
   step_count: number;
   step_duration_seconds: number;
   block: string;
+  route?: RouteStep[];
   quota?: {
     state: string;
     wait_seconds?: number;
@@ -27,7 +30,23 @@ type Timer = {
 type JournalEntry = { kind: string; date: string; [key: string]: unknown };
 
 export function PracticePanel({ mode }: { mode: PracticeMode }) {
-  const { isConnected } = useSessionContext();
+  const { isConnected, end } = useSessionContext();
+  const router = useRouter();
+  const [leaving, setLeaving] = useState(false);
+  async function openInputBlock(block: 'input' | 'agility' = 'input') {
+    if (leaving) return;
+    setLeaving(true);
+    setControlError('');
+    try {
+      await end();
+      router.push(`/practice-b/${block}`);
+    } catch {
+      setLeaving(false);
+      setControlError(
+        'No se pudo terminar la llamada. Inténtalo de nuevo antes de abrir el ejercicio.'
+      );
+    }
+  }
   const [timer, setTimer] = useState<Timer | null>(null);
   const [receivedAt, setReceivedAt] = useState(0);
   const [now, setNow] = useState(0);
@@ -39,13 +58,17 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
   const [controlEvidence, setControlEvidence] = useState('');
   const [controlError, setControlError] = useState('');
   const { send: sendControl, isSending } = useDataChannel('practice-control');
-  async function control(action: string) {
+  useEffect(() => {
+    setControlEvidence('');
+  }, [timer?.step_index]);
+  async function control(action: string, targetStep?: number) {
     setControlError('');
     try {
       await sendControl(
         new TextEncoder().encode(
           JSON.stringify({
             action,
+            target_step: targetStep,
             request_id: crypto.randomUUID(),
             step_index: timer?.step_index,
             evidence: controlEvidence.trim(),
@@ -112,6 +135,12 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
   }, [isConnected]);
   if (!isConnected) return null;
   const latestCorrection = [...entries].reverse().find((entry) => entry.kind === 'correction');
+  const nextStep = timer?.route?.[(timer?.step_index ?? 0) + 1];
+  const nextBlock = nextStep && nextStep.block !== timer?.block;
+  const externalInput =
+    mode === 'fluency' && timer !== null && timer.step_index >= 5 && timer.step_index <= 14;
+  const independentBlock = timer && timer.step_index >= 9 ? 4 : 3;
+  const inputNext = mode === 'fluency' && timer?.step_index === 4;
   const remaining = timer
     ? Math.max(
         0,
@@ -120,179 +149,239 @@ export function PracticePanel({ mode }: { mode: PracticeMode }) {
       )
     : 0;
   return (
-    <aside
-      aria-label="Cronómetro y paso de la práctica"
-      className="practice-console bg-card fixed top-[max(0.75rem,env(safe-area-inset-top))] right-3 left-3 z-[100] max-h-[70vh] overflow-auto rounded-2xl border p-5 shadow-lg sm:left-auto sm:w-96"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold">Tu práctica en curso</p>
-        <span className="bg-secondary rounded-full px-2 py-1 text-xs">
-          {timer?.finished
-            ? 'Finalizada'
-            : !timer?.started
-              ? 'Preparación'
-              : timer.running
-                ? 'En curso'
-                : 'En pausa'}
-        </span>
-      </div>
-      <p className="text-muted-foreground mt-2 text-xs">
-        {timer?.block ??
-          (mode === 'fluency'
-            ? 'Bloque 1 · Gimnasia temporal'
-            : mode === 'diagnostic'
-              ? 'Diagnóstico'
-              : 'Bloque 1 · Recuperación y diagnóstico')}
-        {' · '}Paso {(timer?.step_index ?? 0) + 1} de{' '}
-        {timer?.step_count ?? (mode === 'fluency' ? 16 : mode === 'diagnostic' ? 7 : 13)}
-      </p>
-      <p className="mt-1 text-base font-semibold" aria-live="polite">
-        {timer?.step ??
-          (mode === 'fluency'
-            ? 'Rutina en presente'
-            : mode === 'diagnostic'
-              ? 'Presentación y presente'
-              : 'Preparación')}
-      </p>
-      {timer && !timer.finished && (
-        <div className="my-3 space-y-2 rounded border p-2">
-          <p className="text-sm">{PRACTICE_GUIDANCE[mode][timer.step_index]}</p>
-          <p className="text-xs">
-            Controles directos: no hacen peticiones al modelo. Cambiar de paso no certifica dominio.
-          </p>
-          <input
-            aria-label="Tema o evidencia de actividad terminada"
-            className="w-full rounded border p-2 text-sm"
-            maxLength={600}
-            value={controlEvidence}
-            onChange={(e) => setControlEvidence(e.target.value)}
-            placeholder={
-              timer.started
-                ? 'Qué terminaste y cómo lo practicaste'
-                : 'Tema y objetivo de la práctica'
-            }
-          />
-          <div className="flex flex-wrap gap-2 text-xs">
-            {!timer.started ? (
-              <button
-                disabled={isSending || !controlEvidence.trim()}
-                onClick={() => void control('start')}
-              >
-                Iniciar
-              </button>
-            ) : (
-              <>
-                <button
-                  disabled={isSending}
-                  onClick={() => void control(timer.running ? 'pause' : 'resume')}
-                >
-                  {timer.running ? 'Pausar' : 'Continuar'}
-                </button>
+    <>
+      {timer?.route && (
+        <PracticeRoadmap
+          steps={timer.route}
+          current={timer.step_index}
+          finished={timer.finished}
+          disabled={isSending}
+          onSelectBlock={(index) => {
+            if (
+              !window.confirm(
+                '¿Cambiar a este bloque? El paso actual quedará sin completar y el bloque elegido empezará desde el principio.'
+              )
+            )
+              return;
+            if (index === 5 && mode === 'fluency') void openInputBlock();
+            else if (index === 9 && mode === 'fluency') void openInputBlock('agility');
+            else void control('select_block', index);
+          }}
+        />
+      )}
+      <aside
+        aria-label="Cronómetro y paso de la práctica"
+        className="practice-console bg-card fixed top-[max(0.75rem,env(safe-area-inset-top))] right-3 left-3 z-[100] max-h-[70vh] overflow-auto rounded-2xl border p-5 shadow-lg sm:left-auto sm:w-96"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">Tu práctica en curso</p>
+          <span className="bg-secondary rounded-full px-2 py-1 text-xs">
+            {timer?.finished
+              ? 'Finalizada'
+              : !timer?.started
+                ? 'Preparación'
+                : timer.running
+                  ? 'En curso'
+                  : 'En pausa'}
+          </span>
+        </div>
+        <p className="text-muted-foreground mt-3 text-xs">
+          Micrófono en inglés. Para hablar en otro idioma, escribe tu mensaje en el chat.
+        </p>
+        <p className="text-muted-foreground mt-2 text-xs">
+          {timer?.block ??
+            (mode === 'fluency'
+              ? 'Bloque 1 · Gimnasia temporal'
+              : mode === 'diagnostic'
+                ? 'Diagnóstico'
+                : 'Bloque 1 · Recuperación y diagnóstico')}
+          {' · '}Paso {(timer?.step_index ?? 0) + 1} de{' '}
+          {timer?.step_count ?? (mode === 'fluency' ? 16 : mode === 'diagnostic' ? 7 : 13)}
+        </p>
+        <p className="mt-1 text-base font-semibold" aria-live="polite">
+          {timer?.step ??
+            (mode === 'fluency'
+              ? 'Rutina en presente'
+              : mode === 'diagnostic'
+                ? 'Presentación y presente'
+                : 'Preparación')}
+        </p>
+        {externalInput && (
+          <div className="mt-4 space-y-3 rounded-lg border p-3">
+            <p className="text-sm">
+              El bloque {independentBlock} se hace fuera de la conversación con el tutor. Termina
+              esta conexión y abre el ejercicio.
+            </p>
+            <button
+              className="study-button"
+              disabled={leaving}
+              onClick={() => void openInputBlock(independentBlock === 4 ? 'agility' : 'input')}
+            >
+              {leaving ? 'Cerrando llamada…' : `Abrir bloque ${independentBlock}`}
+            </button>
+            {controlError && <p role="alert">{controlError}</p>}
+          </div>
+        )}
+        {timer && !timer.finished && !externalInput && (
+          <div className="my-3 space-y-2 rounded border p-2">
+            <p className="text-sm">{PRACTICE_GUIDANCE[mode][timer.step_index]}</p>
+            <p className="text-xs">
+              Controles directos: no hacen peticiones al modelo. Cambiar de paso no certifica
+              dominio.
+            </p>
+            <label htmlFor="practice-evidence" className="block text-xs font-medium">
+              {timer.started
+                ? 'Antes de avanzar, indica qué terminaste'
+                : 'Indica tu tema y objetivo para comenzar'}
+            </label>
+            <input
+              id="practice-evidence"
+              aria-label="Tema o evidencia de actividad terminada"
+              className="w-full rounded border p-2 text-sm"
+              maxLength={600}
+              value={controlEvidence}
+              onChange={(e) => setControlEvidence(e.target.value)}
+              placeholder={
+                timer.started
+                  ? 'Qué terminaste y cómo lo practicaste'
+                  : 'Tema y objetivo de la práctica'
+              }
+            />
+            <div className="flex flex-wrap gap-2 text-xs">
+              {!timer.started ? (
                 <button
                   disabled={isSending || !controlEvidence.trim()}
-                  onClick={() => void control('next')}
+                  onClick={() => void control('start')}
                 >
-                  Terminé este paso
+                  Iniciar
                 </button>
-              </>
+              ) : (
+                <>
+                  <button
+                    disabled={isSending}
+                    onClick={() => void control(timer.running ? 'pause' : 'resume')}
+                  >
+                    {timer.running ? 'Pausar' : 'Continuar'}
+                  </button>
+                  <button
+                    className="bg-primary text-primary-foreground rounded-lg px-3 py-2 font-semibold disabled:opacity-50"
+                    disabled={isSending || leaving || (!inputNext && !controlEvidence.trim())}
+                    onClick={() => (inputNext ? void openInputBlock() : void control('next'))}
+                  >
+                    {inputNext
+                      ? 'Abrir bloque 3 sin llamada'
+                      : nextStep
+                        ? nextBlock
+                          ? 'Siguiente bloque'
+                          : 'Siguiente paso'
+                        : 'Completar último paso'}
+                  </button>
+                </>
+              )}
+              <button disabled={isSending} onClick={() => void control('finish')}>
+                Finalizar práctica
+              </button>
+            </div>
+            {timer.started && nextStep && (
+              <p className="text-muted-foreground text-xs">
+                Después: {nextBlock ? `${nextStep.block} · ` : ''}
+                {nextStep.label}
+              </p>
             )}
-            <button disabled={isSending} onClick={() => void control('finish')}>
-              Finalizar práctica
-            </button>
+            {controlError && <p role="alert">{controlError}</p>}
           </div>
-          {controlError && <p role="alert">{controlError}</p>}
-        </div>
-      )}
-      <p className="mt-2 font-mono text-4xl font-bold tabular-nums" aria-live="off">
-        {timer?.started
-          ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`
-          : mode === 'fluency'
-            ? '01:00'
-            : mode === 'diagnostic'
-              ? '04:00'
-              : '05:00'}
-      </p>
-      <p className="text-muted-foreground mt-1 text-xs">
-        {!timer
-          ? 'Conectando con el cronómetro del tutor…'
-          : !timer.started
-            ? 'El tiempo comienza al confirmar el tema.'
-            : timer.finished
-              ? 'Práctica terminada.'
-              : remaining === 0
-                ? 'Tiempo cumplido: termina tu respuesta antes de cambiar de paso.'
-                : 'Tiempo restante del paso actual'}
-      </p>
-      {timer?.quota && timer.quota.state !== 'ready' && (
-        <p role="status" className="mt-2 rounded-md bg-amber-500/15 p-2 text-sm">
-          {timer.quota.state === 'waiting'
-            ? `Esperando cuota de IA · ${timer.quota.wait_seconds ?? 0} s. Tu práctica se conserva.`
-            : timer.quota.state === 'input_too_long'
-              ? 'Respuesta extensa: el tutor te pedirá trabajarla en partes.'
-              : timer.quota.state === 'daily_limit'
-                ? 'Cuota diaria local alcanzada. Práctica en pausa; conserva y repasa tus correcciones.'
-                : 'Cuota de IA temporalmente limitada. Tu avance se conserva.'}
+        )}
+        <p className="mt-2 font-mono text-4xl font-bold tabular-nums" aria-live="off">
+          {timer?.started
+            ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`
+            : mode === 'fluency'
+              ? '01:00'
+              : mode === 'diagnostic'
+                ? '04:00'
+                : '05:00'}
         </p>
-      )}
-      <progress
-        className="mt-2 h-2 w-full"
-        aria-label="Avance del paso"
-        max={timer?.step_duration_seconds ?? 300}
-        value={timer?.started ? (timer.step_duration_seconds ?? 300) - remaining : 0}
-      />
-      <p className="text-muted-foreground mt-1 text-xs">
-        Pide al tutor pausar, continuar o terminar.
-      </p>
-      {material && (
-        <a
-          href={material.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 block text-sm underline"
-        >
-          {material.title}
-        </a>
-      )}
-      {latestCorrection && (
-        <div aria-live="polite">
-          <button
-            type="button"
-            className="mt-3 text-sm underline"
-            onClick={() => setCorrectionVisible((visible) => !visible)}
-          >
-            {correctionVisible
-              ? 'Ocultar corrección para practicar sin leer'
-              : 'Mostrar última corrección'}
-          </button>
-          {correctionVisible && <CorrectionCard entry={latestCorrection} />}
-        </div>
-      )}
-      <details className="mt-3">
-        <summary className="cursor-pointer text-sm">
-          Registro acumulativo ({entries.length})
-        </summary>
-        {!saved && (
-          <p className="mt-2 text-xs">
-            {queued
-              ? 'Evidencia en cola local: se sincronizará cuando la base vuelva a estar disponible en este equipo.'
-              : 'Guardado no disponible: conserva estas notas antes de salir.'}
+        <p className="text-muted-foreground mt-1 text-xs">
+          {!timer
+            ? 'Conectando con el cronómetro del tutor…'
+            : !timer.started
+              ? 'El tiempo comienza al confirmar el tema.'
+              : timer.finished
+                ? 'Práctica terminada.'
+                : remaining === 0
+                  ? 'Tiempo cumplido: termina tu respuesta antes de cambiar de paso.'
+                  : 'Tiempo restante del paso actual'}
+        </p>
+        {timer?.quota && timer.quota.state !== 'ready' && (
+          <p role="status" className="mt-2 rounded-md bg-amber-500/15 p-2 text-sm">
+            {timer.quota.state === 'waiting'
+              ? `Esperando cuota de IA · ${timer.quota.wait_seconds ?? 0} s. Tu práctica se conserva.`
+              : timer.quota.state === 'input_too_long'
+                ? 'Respuesta extensa: el tutor te pedirá trabajarla en partes.'
+                : timer.quota.state === 'daily_limit'
+                  ? 'Cuota diaria local alcanzada. Práctica en pausa; conserva y repasa tus correcciones.'
+                  : 'Cuota de IA temporalmente limitada. Tu avance se conserva.'}
           </p>
         )}
-        {entries.map((entry, index) => (
-          <div key={index} className="mt-2 border-t pt-2 text-xs">
-            <p className="font-medium">
-              {entry.date} · {entry.kind}
-            </p>
-            {entry.kind === 'correction' ? (
-              <CorrectionCard entry={entry} />
-            ) : (
-              <pre className="mt-1 font-sans break-words whitespace-pre-wrap">
-                {JSON.stringify(entry, null, 2)}
-              </pre>
-            )}
+        <progress
+          className="mt-2 h-2 w-full"
+          aria-label="Avance del paso"
+          max={timer?.step_duration_seconds ?? 300}
+          value={timer?.started ? (timer.step_duration_seconds ?? 300) - remaining : 0}
+        />
+        <p className="text-muted-foreground mt-1 text-xs">
+          Pide al tutor pausar, continuar o terminar.
+        </p>
+        {material && (
+          <a
+            href={material.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 block text-sm underline"
+          >
+            {material.title}
+          </a>
+        )}
+        {latestCorrection && (
+          <div aria-live="polite">
+            <button
+              type="button"
+              className="mt-3 text-sm underline"
+              onClick={() => setCorrectionVisible((visible) => !visible)}
+            >
+              {correctionVisible
+                ? 'Ocultar corrección para practicar sin leer'
+                : 'Mostrar última corrección'}
+            </button>
+            {correctionVisible && <CorrectionCard entry={latestCorrection} />}
           </div>
-        ))}
-      </details>
-    </aside>
+        )}
+        <details className="mt-3">
+          <summary className="cursor-pointer text-sm">
+            Registro acumulativo ({entries.length})
+          </summary>
+          {!saved && (
+            <p className="mt-2 text-xs">
+              {queued
+                ? 'Evidencia en cola local: se sincronizará cuando la base vuelva a estar disponible en este equipo.'
+                : 'Guardado no disponible: conserva estas notas antes de salir.'}
+            </p>
+          )}
+          {entries.map((entry, index) => (
+            <div key={index} className="mt-2 border-t pt-2 text-xs">
+              <p className="font-medium">
+                {entry.date} · {entry.kind}
+              </p>
+              {entry.kind === 'correction' ? (
+                <CorrectionCard entry={entry} />
+              ) : (
+                <pre className="mt-1 font-sans break-words whitespace-pre-wrap">
+                  {JSON.stringify(entry, null, 2)}
+                </pre>
+              )}
+            </div>
+          ))}
+        </details>
+      </aside>
+    </>
   );
 }

@@ -528,6 +528,113 @@
     padding: 0.65rem;
   }
 }
+.fluency-block-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 28px 0;
+}
+.fluency-block-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 240px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--foreground);
+  text-decoration: none;
+}
+.fluency-block-card:hover {
+  border-color: var(--primary);
+}
+.fluency-block-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+@media (max-width: 480px) {
+  .fluency-block-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.practice-block-rail {
+  position: fixed;
+  z-index: 110;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 12px 4px;
+  border-right: 1px solid var(--border);
+  border-radius: 0 12px 12px 0;
+  background: var(--background);
+}
+.block-rail-target {
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+}
+.block-rail-target:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.block-rail-tick {
+  width: 12px;
+  height: 2px;
+  background: currentColor;
+}
+.block-rail-target[aria-current='step'] {
+  color: var(--primary);
+}
+.block-rail-target[aria-current='step'] .block-rail-tick {
+  width: 26px;
+  height: 3px;
+}
+.block-rail-label {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(290px, calc(100vw - 64px));
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--foreground);
+  text-align: left;
+  font-size: 14px;
+  box-shadow: 0 8px 28px #0002;
+}
+.block-rail-target:hover .block-rail-label,
+.block-rail-target:focus-visible .block-rail-label,
+.block-rail-label:hover {
+  display: block;
+}
+.practice-block-touch {
+  display: none;
+}
+@media (hover: none), (max-width: 640px) {
+  .practice-block-rail {
+    display: none;
+  }
+  .practice-block-touch {
+    display: block;
+    position: fixed;
+    left: 12px;
+    bottom: 90px;
+    z-index: 110;
+  }
+  .practice-block-touch nav {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

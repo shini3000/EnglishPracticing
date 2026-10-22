@@ -90,7 +90,7 @@ export function PracticeHome({
               <li>Anclas temporales, escucha y réplica</li>
               <li>Rondas 4–3–2 y microauditoría</li>
             </ul>
-            <Link href="/drill" className="study-button">
+            <Link href="/practice-b" className="study-button">
               Empezar práctica B
             </Link>
             <Link href="/call?practice=fluency" className="study-text-link mt-3 text-sm">

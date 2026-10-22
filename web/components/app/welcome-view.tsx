@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeftIcon, MicrophoneIcon } from '@phosphor-icons/react/dist/ssr';
 import { AvatarPicker } from '@/components/avatar/avatar-picker';
+import { FluencyBlocks } from '@/components/practice/fluency-blocks';
 import { Button } from '@/components/ui/button';
 import { type AvatarChoice, tutorNameFor } from '@/lib/avatar-choice';
 import { NATIVE_LANGUAGES, type NativeLanguage, type PracticeMode } from '@/lib/practice-options';
@@ -18,6 +19,7 @@ import { NATIVE_LANGUAGES, type NativeLanguage, type PracticeMode } from '@/lib/
  */
 
 interface WelcomeViewProps {
+  startStep: number;
   nativeLanguage: NativeLanguage;
   practiceMode: PracticeMode;
   onNativeLanguage: (value: NativeLanguage) => void;
@@ -32,6 +34,7 @@ interface WelcomeViewProps {
 }
 
 export const WelcomeView = ({
+  startStep,
   startButtonText,
   learnerName,
   avatarChoice,
@@ -113,13 +116,27 @@ export const WelcomeView = ({
                   : 'Diagnóstico: evaluación inicial para identificar tu nivel aproximado y prioridades.'}
             </p>
             {practiceMode === 'fluency' && (
-              <Link className="study-text-link bg-muted rounded-lg p-4 text-sm" href="/drill">
-                Empezar por el bloque 1: llamada con transcripción automática
-              </Link>
+              <FluencyBlocks
+                current={
+                  startStep >= 15
+                    ? 4
+                    : startStep >= 9
+                      ? 3
+                      : startStep >= 5
+                        ? 2
+                        : startStep >= 4
+                          ? 1
+                          : 0
+                }
+              />
             )}
           </div>
 
           <div className="mt-6 w-full text-left">
+            <p className="text-muted-foreground mb-4 text-sm">
+              Habla en inglés por el micrófono. Si necesitas preguntar algo en otro idioma,
+              escríbelo en el chat de la llamada.
+            </p>
             <AvatarPicker
               choice={avatarChoice}
               photoSrc={photoSrc}

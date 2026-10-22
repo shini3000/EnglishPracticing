@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { TokenSource } from 'livekit-client';
 import { useSession } from '@livekit/components-react';
 import { WarningIcon } from '@phosphor-icons/react/dist/ssr';
@@ -9,7 +10,6 @@ import { AgentSessionProvider } from '@/components/agents-ui/agent-session-provi
 import { StartAudioButton } from '@/components/agents-ui/start-audio-button';
 import { PracticePanel } from '@/components/app/practice-panel';
 import { ViewController } from '@/components/app/view-controller';
-import { PersonalAvatarDialog } from '@/components/avatar/personal-avatar-dialog';
 import { Toaster } from '@/components/ui/sonner';
 import { useAgentErrors } from '@/hooks/useAgentErrors';
 import { useDebugMode } from '@/hooks/useDebug';
@@ -18,6 +18,22 @@ import { type NativeLanguage, type PracticeMode } from '@/lib/practice-options';
 import { getSandboxTokenSource } from '@/lib/utils';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
+const PersonalAvatarDialog = dynamic(
+  () =>
+    import('@/components/avatar/personal-avatar-dialog').then(
+      (module) => module.PersonalAvatarDialog
+    ),
+  {
+    loading: () => (
+      <p
+        role="status"
+        className="bg-card fixed right-4 bottom-24 z-50 rounded-lg border p-4 text-sm"
+      >
+        Cargando las opciones de foto…
+      </p>
+    ),
+  }
+);
 
 function AppSetup() {
   useDebugMode({ enabled: IN_DEVELOPMENT });
@@ -27,12 +43,13 @@ function AppSetup() {
 }
 
 interface AppProps {
+  startStep?: number;
   appConfig: AppConfig;
   /** For the greeting on the pre-call screen. Null when the learner's row couldn't be read. */
   learnerName: string | null;
 }
 
-export function App({ appConfig, learnerName }: AppProps) {
+export function App({ appConfig, learnerName, startStep = 0 }: AppProps) {
   const [avatarChoice, setAvatarChoice] = useState<AvatarChoice>(DEFAULT_AVATAR_CHOICE);
   const [nativeLanguage, setNativeLanguage] = useState<NativeLanguage>('es');
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('daily');
@@ -94,9 +111,7 @@ export function App({ appConfig, learnerName }: AppProps) {
           avatar: avatarChoice,
           nativeLanguage,
           practiceMode,
-          startAtAnchors:
-            practiceMode === 'fluency' &&
-            new URLSearchParams(window.location.search).get('start') === 'anchors',
+          startStep: practiceMode === 'fluency' ? startStep : 0,
           photoVoice: localStorage.getItem('photo-voice') === 'girl' ? 'girl' : 'boy',
         }),
       });
@@ -105,7 +120,7 @@ export function App({ appConfig, learnerName }: AppProps) {
       }
       return await res.json();
     });
-  }, [appConfig, avatarChoice, nativeLanguage, practiceMode]);
+  }, [appConfig, avatarChoice, nativeLanguage, practiceMode, startStep]);
 
   const session = useSession(
     tokenSource,
@@ -117,6 +132,7 @@ export function App({ appConfig, learnerName }: AppProps) {
       <AppSetup />
       <main className="grid min-h-svh grid-cols-1 content-center py-8 pb-20">
         <ViewController
+          startStep={startStep}
           appConfig={appConfig}
           learnerName={learnerName}
           avatarChoice={avatarChoice}
@@ -133,19 +149,21 @@ export function App({ appConfig, learnerName }: AppProps) {
         />
       </main>
       <PracticePanel mode={practiceMode} />
-      <PersonalAvatarDialog
-        open={photoDialogOpen}
-        photoSrc={photoSrc}
-        onClose={() => setPhotoDialogOpen(false)}
-        onReady={(uploadedNew) => {
-          setHasPhoto(true);
-          if (uploadedNew) {
-            setPhotoVersion((v) => v + 1);
-          }
-          setAvatarChoice('photo');
-          setPhotoDialogOpen(false);
-        }}
-      />
+      {photoDialogOpen && (
+        <PersonalAvatarDialog
+          open={photoDialogOpen}
+          photoSrc={photoSrc}
+          onClose={() => setPhotoDialogOpen(false)}
+          onReady={(uploadedNew) => {
+            setHasPhoto(true);
+            if (uploadedNew) {
+              setPhotoVersion((v) => v + 1);
+            }
+            setAvatarChoice('photo');
+            setPhotoDialogOpen(false);
+          }}
+        />
+      )}
       <StartAudioButton label="Start Audio" />
       <Toaster
         icons={{

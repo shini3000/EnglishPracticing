@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { ContinueCallLink } from '@/components/practice/continue-call-link';
+import { FluencyBlocks } from '@/components/practice/fluency-blocks';
 import { useDrillCall } from '@/hooks/use-drill-call';
 import { NATIVE_LANGUAGES, type NativeLanguage } from '@/lib/practice-options';
 import { DRILL_STEPS, type DrillCorrection } from '@/lib/time-shifting';
@@ -120,8 +122,13 @@ export function TimeShiftingDrill({ agentName }: { agentName?: string }) {
           el tutor escucha sin interrumpir. Pulsa «Terminé este paso» para recibir la revisión
           escrita.
         </p>
+        <p className="text-muted-foreground mt-3 text-sm">
+          El micrófono transcribe solo en inglés. Las preguntas en otro idioma se escriben en el
+          chat de la llamada con el tutor; esta captura solo transcribe el ejercicio.
+        </p>
       </header>
       <div className="drill-layout">
+        <FluencyBlocks current={0} disabled={recording || busy} />
         <aside>
           <h2 className="mb-4 font-semibold">Gimnasia temporal</h2>
           <ol className="drill-step-list">
@@ -317,13 +324,7 @@ export function TimeShiftingDrill({ agentName }: { agentName?: string }) {
               Siguiente paso
             </button>
           ) : (
-            result &&
-            !busy &&
-            !recording && (
-              <Link className="block underline" href="/call?practice=fluency&start=anchors">
-                Continuar al bloque 2 con el tutor (abrir preparación, sin llamar todavía)
-              </Link>
-            )
+            result && !busy && !recording && <ContinueCallLink />
           )}
           <p className="text-muted-foreground border-t pt-5 text-xs leading-6">
             Esta llamada consume minutos de LiveKit y transcripción de Groq. DeepSeek solo revisa al

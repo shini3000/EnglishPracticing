@@ -1,16 +1,35 @@
 'use client';
 
 import { useTheme } from 'next-themes';
+import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'motion/react';
 import { useSessionContext } from '@livekit/components-react';
 import type { AppConfig } from '@/app-config';
-import { AgentSessionView_01 } from '@/components/agents-ui/blocks/agent-session-view-01';
 import { WelcomeView } from '@/components/app/welcome-view';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { AvatarChoice } from '@/lib/avatar-choice';
 import type { NativeLanguage, PracticeMode } from '@/lib/practice-options';
 
 const MotionWelcomeView = motion.create(WelcomeView);
-const MotionSessionView = motion.create(AgentSessionView_01);
+function SessionLoading() {
+  const { end } = useSessionContext();
+  return (
+    <div className="bg-background fixed inset-0 flex flex-col items-center justify-center gap-5 p-6">
+      <p role="status" aria-live="polite">
+        Cargando la interfaz de la llamada…
+      </p>
+      <Skeleton className="h-48 w-48 rounded-full" />
+      <button className="study-button" onClick={() => void end()}>
+        Terminar llamada
+      </button>
+    </div>
+  );
+}
+
+const MotionSessionView = dynamic(
+  () => import('@/components/app/motion-session-view').then((module) => module.MotionSessionView),
+  { loading: SessionLoading }
+);
 
 const VIEW_MOTION_PROPS = {
   variants: {
@@ -31,6 +50,7 @@ const VIEW_MOTION_PROPS = {
 };
 
 interface ViewControllerProps {
+  startStep: number;
   nativeLanguage: NativeLanguage;
   practiceMode: PracticeMode;
   onNativeLanguage: (value: NativeLanguage) => void;
@@ -44,6 +64,7 @@ interface ViewControllerProps {
 }
 
 export function ViewController({
+  startStep,
   appConfig,
   learnerName,
   avatarChoice,
@@ -63,6 +84,7 @@ export function ViewController({
       {/* Welcome view */}
       {!isConnected && (
         <MotionWelcomeView
+          startStep={startStep}
           key="welcome"
           {...VIEW_MOTION_PROPS}
           startButtonText={appConfig.startButtonText}
