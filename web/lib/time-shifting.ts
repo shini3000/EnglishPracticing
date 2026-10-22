@@ -23,6 +23,25 @@ export const DRILL_STEPS = [
   },
 ] as const;
 
+export const AGILITY_ROUNDS = [
+  {
+    label: 'Ronda de 4 minutos',
+    seconds: 240,
+    instruction: 'Develop an answer to the open question freely for four minutes.',
+  },
+  {
+    label: 'Ronda de 3 minutos',
+    seconds: 180,
+    instruction:
+      'Retell the SAME ideas in three minutes, removing digressions and improving connections.',
+  },
+  {
+    label: 'Ronda de 2 minutos',
+    seconds: 120,
+    instruction: 'Retell the SAME core argument concisely in two minutes.',
+  },
+] as const;
+
 export type DrillCorrection = {
   original: string;
   corrected: string;

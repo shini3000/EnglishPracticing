@@ -46,6 +46,14 @@ export async function POST(req: Request) {
     const body = await req.json();
     const nativeLanguage = body?.nativeLanguage ?? 'es';
     const practiceMode = body?.practiceMode ?? 'daily';
+    const startStep = body?.startStep ?? (body?.startAtAnchors === true ? 4 : 0);
+    if (
+      !Number.isInteger(startStep) ||
+      ![0, 4, 15].includes(startStep) ||
+      (practiceMode !== 'fluency' && startStep !== 0)
+    ) {
+      return new NextResponse('Invalid starting block', { status: 400 });
+    }
     if (
       typeof nativeLanguage !== 'string' ||
       !Object.hasOwn(NATIVE_LANGUAGES, nativeLanguage) ||
@@ -98,9 +106,10 @@ export async function POST(req: Request) {
           native_language: nativeLanguage,
           practice_mode: practiceMode,
           practice_capture:
-            practiceMode === 'fluency' && body.capture === 'time-shifting' ? 'time-shifting' : '',
-          practice_start_step:
-            practiceMode === 'fluency' && body.startAtAnchors === true ? '4' : '0',
+            practiceMode === 'fluency' && ['time-shifting', 'agility'].includes(body.capture)
+              ? body.capture
+              : '',
+          practice_start_step: String(startStep),
           target_language: 'en',
         },
       },

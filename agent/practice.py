@@ -66,8 +66,16 @@ class Practice:
             "mode": self.mode, "step": self.steps[self.index][0],
             "step_index": self.index, "elapsed_seconds": int(elapsed),
             "step_count": len(self.steps),
+            "route": [{"label": label, "minutes": minutes,
+                       "block": ("Bloque " + ("4 · Agilidad y síntesis" if i in {11, 13} else FLUENCY_STAGES[i][2]) if self.mode == "fluency" else
+                                 "Diagnóstico" if self.mode == "diagnostic" else
+                                 "Bloque 1 · Recuperación y diagnóstico" if i < 4 else
+                                 "Bloque 2 · Estructura y escucha" if i < 10 else
+                                 "Bloque 3 · Transferencia y cierre"),
+                       "completed": any(record["step"] == label for record in self.completed)}
+                      for i, (label, minutes) in enumerate(self.steps)],
             "step_duration_seconds": self.steps[self.index][1] * 60,
-            "block": ("Bloque " + FLUENCY_STAGES[self.index][2] if self.mode == "fluency" else
+            "block": ("Bloque " + ("4 · Agilidad y síntesis" if self.index in {11, 13} else FLUENCY_STAGES[self.index][2]) if self.mode == "fluency" else
                       "Diagnóstico" if self.mode == "diagnostic" else
                       "Bloque 1 · Recuperación y diagnóstico" if self.index < 4 else
                       "Bloque 2 · Estructura y escucha" if self.index < 10 else
@@ -98,7 +106,7 @@ class Practice:
             return
         action, request_id = data.get("action"), data.get("request_id")
         evidence = data.get("evidence", "")
-        if (action not in {"start", "pause", "resume", "next", "finish"}
+        if (action not in {"start", "pause", "resume", "next", "finish", "select_block"}
                 or not isinstance(request_id, str) or not request_id or len(request_id) > 80
                 or not isinstance(evidence, str) or len(evidence) > 600):
             return
@@ -106,6 +114,22 @@ class Practice:
             if data.get("step_index") != self.index:
                 return  # stale/double-click command cannot skip another step
             if request_id in self._manual_ids:
+                return
+            if action == "select_block":
+                target = data.get("target_step")
+                route = self.status()["route"]
+                starts = [i for i, step in enumerate(route) if i == 0 or step["block"] != route[i - 1]["block"]]
+                if type(target) is not int or target not in starts or target == self.index or self.finished:
+                    return
+                self._manual_ids.add(request_id)
+                previous = self.status()
+                await self.append("block_navigation", {"from_step": self.index, "to_step": target,
+                                  "seconds": previous["elapsed_seconds"], "evidence": "Learner selected a block; no completion claimed."})
+                self.index = target
+                self.elapsed, self.since = 0.0, None
+                self.started = False
+                self.focus = ""
+                await self.publish()
                 return
             if action in {"start", "next"} and not evidence.strip():
                 return
@@ -227,6 +251,9 @@ class Practice:
             return "Invalid action."
         if self.finished:
             return self.model_status()
+        if self.mode == "fluency" and 5 <= self.index <= 14 and action in {"start", "resume", "next"}:
+            path = "/practice-b/agility" if self.index >= 9 else "/practice-b/input"
+            return f"This block runs outside the tutor conversation. Open {path}."
         if action == "start" and not self.started:
             self.started, self.since = True, time.monotonic()
             if evidence.strip():
@@ -246,11 +273,15 @@ class Practice:
                 if self.index + 1 < len(self.steps):
                     self.index += 1
                     self.elapsed, self.since = 0, time.monotonic()
+                    if self.mode == "fluency" and self.index == 5:
+                        self.since = None
+                        self.started = False
                 else:
                     action = "finish"
             if action == "finish":
                 self.finished = True
-                await self.append("session", {"timer": self.status(), "pending": [name for name, _ in self.steps[len(self.completed):]], "evidence": evidence})
+                completed_names = {record["step"] for record in self.completed}
+                await self.append("session", {"timer": self.status(), "pending": [name for name, _ in self.steps if name not in completed_names], "evidence": evidence})
         elif action == "resume" and self.started and self.since is None:
             self.since = time.monotonic()
         await self.publish()

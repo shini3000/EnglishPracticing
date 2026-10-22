@@ -143,6 +143,11 @@ class EnglishTutor(Agent):
         await self.practice.publish()
 
     async def llm_node(self, chat_ctx, tools, model_settings):
+        if self.practice.mode == "fluency" and 5 <= self.practice.index <= 14:
+            yield ("Este bloque se hace sin llamada con el tutor. Abre el ejercicio desde el panel."
+                   if self.practice.language == "es" else
+                   "This block runs outside the tutor conversation. Open the exercise from the practice panel.")
+            return
         # The card is already visible. No second model request is needed to read
         # it back; give a short recovery invitation instead.
         if correction_was_shown(chat_ctx):
@@ -387,7 +392,7 @@ async def _run_session(ctx: JobContext) -> None:
     participant = await ctx.wait_for_participant()
     learner_id = _learner_id_from(participant.identity)
     if (learner_id and participant.attributes.get("practice_mode") == "fluency"
-            and participant.attributes.get("practice_capture") == "time-shifting"):
+            and participant.attributes.get("practice_capture") in {"time-shifting", "agility"}):
         from agent.drill_call import run_drill_call
         await run_drill_call(ctx, participant, settings, _load_vad())
         return
@@ -418,9 +423,10 @@ async def _run_session(ctx: JobContext) -> None:
                 logger.warning("practice.control.failed", extra={"error_type": type(done.exception()).__name__})
         task.add_done_callback(control_done)
     ctx.room.on("data_received", receive_control)
-    if mode == "fluency" and participant.attributes.get("practice_start_step") == "4":
-        # Explicit start at block 2; never fabricate completed clock steps.
-        practice.index = 4
+    start_step = participant.attributes.get("practice_start_step", "0")
+    if mode == "fluency" and start_step in {"0", "4", "5", "9", "15"}:
+        # Explicit block selection never fabricates completed clock steps.
+        practice.index = int(start_step)
     history = await practice.history()
 
     # Reliable data messages are not retained for clients that subscribe later.
@@ -457,7 +463,7 @@ async def _run_session(ctx: JobContext) -> None:
         persona = personas.BY_CHARACTER.get(avatar_mode, personas.DEFAULT)
 
     session = AgentSession(
-        stt=groq.STT(model=settings.STT_MODEL, detect_language=True),
+        stt=groq.STT(model=settings.STT_MODEL, language="en", detect_language=False),
         llm=create_llm(settings),
         tts=EdgeTTS(voice="en-US-AndrewMultilingualNeural" if persona.name == "Ahmad" else "en-US-AvaMultilingualNeural"),
         vad=_load_vad(),

@@ -11,7 +11,7 @@ type Snapshot = {
   error: boolean;
 };
 
-export function useDrillCall() {
+export function useDrillCall(capture: 'time-shifting' | 'agility' = 'time-shifting') {
   const room = useRef<Room | null>(null);
   const captureId = useRef('');
   const connecting = useRef(false);
@@ -85,7 +85,7 @@ export function useDrillCall() {
         body: JSON.stringify({
           practiceMode: 'fluency',
           nativeLanguage: language,
-          capture: 'time-shifting',
+          capture,
           ...(agentName ? { room_config: { agents: [{ agent_name: agentName }] } } : {}),
         }),
       });

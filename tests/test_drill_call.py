@@ -90,10 +90,11 @@ class DrillCaptureTests(unittest.IsolatedAsyncioTestCase):
         ctx = SimpleNamespace(room=SimpleNamespace(local_participant=local))
         settings = SimpleNamespace(STT_MODEL="whisper-test")
         with patch("agent.drill_call.AgentSession", return_value=session) as factory, \
-                patch("agent.drill_call.groq.STT", return_value="stt"), \
+                patch("agent.drill_call.groq.STT", return_value="stt") as stt, \
                 patch("agent.drill_call.Agent"):
             await run_drill_call(ctx, participant, settings, "vad")
         self.assertEqual(set(factory.call_args.kwargs), {"stt", "vad", "turn_handling"})
+        stt.assert_called_once_with(model="whisper-test", language="en", detect_language=False)
         self.assertEqual(factory.call_args.kwargs["turn_handling"]["turn_detection"], "manual")
         local.set_attributes.assert_awaited_once_with({"drill_ready": "true"})
         local.register_rpc_method.assert_called_once()
@@ -111,6 +112,22 @@ class DrillCaptureTests(unittest.IsolatedAsyncioTestCase):
                 patch("agent.tutor.progress.run_analysis") as grading:
             await _run_session(ctx)
         run.assert_awaited_once()
+        llm.assert_not_called()
+        grading.assert_not_called()
+
+    async def test_agility_capture_also_bypasses_conversation_and_grading(self):
+        from agent.tutor import _run_session
+        participant = SimpleNamespace(
+            identity="learner_00000000-0000-0000-0000-000000000001",
+            attributes={"practice_mode": "fluency", "practice_capture": "agility"})
+        ctx = SimpleNamespace(room=SimpleNamespace(name="test"), connect=AsyncMock(),
+                              wait_for_participant=AsyncMock(return_value=participant))
+        with patch("agent.drill_call.run_drill_call", new_callable=AsyncMock) as capture, \
+                patch("agent.tutor._load_vad", return_value="vad"), \
+                patch("agent.tutor.create_llm") as llm, \
+                patch("agent.tutor.progress.run_analysis") as grading:
+            await _run_session(ctx)
+        capture.assert_awaited_once()
         llm.assert_not_called()
         grading.assert_not_called()
 

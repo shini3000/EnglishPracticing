@@ -64,6 +64,15 @@ class TutorQuotaTests(unittest.IsolatedAsyncioTestCase):
         self.tutor.quota.settle.assert_called_with("reservation", 460)
         self.assertEqual(provider.chat.call_args.kwargs["conn_options"].max_retry, 0)
 
+    async def test_standalone_input_block_never_requests_a_model(self):
+        self.practice.mode = "fluency"
+        self.practice.index = 5
+        provider = Mock()
+        output = await self.generate(provider)
+        self.assertIn("sin llamada", output[0])
+        provider.chat.assert_not_called()
+        self.tutor.quota.reserve.assert_not_called()
+
     async def test_written_correction_followup_does_not_call_groq(self):
         self.context.items.append(llm.FunctionCallOutput(
             name="record_learning", call_id="card", output='{"delivery":"text_only"}', is_error=False))

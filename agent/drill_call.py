@@ -98,7 +98,7 @@ class DrillCapture:
 
 async def run_drill_call(ctx, participant, settings, vad):
     session = AgentSession(
-        stt=groq.STT(model=settings.STT_MODEL, detect_language=True),
+        stt=groq.STT(model=settings.STT_MODEL, language="en", detect_language=False),
         vad=vad,
         turn_handling=TurnHandlingOptions(turn_detection="manual"),
     )
