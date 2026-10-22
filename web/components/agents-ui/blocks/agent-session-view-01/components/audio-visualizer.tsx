@@ -1,20 +1,51 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { type MotionProps, motion } from 'motion/react';
 import { useVoiceAssistant } from '@livekit/components-react';
-import { AgentAudioVisualizerAura } from '@/components/agents-ui/agent-audio-visualizer-aura';
 import { AgentAudioVisualizerBar } from '@/components/agents-ui/agent-audio-visualizer-bar';
-import { AgentAudioVisualizerGrid } from '@/components/agents-ui/agent-audio-visualizer-grid';
-import { AgentAudioVisualizerRadial } from '@/components/agents-ui/agent-audio-visualizer-radial';
-import { AgentAudioVisualizerWave } from '@/components/agents-ui/agent-audio-visualizer-wave';
 import { cn } from '@/lib/shadcn/utils';
 
-const MotionAgentAudioVisualizerAura = motion.create(AgentAudioVisualizerAura);
+function VisualizerLoading() {
+  return (
+    <div
+      role="status"
+      className="text-muted-foreground flex size-[300px] items-center justify-center text-sm"
+    >
+      Cargando visualización de audio…
+    </div>
+  );
+}
+const MotionAgentAudioVisualizerAura = dynamic(
+  () =>
+    import('@/components/agents-ui/agent-audio-visualizer-aura').then((module) =>
+      motion.create(module.AgentAudioVisualizerAura)
+    ),
+  { loading: VisualizerLoading }
+);
 const MotionAgentAudioVisualizerBar = motion.create(AgentAudioVisualizerBar);
-const MotionAgentAudioVisualizerGrid = motion.create(AgentAudioVisualizerGrid);
-const MotionAgentAudioVisualizerRadial = motion.create(AgentAudioVisualizerRadial);
-const MotionAgentAudioVisualizerWave = motion.create(AgentAudioVisualizerWave);
+const MotionAgentAudioVisualizerGrid = dynamic(
+  () =>
+    import('@/components/agents-ui/agent-audio-visualizer-grid').then((module) =>
+      motion.create(module.AgentAudioVisualizerGrid)
+    ),
+  { loading: VisualizerLoading }
+);
+const MotionAgentAudioVisualizerRadial = dynamic(
+  () =>
+    import('@/components/agents-ui/agent-audio-visualizer-radial').then((module) =>
+      motion.create(module.AgentAudioVisualizerRadial)
+    ),
+  { loading: VisualizerLoading }
+);
+const MotionAgentAudioVisualizerWave = dynamic(
+  () =>
+    import('@/components/agents-ui/agent-audio-visualizer-wave').then((module) =>
+      motion.create(module.AgentAudioVisualizerWave)
+    ),
+  { loading: VisualizerLoading }
+);
 
 interface AudioVisualizerProps extends MotionProps {
   isChatOpen: boolean;
