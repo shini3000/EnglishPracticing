@@ -2,10 +2,11 @@
 
 ## Versiones publicadas
 
-La versión **1.1.0** incorpora cuentas individuales con Clerk, registro sin
-aprobación manual y navegación con carga progresiva y esqueletos. Requiere
-configurar Clerk y aplicar el esquema ampliado antes de usar la web; consulta
-[las notas de versión](CHANGELOG.md#110---2026-10-21).
+La versión **1.2.0** añade selección directa de bloques de la práctica B,
+escucha autónoma, rondas 4–3–2 con corrección escrita, transcripción fijada a
+inglés y carga diferida de la interfaz de llamada. Conserva las cuentas y el
+progreso individual de Clerk introducidos en 1.1.0; consulta
+[las notas de versión](CHANGELOG.md#120---2026-10-22).
 
 La primera versión estable fue **1.0.0**. Las versiones estables se publican
 solo por decisión manual; subir un commit no aumenta el número. En GitHub,
@@ -17,8 +18,8 @@ predeterminada para que aparezca el botón. También se puede lanzar subiendo
 una etiqueta Git `v1.0.0`, `v1.0.1`, etc.
 
 ```text
-ghcr.io/shini3000/english-practicing-agent:1.1.0
-ghcr.io/shini3000/english-practicing-web:1.1.0
+ghcr.io/shini3000/english-practicing-agent:1.2.0
+ghcr.io/shini3000/english-practicing-web:1.2.0
 ```
 
 `develop` sigue siendo una etiqueta móvil para pruebas. Las versiones numeradas
@@ -44,6 +45,58 @@ No se comparte una caché de datos personales entre usuarios ni se omite la
 verificación de sesión. Estas cargas no llaman a modelos de IA. El modo de
 desarrollo aún puede tardar más en compilar la primera visita que una imagen
 de producción ya construida.
+
+El paso de Gimnasia temporal al bloque 2 muestra un aviso de navegación en el
+enlace y un esqueleto de la preparación de llamada mientras carga `/call`.
+La carga no inicia llamadas ni abre el micrófono; conserva `practice=fluency`
+y `start=anchors` para continuar en el bloque previsto.
+
+La web usa `next/dynamic` (incluido en Next.js, sin librerías adicionales) para
+cargar la interfaz de llamada cuando hay conexión, el diálogo de foto al abrirlo
+y los visualizadores aura/grid/radial/wave solo cuando se renderiza esa variante.
+Hay avisos de carga y se puede terminar la llamada mientras carga su interfaz.
+La preparación, el proveedor de sesión y la recepción de progreso permanecen
+disponibles desde el inicio. Esto difiere código del navegador, no reduce por sí
+solo el consumo de API ni acelera las consultas a la base de datos.
+
+Al abrir la práctica B, `/practice-b` muestra sus cinco bloques y permite entrar
+directamente a cualquiera. Gimnasia temporal y la preparación de llamada también
+muestran el selector. Durante la llamada, «Ir a este bloque» cambia al comienzo
+del bloque elegido tras confirmarlo; no completa los pasos omitidos ni recupera
+el minuto exacto de una sesión anterior. El cambio queda registrado como navegación,
+no como evidencia de aprendizaje. Confirma el tema para iniciar el nuevo cronómetro.
+
+La entrada `/practice-b` muestra tarjetas visibles en dos columnas (una en móvil)
+con los cinco bloques, su duración y acceso directo. Durante la práctica,
+la navegación de bloques está en el borde izquierdo como una guía de rayas:
+el bloque actual tiene una marca más larga. Al pasar el mouse o enfocar con Tab
+se muestran el nombre y la duración o el paso actual. En móvil se usa el menú
+«Bloques», sin depender de hover. Se mantienen las confirmaciones de cambio.
+
+El bloque 3, Input activo con réplica inmediata, abre `/practice-b/input`, **sin
+llamada**. Elige un video o podcast real en otra pestaña y sigue las instrucciones:
+escucha (5 min), síntesis (3), postura (3) y PREP (4). El cronómetro se inicia,
+pausa, reinicia y avanza manualmente; llegar a cero no corta la respuesta.
+No abre micrófono, no transcribe, no usa LLM y no certifica aprendizaje ni guarda
+evidencia evaluada. Desde una llamada, «Abrir bloque 3 sin llamada» termina la
+conexión antes de navegar; el bloque 4 continúa con transcripción y corrección escrita.
+
+El bloque 4 ahora abre `/practice-b/agility`: cinco minutos de preparación,
+rondas de 4/3/2 minutos sobre la misma pregunta y dos descansos de 30 segundos.
+Como el bloque 1, usa una conexión LiveKit **solo para transcripción en inglés**;
+no hay conversación, TTS ni evaluación adicional al colgar. Cada ronda se cierra
+explícitamente y se revisa por escrito mediante el mismo servicio de correcciones,
+con caché separada por ejercicio y límites compartidos. El descanso comienza al
+cerrar el micrófono, sin esperar la respuesta del modelo. Al terminar la última
+ronda se desconecta la captura. Las revisiones se guardan por alumno como ensayos
+del bloque 4 y se distinguen de Gimnasia temporal en Progreso; no certifican dominio,
+pronunciación ni cadencia. Los enlaces antiguos de llamada se redirigen al ejercicio.
+
+El reconocimiento de voz está fijado a inglés, sin detección automática, tanto en
+el tutor como en Gimnasia temporal. Para preguntar en otro idioma, usa el chat de
+texto de la llamada con el tutor. El idioma nativo de las explicaciones no cambia.
+Esto orienta el reconocimiento a inglés; no detecta ni rechaza de forma infalible
+el audio hablado en otro idioma.
 
 ### Uso de IA durante las prácticas
 

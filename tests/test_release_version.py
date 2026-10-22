@@ -24,6 +24,9 @@ class ReleaseVersionTests(unittest.TestCase):
     def test_ignores_unrelated_and_prerelease_tags(self):
         self.assertEqual(release.next_version(["v9.0.0-rc.1", "other", "v01.2.3"]), "1.0.0")
 
+    def test_practice_features_are_a_minor_release_after_clerk(self):
+        self.assertEqual(release.next_version(["v1.0.0", "v1.1.0"], "minor"), "1.2.0")
+
     def test_explicit_tag(self):
         self.assertEqual(release.next_version(["v1.0.0"], requested="v1.0.0"), "1.0.0")
 

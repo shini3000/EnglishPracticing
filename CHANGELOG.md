@@ -1,5 +1,41 @@
 # Historial de versiones
 
+## 1.2.0 - 2026-10-22
+
+### Práctica B y navegación
+
+- Selector inicial de cinco bloques con tarjetas visibles; entrada directa sin
+  repetir ni marcar artificialmente como completados los bloques anteriores.
+- Navegación lateral compacta con etiquetas al pasar el mouse o usar teclado;
+  menú táctil en móvil, bloque actual resaltado y cambio manual con confirmación.
+- Bloque 3 autónomo: instrucciones y cronómetro para escucha, síntesis, postura
+  y PREP; sin micrófono, llamada ni solicitudes al modelo.
+- Bloque 4: preparación y rondas 4–3–2, descansos de 30 segundos, captura de voz
+  en inglés y corrección exclusivamente escrita. LiveKit se usa solo para
+  transcripción; no hay conversación, TTS ni evaluación adicional al desconectar.
+- Revisiones aisladas por alumno, guardadas como ensayos del bloque 4 y visibles
+  en Progreso. Caché separada por ejercicio y límites de revisión compartidos.
+- Los enlaces antiguos a los bloques 3 y 4 redirigen a las nuevas actividades.
+
+### Voz y rendimiento
+
+- Reconocimiento de voz fijado a inglés en ambas modalidades de captura;
+  las preguntas en otro idioma se envían por chat escrito.
+- Aviso inmediato y esqueleto al pasar de Gimnasia temporal a la llamada.
+- Carga diferida con `next/dynamic` para la interfaz de llamada, el diálogo de
+  foto y los visualizadores opcionales; sin dependencias nuevas.
+- Controles para terminar la llamada mientras carga su interfaz.
+
+### Actualización
+
+- Actualiza y reinicia **web y agente** juntos para alinear las nuevas rutas y
+  el modo de captura del bloque 4. No requiere cambios adicionales al esquema
+  de 1.1.0 ni claves nuevas. Conserva Clerk, LiveKit, Groq y el corrector DeepSeek
+  configurados en tiempo de ejecución; las imágenes no incluyen credenciales.
+- Los cronómetros locales no certifican aprendizaje. El bloque 3 no guarda
+  evidencia evaluada; las rondas repetidas son ensayos, no dominio consolidado.
+- Este release publica imágenes, pero no despliega servicios ni migra bases reales.
+
 ## 1.1.0 - 2026-10-21
 
 ### Cuentas y progreso individual
