@@ -2,11 +2,10 @@
 
 ## Versiones publicadas
 
-La versión **1.2.0** añade selección directa de bloques de la práctica B,
-escucha autónoma, rondas 4–3–2 con corrección escrita, transcripción fijada a
-inglés y carga diferida de la interfaz de llamada. Conserva las cuentas y el
-progreso individual de Clerk introducidos en 1.1.0; consulta
-[las notas de versión](CHANGELOG.md#120---2026-10-22).
+La versión **1.3.0** añade interfaz en español e inglés, preferencias por alumno
+desde Clerk, historial de correcciones por día y mejoras de voz y práctica.
+Consulta [las notas de versión](CHANGELOG.md#130---2026-10-23), incluido el
+esquema adicional de preferencias para instalaciones existentes.
 
 La primera versión estable fue **1.0.0**. Las versiones estables se publican
 solo por decisión manual; subir un commit no aumenta el número. En GitHub,
@@ -18,14 +17,40 @@ predeterminada para que aparezca el botón. También se puede lanzar subiendo
 una etiqueta Git `v1.0.0`, `v1.0.1`, etc.
 
 ```text
-ghcr.io/shini3000/english-practicing-agent:1.2.0
-ghcr.io/shini3000/english-practicing-web:1.2.0
+ghcr.io/shini3000/english-practicing-agent:1.3.0
+ghcr.io/shini3000/english-practicing-web:1.3.0
 ```
 
 `develop` sigue siendo una etiqueta móvil para pruebas. Las versiones numeradas
 no se sobrescriben mediante el pipeline. Las claves privadas se proporcionan
 al ejecutar el contenedor, nunca al construirlo.
 Consulta [lanzamientos y recuperación ante fallos](docs/ci-cd.md#versiones-estables-manuales).
+
+## Idiomas y perfil
+
+Desde **tu avatar de Clerk → Preferencias**, cada cuenta elige su idioma nativo: **Español** o
+**English**. Esa preferencia cambia la interfaz, los mensajes de Clerk y el idioma
+de las explicaciones del tutor. El idioma de aprendizaje permanece fijo en **inglés**;
+no tiene selector. El formulario se abre dentro de la ventana de cuenta de Clerk,
+sin una pestaña «Perfil» adicional en la navegación. Los apartados de cuenta y seguridad
+siguen gestionados por Clerk. `/profile` se conserva para enlaces directos desde las
+prácticas. Las preferencias se cargan al abrir su apartado, con esqueleto y reintento;
+no al renderizar el avatar. Se guardan en Postgres por usuario, no en `localStorage` ni en una
+variable global. Las nuevas llamadas y revisiones toman el idioma del perfil desde
+el servidor; las respuestas, citas y correcciones anteriores no se traducen ni se
+reescriben. El micrófono sigue transcribiendo exclusivamente en inglés.
+
+En instalaciones existentes aplica una vez la migración aditiva (no borra progreso):
+
+```powershell
+.\.venv\Scripts\python.exe scripts/apply_schema.py --profile-preferences
+```
+
+En una base nueva, el esquema completo ya incluye esa tabla. La web usa `next-intl`
+con catálogos locales ES/EN y las mismas rutas; solo se carga el catálogo del idioma
+activo. No se usa IA ni una API de traducción para la interfaz. La lectura de las
+preferencias se reutiliza dentro de cada petición, nunca entre cuentas. Para mantener
+las traducciones, consulta [la guía de internacionalización](web/i18n/README.md).
 
 ## Uso necesario de modelos y ahorro
 
@@ -59,6 +84,23 @@ La preparación, el proveedor de sesión y la recepción de progreso permanecen
 disponibles desde el inicio. Esto difiere código del navegador, no reduce por sí
 solo el consumo de API ni acelera las consultas a la base de datos.
 
+Durante una llamada, la pantalla se divide en dos mitades: tutor y controles a
+la izquierda, historial de correcciones a la derecha. El historial abre en el día
+de hoy y muestra primero las correcciones más recientes, sin reemplazar las anteriores.
+Permite cambiar de día, buscar frases o estructuras, ocultar respuestas
+para reformular y volver a las correcciones de hoy. En móvil se apilan las
+secciones. Los eventos recibidos en vivo se combinan por identificador con los
+registros guardados, sin duplicar una misma corrección; los intentos técnicos
+ya no aparecen como JSON. La consulta diaria recupera las correcciones de ese día
+sin el antiguo límite global de 200 registros y usa la fecha de Colombia.
+
+En el bloque 2, llegar a cero no corta la voz ni avanza al siguiente bloque.
+Termina tu respuesta y pide feedback; el acceso al siguiente bloque se habilita
+cuando el feedback escrito está disponible. Tú decides cuándo continuar.
+Los cronómetros emiten dos tonos breves al terminar, sin repetirse ni cerrar el
+micrófono. El navegador requiere una interacción para habilitar el sonido;
+si es necesario, usa «Activar aviso sonoro». Esto no hace peticiones a modelos.
+
 Al abrir la práctica B, `/practice-b` muestra sus cinco bloques y permite entrar
 directamente a cualquiera. Gimnasia temporal y la preparación de llamada también
 muestran el selector. Durante la llamada, «Ir a este bloque» cambia al comienzo
@@ -81,8 +123,11 @@ No abre micrófono, no transcribe, no usa LLM y no certifica aprendizaje ni guar
 evidencia evaluada. Desde una llamada, «Abrir bloque 3 sin llamada» termina la
 conexión antes de navegar; el bloque 4 continúa con transcripción y corrección escrita.
 
-El bloque 4 ahora abre `/practice-b/agility`: cinco minutos de preparación,
+El bloque 4 ahora abre `/practice-b/agility`: cinco minutos opcionales de preparación,
 rondas de 4/3/2 minutos sobre la misma pregunta y dos descansos de 30 segundos.
+La preparación sirve para elegir una postura y anotar palabras clave: todavía
+no activa el micrófono ni la transcripción. Puedes pasar directamente a la primera
+ronda sin esperar a que termine; la captura comienza al iniciar esa ronda.
 Como el bloque 1, usa una conexión LiveKit **solo para transcripción en inglés**;
 no hay conversación, TTS ni evaluación adicional al colgar. Cada ronda se cierra
 explícitamente y se revisa por escrito mediante el mismo servicio de correcciones,
@@ -144,14 +189,19 @@ al cambio. No se reescriben ni inventan fechas de practicas pasadas.
 ## Practica B: bloque 1 con llamada y transcripcion automatica
 
 En Inicio o en la preparacion de la practica B abre **Gimnasia temporal**
-(`/drill`). Ejecuta el agente Python y el frontend, conecta la llamada y pulsa
-**Empezar a hablar**. El microfono solo se abre al comenzar cada captura.
+(`/drill`). Ejecuta el agente Python y el frontend, escribe tu rutina, elige el
+idioma de las explicaciones y pulsa **Empezar práctica**. Ese único botón
+conecta la llamada, espera al agente y abre el micrófono. El cronómetro arranca
+cuando la captura está lista, no mientras conecta; puedes cancelar la preparación.
 Cuatro pasos: presente 1 min, pasado 2 min, present perfect 2 min y segundo
 ejemplo 2 min. El texto aparece automaticamente por fragmentos, tras las pausas
 y el procesamiento de Whisper; no es dictado palabra por palabra. Las pausas y
-el fin del cronometro NO terminan el paso. Pulsa **Termine este paso** para
+el fin del cronometro NO terminan el paso. Pulsa **Terminar y ver correcciones** para
 cerrar el microfono, esperar la transcripcion final y solicitar revision escrita.
 No hay respuestas habladas ni correcciones durante la captura.
+Después de la revisión, **Continuar** inicia directamente el siguiente tiempo
+sin reconectar manualmente. La cuarta ronda pide otra rutina antes de empezar.
+Si falla la revisión se conserva el texto y se puede reintentar sin grabar de nuevo.
 
 Next.js necesita las claves privadas `DEEPSEEK_API_KEY`,
 `DEEPSEEK_LLM_MODEL=deepseek-flash` en `web/.env.local` o
@@ -256,6 +306,24 @@ tienen `session_id` y sala. No se registran prompts ni transcripciones en estos
 eventos; los SDK HTTP se limitan a WARNING para evitar volcados de peticiones.
 Las claves del entorno, Bearer y conexiones Postgres se ocultan como defensa
 adicional, no como garantia de anonimizar cualquier dato arbitrario.
+
+Para diagnosticar la demora, `llm.request.completed` separa `first_response_ms`
+(primer contenido del proveedor) de `first_delivery_ms` (primera entrega al
+flujo de voz/herramientas); ambos se miden desde el comienzo de la petición e
+incluyen una eventual espera local de cuota. `tts.audio.first_byte` mide la
+llegada del primer audio comprimido, no su reproducción. `voice.turn.metrics`
+registra las métricas disponibles de LiveKit por mensaje: transcripción,
+fin de turno, primer texto, primer audio y `e2e_latency_ms`. Esta última llega
+hasta la salida de audio del agente; no garantiza el instante de escucha en
+el navegador. No se registran frases ni respuestas en estos eventos.
+
+La voz se decodifica progresivamente con el decodificador de LiveKit, sin
+descargar primero todo el MP3. Se mantienen los 3 segundos de pausa para pensar.
+El texto solo se entrega inmediatamente cuando no hay herramientas habilitadas
+o están desactivadas con `tool_choice=none`. Si pueden llegar correcciones,
+la narración espera a confirmar la respuesta completa para no leerlas en voz;
+las llamadas de corrección ya recibidas se entregan sin esperar al final del
+stream. No hay peticiones adicionales al modelo para conseguirlo.
 
 Configuracion opcional en `.env`: `LOG_LEVEL=INFO`, `LOG_DIR=logs`,
 `LOG_MAX_BYTES=5242880`, `LOG_BACKUP_COUNT=5`. La rotacion conserva un archivo

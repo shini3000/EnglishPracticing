@@ -1,5 +1,31 @@
 # Historial de versiones
 
+## 1.3.0 - 2026-10-23
+
+### Idiomas y preferencias
+
+- Interfaz en español e inglés con next-intl y preferencias persistentes por alumno.
+- Preferencias accesibles desde el menú de cuenta de Clerk; inglés como objetivo fijo.
+- Traducciones de prácticas, progreso, controles y estados de carga.
+
+### Práctica y correcciones
+
+- Pantalla dividida entre llamada y correcciones, con búsqueda y respuestas ocultables.
+- Historial por día, hoy por defecto y correcciones recientes primero; fecha de Colombia.
+- Gimnasia temporal simplificada: rutina primero y captura lista antes del cronómetro.
+- Bloque 2 espera feedback antes de continuar manualmente; llegar a cero no corta la voz.
+- Aviso de dos tonos al terminar el cronómetro, sin llamadas a modelos.
+- Bloque 4 explica la preparación opcional y separa los controles.
+
+### Voz y actualización
+
+- Mejoras de entrega de audio y registro de latencia; las correcciones siguen por escrito.
+- Reiniciar web y agente juntos. Para una instalación existente sin preferencias,
+  aplicar `python scripts/apply_schema.py --profile-preferences` con la conexión
+  configurada. La migración es aditiva y no elimina progreso.
+- El pipeline valida y publica imágenes `1.3.0`; no despliega ni migra bases reales.
+- Las credenciales se suministran al ejecutar los contenedores, no en las imágenes.
+
 ## 1.2.0 - 2026-10-22
 
 ### Práctica B y navegación
