@@ -199,11 +199,11 @@ y el [historial de versiones](CHANGELOG.md) permanecen versionados junto al cód
 
 ## Docker y releases
 
-Versión del código: **1.3.0**. Las imágenes se publican en GitHub Container Registry:
+Versión del código: **1.3.1**. Las imágenes se publican en GitHub Container Registry:
 
 ```text
-ghcr.io/shini3000/english-practicing-agent:1.3.0
-ghcr.io/shini3000/english-practicing-web:1.3.0
+ghcr.io/shini3000/english-practicing-agent:1.3.1
+ghcr.io/shini3000/english-practicing-web:1.3.1
 ```
 
 El lanzamiento se decide manualmente. El pipeline valida y publica ambas imágenes;

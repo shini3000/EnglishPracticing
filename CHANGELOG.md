@@ -1,5 +1,29 @@
 # Historial de versiones
 
+## 1.3.1 - 2026-10-23
+
+### Proveedores independientes
+
+- Correcciones configurables con Groq, Gemini o DeepSeek, tanto en llamadas
+  como en los bloques 1 y 4 de la práctica B. DeepSeek deja de ser obligatorio.
+- Evaluación final compatible con Gemini, además de Groq y DeepSeek.
+- Selectores independientes para conversación, corrección y evaluación, con
+  modelo configurable por función y sin fallback automático entre proveedores.
+- Validación de respuestas JSON, citas observadas y límites de entrada; caché
+  separado por proveedor/modelo y revisión pendiente ante fallos, sin notas ficticias.
+
+### Documentación y actualización
+
+- README reorganizado con requisitos, servicios, inicio rápido y enlaces a la Wiki.
+- Guía técnica de proveedores y ejemplos de entorno ampliados.
+- Configura `CORRECTION_PROVIDER` en el agente y en la web para separar ambos
+  correctores. Si se omite, se conserva el comportamiento anterior: tarjetas de
+  llamada en el modelo de conversación y corrector web en DeepSeek.
+- Reinicia web y agente juntos; no requiere migración de base de datos ni
+  modificar las claves de servicios que sigas utilizando.
+- Pruebas aisladas de los tres proveedores, sin consumo de APIs reales.
+- El pipeline publica las imágenes `1.3.1`; no despliega servicios ni migra bases.
+
 ## 1.3.0 - 2026-10-23
 
 ### Idiomas y preferencias
