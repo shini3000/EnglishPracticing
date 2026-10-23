@@ -10,7 +10,10 @@ function compile(path, imports, globals = {}) {
   const exports = {};
   vm.runInNewContext(js, {
     exports,
-    require: (name) => imports[name] ?? i18nDependency(name),
+    require: (name) =>
+      name === '@/lib/correction-provider'
+        ? compile('lib/correction-provider.ts', {}, globals)
+        : (imports[name] ?? i18nDependency(name)),
     process: { env: { DEEPSEEK_API_KEY: 'test', GROQ_API_KEY: 'test' } },
     crypto: require('node:crypto').webcrypto,
     Buffer,
@@ -51,6 +54,8 @@ let calls = 0;
 let recent = 0;
 const writes = [];
 let cached = null;
+const correctionEnv = { DEEPSEEK_API_KEY: 'test', GROQ_API_KEY: 'test', GOOGLE_API_KEY: 'test' };
+let providerFailure = false;
 const route = compile(
   'app/api/time-shifting/route.ts',
   {
@@ -77,10 +82,24 @@ const route = compile(
     '@/lib/time-shifting': helpers,
   },
   {
+    process: { env: correctionEnv },
     fetch: async (url, options) => {
       calls++;
       if (url.includes('/audio/transcriptions')) return Response.json({ text: 'I work yesterday' });
-      sentPrompt = JSON.parse(options.body).messages[0].content;
+      const body = JSON.parse(options.body);
+      sentPrompt = body.messages?.[0].content || body.systemInstruction?.parts[0].text;
+      if (providerFailure) return Response.json({ secret: 'must-not-leak' }, { status: 429 });
+      if (url.includes('generativelanguage.googleapis.com'))
+        return Response.json({
+          candidates: [
+            {
+              finishReason: 'STOP',
+              content: {
+                parts: [{ text: JSON.stringify({ corrections, feedback: 'Revisa el pasado.' }) }],
+              },
+            },
+          ],
+        });
       return Response.json({
         choices: [
           { message: { content: JSON.stringify({ corrections, feedback: 'Revisa el pasado.' }) } },
@@ -169,6 +188,37 @@ function request(origin = 'http://localhost:3000', reference = '') {
   assert.equal((await route.POST(request())).status, 200);
   assert.match(sentPrompt, /Explain in English; examples\/corrections in English/);
   assert.equal(calls, 6, 'A different saved profile language must not reuse the previous review');
+  const keys = new Set();
+  for (const provider of ['groq', 'google', 'deepseek']) {
+    correctionEnv.CORRECTION_PROVIDER = provider;
+    correctionEnv.CORRECTION_MODEL = 'independent-correction-model';
+    const before = calls;
+    const reviewed = await (await route.POST(request())).json();
+    assert.equal(reviewed.provider, provider);
+    assert.equal(reviewed.model, 'independent-correction-model');
+    assert.equal(reviewed.corrections.length, 1);
+    assert.equal(calls, before + 1, 'changing provider must not reuse another provider review');
+    keys.add(reviewed.cache_key);
+    assert.equal((await (await route.POST(request())).json()).reused, true);
+    assert.equal(calls, before + 1);
+  }
+  assert.equal(keys.size, 3);
+  providerFailure = true;
+  const beforeFailure = calls;
+  const failed = await route.POST(request('http://localhost:3000', 'different context'));
+  assert.equal(failed.status, 502);
+  assert(!JSON.stringify(await failed.json()).includes('must-not-leak'));
+  assert.equal(calls, beforeFailure + 1, 'no automatic retry or fallback');
+  providerFailure = false;
+  assert.equal(
+    (await route.POST(request('http://localhost:3000', 'different context'))).status,
+    200
+  );
+  correctionEnv.CORRECTION_PROVIDER = 'google';
+  delete correctionEnv.GOOGLE_API_KEY;
+  const beforeMissing = calls;
+  assert.equal((await route.POST(request())).status, 503);
+  assert.equal(calls, beforeMissing, 'missing selected key must not use available DeepSeek key');
   console.log(
     'PASS: 7-minute schedule, quote validation, authentication, origin, rate limit and saved text-only review. No real API calls.'
   );

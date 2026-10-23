@@ -20,6 +20,7 @@
     "practice": "Las prácticas nuevas usarán este idioma. Las respuestas y correcciones anteriores conservan su idioma original."
   },
   "ui": {
+    "correctionConfigurationError": "Revisa CORRECTION_PROVIDER, el modelo, los límites y la clave del proveedor elegido en el entorno privado de la web.",
     "correctionsToday": "Hoy",
     "correctionsByDay": "Correcciones por día",
     "correctionsOlderDay": "Día anterior",
@@ -376,7 +377,7 @@
     "mf2c963732b73": "Conectando y preparando la transcripción. El cronómetro empezará cuando el micrófono esté listo.",
     "mbb9dbb406dcb": "Cancelar",
     "m45d50dfd435f": "Cerrar conexión",
-    "m5bb586bd6ec7": "Solo transcripción en inglés, sin voz del tutor. La llamada usa LiveKit y Groq; DeepSeek revisa únicamente al terminar cada paso.",
+    "m5bb586bd6ec7": "Solo transcripción en inglés, sin voz del tutor. La llamada usa LiveKit y Groq; el proveedor de correcciones configurado revisa únicamente al terminar cada paso.",
     "m6c19de4f95de": "Historial no disponible. No se han borrado tus ejercicios.",
     "mb1a677d4fb79": "Historial por día · Colombia",
     "m08a5ac1876ed": "días distintos en el historial mostrado ·",
