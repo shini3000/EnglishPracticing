@@ -6,18 +6,17 @@ neural voices under the hood via the same service that powers Edge browser's
 Read Aloud feature.
 
 Pipeline:
-  text -> edge_tts.Communicate -> MP3 bytes -> PyAV decode/resample -> PCM frames -> LiveKit
+  text -> edge_tts.Communicate -> MP3 chunks -> LiveKit's incremental decoder -> PCM
 """
 
-import io
 import logging
+import time
 from typing import Optional
 
 import uuid
 
-import av
 import edge_tts
-from livekit.agents import tts
+from livekit.agents import tts, APIConnectionError
 from livekit.agents.types import APIConnectOptions
 
 logger = logging.getLogger(__name__)
@@ -25,7 +24,6 @@ logger = logging.getLogger(__name__)
 # Edge TTS outputs 24 kHz audio; we keep the same sample rate to avoid quality loss.
 _SAMPLE_RATE = 24_000
 _NUM_CHANNELS = 1
-_PCM_FORMAT = "s16"  # signed 16-bit little-endian — what LiveKit expects
 
 
 class EdgeTTS(tts.TTS):
@@ -38,6 +36,14 @@ class EdgeTTS(tts.TTS):
             num_channels=_NUM_CHANNELS,
         )
         self._voice = voice
+
+    @property
+    def model(self) -> str:
+        return self._voice
+
+    @property
+    def provider(self) -> str:
+        return "edge-tts"
 
     def synthesize(
         self,
@@ -68,59 +74,39 @@ class EdgeTTSStream(tts.ChunkedStream):
         self._voice = voice
 
     async def _run(self, output_emitter) -> None:
+        request_id = str(uuid.uuid4())
+        started = time.monotonic()
         output_emitter.initialize(
-            request_id=str(uuid.uuid4()),
+            request_id=request_id,
             sample_rate=self._tts.sample_rate,
             num_channels=_NUM_CHANNELS,
-            mime_type="audio/pcm",
+            mime_type="audio/mpeg",
+            frame_size_ms=40,
         )
-
-        mp3_buf = bytearray()
-
+        received_audio = False
         try:
             communicate = edge_tts.Communicate(self._input_text, self._voice)
             async for chunk in communicate.stream():
-                if chunk["type"] == "audio":
-                    mp3_buf.extend(chunk["data"])
-        except Exception:
-            logger.exception("edge-tts synthesis failed for text: %.80s", self._input_text)
-            return
-
-        if not mp3_buf:
-            logger.warning("edge-tts returned empty audio for text: %.80s", self._input_text)
-            return
-
-        for pcm_bytes in _decode_mp3_to_pcm(bytes(mp3_buf), self._tts.sample_rate):
-            output_emitter.push(pcm_bytes)
-
-
-def _decode_mp3_to_pcm(mp3_data: bytes, target_sample_rate: int) -> list[bytes]:
-    """Decode MP3 bytes to a list of raw PCM s16 mono byte chunks."""
-    results: list[bytes] = []
-
-    with io.BytesIO(mp3_data) as buf:
-        container = av.open(buf, format="mp3")
-        resampler = av.AudioResampler(
-            format=_PCM_FORMAT,
-            layout="mono",
-            rate=target_sample_rate,
-        )
-        try:
-            for frame in container.decode(audio=0):
-                for resampled in resampler.resample(frame):
-                    results.append(_pcm_samples(resampled))
-            # Flush any remaining samples held in the resampler
-            for resampled in resampler.resample(None):
-                results.append(_pcm_samples(resampled))
-        finally:
-            container.close()
-
-    return results
-
-
-def _pcm_samples(frame: av.AudioFrame) -> bytes:
-    """Return packed s16 mono samples without PyAV's allocation padding."""
-    # Resampled planes can be larger than their audio payload for alignment.
-    # Sending the padding as PCM inserts non-audio samples between frames.
-    sample_bytes = frame.samples * _NUM_CHANNELS * 2
-    return bytes(frame.planes[0])[:sample_bytes]
+                if chunk["type"] == "audio" and chunk["data"]:
+                    if not received_audio:
+                        logger.info("tts.audio.first_byte", extra={
+                            "request_id": request_id, "provider": "edge-tts",
+                            "model": self._voice,
+                            "duration_ms": round((time.monotonic() - started) * 1000),
+                        })
+                    received_audio = True
+                    # AudioEmitter decodes in its worker thread and emits packed
+                    # PCM frames progressively; never decode a partial MP3 as a
+                    # separate file or send PyAV allocation padding as samples.
+                    output_emitter.push(chunk["data"])
+        except Exception as exc:
+            logger.warning("tts.audio.failed", extra={
+                "request_id": request_id, "provider": "edge-tts",
+                "error_type": type(exc).__name__, "partial_audio": received_audio,
+                "duration_ms": round((time.monotonic() - started) * 1000),
+            })
+            # Once audio has been submitted, a retry could repeat spoken words.
+            # Do not put the provider exception body or learner text into logs.
+            raise APIConnectionError("Edge TTS transport failed", retryable=not received_audio) from None
+        if not received_audio:
+            raise APIConnectionError("Edge TTS returned no audio")

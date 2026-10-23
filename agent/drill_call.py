@@ -11,6 +11,7 @@ import time
 from livekit import rtc
 from livekit.agents import Agent, AgentSession, TurnHandlingOptions
 from livekit.plugins import groq
+from utils.latency import attach_latency_logging
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +104,7 @@ async def run_drill_call(ctx, participant, settings, vad):
         turn_handling=TurnHandlingOptions(turn_detection="manual"),
     )
     capture = DrillCapture(session, participant.identity)
+    attach_latency_logging(session)
     session.on("user_input_transcribed", capture.transcribed)
 
     @session.on("error")

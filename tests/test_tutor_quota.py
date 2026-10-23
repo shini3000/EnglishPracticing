@@ -93,6 +93,18 @@ class TutorQuotaTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.practice.status()["running"])
         self.assertFalse(self.tutor._quota_paused)
 
+    async def test_monologue_correction_completes_feedback_without_another_model_request(self):
+        self.practice.mode = "fluency"
+        self.practice.index = 4
+        self.context.items.append(llm.FunctionCallOutput(
+            name="record_learning", call_id="card", output='{"delivery":"text_only"}', is_error=False))
+        provider = Mock()
+        output = await self.generate(provider)
+        provider.chat.assert_not_called()
+        self.assertTrue(self.practice.feedback_ready)
+        self.assertEqual(self.practice.index, 4)
+        self.assertIn("pantalla", output[0])
+
     async def test_daily_limit_does_not_request_model_or_run_clock(self):
         await self.practice.practice_control("start")
         self.tutor.quota.reserve.return_value = (None, 80000, "daily")
@@ -119,6 +131,66 @@ class TutorQuotaTests(unittest.IsolatedAsyncioTestCase):
         provider.chat.return_value = Stream([self.answer, APIStatusError("limited", status_code=429)])
         output = await self.generate(provider)
         self.assertEqual(output, [self.answer])
+        self.assertEqual(provider.chat.call_count, 1)
+
+    async def test_tool_free_turn_is_forwarded_before_provider_finishes(self):
+        advanced = []
+
+        class IncrementalStream(Stream):
+            async def run(inner):
+                yield self.answer
+                advanced.append(True)
+
+        provider = Mock()
+        provider.chat.return_value = IncrementalStream([])
+        with patch.object(EnglishTutor, "session", new_callable=PropertyMock,
+                          return_value=SimpleNamespace(llm=provider)):
+            response = self.tutor.llm_node(self.context, [], self.settings)
+            try:
+                self.assertEqual(await anext(response), self.answer)
+                self.assertEqual(advanced, [])
+                self.assertEqual([c async for c in response], [])
+                self.assertEqual(advanced, [True])
+            finally:
+                await response.aclose()
+
+    async def test_late_written_card_reaches_tools_without_spoken_correction(self):
+        advanced = []
+        tool = llm.ChatChunk(id="card", delta=llm.ChoiceDelta(role="assistant", tool_calls=[
+            llm.FunctionToolCall(name="record_learning", call_id="card", arguments='{"kind":"correction"}')]))
+
+        class IncrementalStream(Stream):
+            async def run(inner):
+                yield self.answer
+                yield tool
+                advanced.append(True)
+
+        provider = Mock()
+        provider.chat.return_value = IncrementalStream([])
+        with patch.object(EnglishTutor, "session", new_callable=PropertyMock,
+                          return_value=SimpleNamespace(llm=provider)):
+            response = self.tutor.llm_node(self.context, [self.practice.record_learning], self.settings)
+            try:
+                result = await anext(response)
+                # Usage on the suppressed narration is retained, never spoken.
+                self.assertIsNone(result.delta.content)
+                result = await anext(response)
+                self.assertEqual(result.delta.tool_calls[0].call_id, "card")
+                self.assertEqual(advanced, [])
+                self.assertEqual([c async for c in response], [])
+                self.assertEqual(advanced, [True])
+            finally:
+                await response.aclose()
+
+    async def test_broken_guarded_turn_does_not_release_unverified_narration(self):
+        provider = Mock()
+        provider.chat.return_value = Stream([self.answer, APIStatusError("broken", status_code=500)])
+        with patch.object(EnglishTutor, "session", new_callable=PropertyMock,
+                          return_value=SimpleNamespace(llm=provider)):
+            result = [chunk async for chunk in self.tutor.llm_node(
+                self.context, [self.practice.record_learning], self.settings)]
+        self.assertTrue(all(not c.delta.content for c in result if not isinstance(c, str) and c.delta))
+        self.assertEqual(len([c for c in result if isinstance(c, str)]), 1)
         self.assertEqual(provider.chat.call_count, 1)
 
     def test_older_due_vocabulary_survives_many_new_entries(self):

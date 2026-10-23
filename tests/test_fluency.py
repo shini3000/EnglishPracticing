@@ -76,6 +76,9 @@ class FluencyTests(unittest.IsolatedAsyncioTestCase):
         p.index = 4
         await p.practice_control("start", "My weekend")
         await p.practice_control("next", "Learner finished the monologue")
+        self.assertEqual(p.index, 4, "The model must not skip monologue feedback")
+        await p.record_learning("feedback", json.dumps({"summary": "Buena respuesta; repasa tus anclajes temporales."}))
+        await p.manual_control(json.dumps({"action": "next", "step_index": 4, "request_id": "after-feedback", "evidence": "Learner read the feedback and chose to continue"}).encode())
         self.assertEqual(p.index, 5)
         self.assertFalse(p.started)
         self.assertIsNone(p.since)
@@ -84,3 +87,24 @@ class FluencyTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("/practice-b/input", result)
             self.assertEqual(p.index, 5)
             self.assertIsNone(p.since)
+
+    async def test_expired_monologue_stays_open_until_feedback_and_learner_choice(self):
+        p = self.practice("fluency")
+        p.index = 4
+        p.started = True
+        p.elapsed = 601
+        self.assertEqual(p.status()["remaining_seconds"], 0)
+        self.assertFalse(p.status()["feedback_ready"])
+        self.assertIn("Do not advance", await p.practice_control("next", "Clock expired"))
+        await p.manual_control(json.dumps({"action": "next", "step_index": 4, "request_id": "pending", "evidence": "Done"}).encode())
+        self.assertEqual(p.index, 4)
+        await p.record_learning("feedback", '{"summary":""}')
+        self.assertFalse(p.feedback_ready)
+        await p.record_learning("feedback", json.dumps({"summary": "Buen desarrollo; reutiliza tus anclajes en otro tema."}))
+        self.assertTrue(p.status()["feedback_ready"])
+        self.assertEqual(p.index, 4)
+        await p.practice_control("next", "Feedback complete")
+        self.assertEqual(p.index, 4, "Even after feedback the model cannot force navigation")
+        await p.manual_control(json.dumps({"action": "next", "step_index": 4, "request_id": "ready", "evidence": "Read feedback and continue"}).encode())
+        self.assertEqual(p.index, 5)
+        self.assertFalse(p.feedback_ready)

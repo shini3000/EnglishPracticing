@@ -48,6 +48,8 @@ class Practice:
         self.saved = 0
         self.quota_status: dict = {"state": "ready"}
         self.focus = ""
+        self.feedback_ready = False
+        self.feedback_summary = ""
         self.latest_user_text = ""
         self._flush_lock = asyncio.Lock()
         self._modeled_examples: set[str] = set()
@@ -84,6 +86,8 @@ class Practice:
             "running": self.since is not None, "started": self.started,
             "finished": self.finished, "completed": list(self.completed),
             "quota": self.quota_status,
+            "feedback_ready": self.feedback_ready,
+            "feedback_summary": self.feedback_summary,
         }
 
     async def publish(self) -> None:
@@ -129,6 +133,8 @@ class Practice:
                 self.elapsed, self.since = 0.0, None
                 self.started = False
                 self.focus = ""
+                self.feedback_ready = False
+                self.feedback_summary = ""
                 await self.publish()
                 return
             if action in {"start", "next"} and not evidence.strip():
@@ -136,7 +142,7 @@ class Practice:
             if action == "resume" and self.quota_status.get("state") in {"daily_limit", "waiting", "limited"}:
                 return
             self._manual_ids.add(request_id)
-            await self.practice_control(action, evidence)
+            await self._practice_control(action, evidence, learner_requested=True)
             logger.info("practice.manual_control", extra={"action": action, "step_index": self.index})
 
     def model_status(self) -> str:
@@ -247,14 +253,24 @@ class Practice:
     @function_tool
     async def practice_control(self, action: str, evidence: str = "") -> str:
         """Timer: start/status/pause/resume/next/finish. Start evidence=topic and goal; next evidence=completed task."""
+        return await self._practice_control(action, evidence)
+
+    async def _practice_control(self, action: str, evidence: str = "", *, learner_requested: bool = False) -> str:
         if action not in {"start", "status", "pause", "resume", "next", "finish"}:
             return "Invalid action."
         if self.finished:
             return self.model_status()
+        if self.mode == "fluency" and self.index == 4 and action == "next":
+            if not learner_requested:
+                return "Do not advance block 2 yourself. Finish written feedback first; the learner chooses when to continue. Record feedback with a nonempty summary after the correction cards."
+            if not self.feedback_ready:
+                return "Written monologue feedback is still pending. Stay in block 2."
         if self.mode == "fluency" and 5 <= self.index <= 14 and action in {"start", "resume", "next"}:
             path = "/practice-b/agility" if self.index >= 9 else "/practice-b/input"
             return f"This block runs outside the tutor conversation. Open {path}."
         if action == "start" and not self.started:
+            self.feedback_ready = False
+            self.feedback_summary = ""
             self.started, self.since = True, time.monotonic()
             if evidence.strip():
                 self.focus = evidence[:600]
@@ -272,6 +288,8 @@ class Practice:
                 await self.append("step", {"step": record["step"], "seconds": record["elapsed_seconds"], "evidence": evidence})
                 if self.index + 1 < len(self.steps):
                     self.index += 1
+                    self.feedback_ready = False
+                    self.feedback_summary = ""
                     self.elapsed, self.since = 0, time.monotonic()
                     if self.mode == "fluency" and self.index == 5:
                         self.since = None
@@ -304,6 +322,11 @@ class Practice:
             return "Provide valid JSON."
         if not isinstance(data, dict):
             return "Provide a JSON object."
+        if kind == "feedback" and self.mode == "fluency" and self.index == 4:
+            if not isinstance(data.get("summary"), str) or not data["summary"].strip():
+                return "Feedback needs a nonempty summary. Explain the observed response; do not invent errors."
+            data["summary"] = data["summary"].strip()[:2000]
+        data["step_index"] = self.index
         if kind == "correction":
             required = {"learner_text", "corrected_text", "pattern", "explanation", "recovery_task"}
             if any(not isinstance(data.get(key), str) or not data[key].strip() for key in required):
@@ -371,6 +394,10 @@ class Practice:
                 json.dumps({"entry": entry, "saved": saved, "queued": self.local_pending}).encode(),
                 reliable=True, topic="practice-journal",
             )
+            if kind == "feedback" and self.mode == "fluency" and self.index == 4:
+                self.feedback_summary = data["summary"]
+                self.feedback_ready = True
+                await self.publish()
         except Exception:
             logger.warning("Could not publish learning entry", exc_info=True)
         return json.dumps({"saved": saved, "kind": kind, "element": data.get("element"),

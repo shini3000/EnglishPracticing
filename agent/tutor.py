@@ -16,13 +16,14 @@ from agent.practice import Practice
 from agent.models import model_policy, create_llm
 from agent.quota import QuotaLedger, compact_context, request_tokens, retry_delay, quota_message
 from agent.text_filters import strip_tool_call_leakage
-from agent.text_feedback import correction_was_shown, audio_safe_chunks, recovery_invitation
+from agent.text_feedback import correction_was_shown, AudioDeliveryGate, recovery_invitation
 from config.settings import settings
 from plugins.edge_tts import EdgeTTS
 from prompts.tutor import LANGUAGES, tutor_prompt
 from tools import search_web
 from tools.search import find_listening_video
 from utils.logger import configure_logging, bind_log_context, reset_log_context
+from utils.latency import attach_latency_logging
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +152,11 @@ class EnglishTutor(Agent):
         # The card is already visible. No second model request is needed to read
         # it back; give a short recovery invitation instead.
         if correction_was_shown(chat_ctx):
+            if self.practice.mode == "fluency" and self.practice.index == 4 and not self.practice.feedback_ready:
+                await self.practice.record_learning("feedback", json.dumps({"summary":
+                    "Las correcciones de tu respuesta están en pantalla. Revisa la estructura y reformula sin leer; cuando termines, puedes continuar al bloque siguiente."
+                    if self.practice.language == "es" else
+                    "Your response corrections are on screen. Review the structure and rephrase without reading; when you are ready, you can continue to the next block."}))
             yield recovery_invitation(self.practice.language)
             return
         policy = tutor_prompt(self._name, self.practice.language,
@@ -178,6 +184,8 @@ class EnglishTutor(Agent):
         log_fields = {"request_id": uuid.uuid4().hex, "provider": self.model_policy.provider,
                       "model": self.model_policy.model, "estimated_tokens": cost}
         logger.info("llm.request.started", extra=log_fields)
+        tool_choice = model_settings.tool_choice if model_settings else NOT_GIVEN
+        guarded = bool(tools) and tool_choice != "none"
         for attempt in range(2):
             wait_started = time.monotonic()
             while True:
@@ -205,23 +213,33 @@ class EnglishTutor(Agent):
                 self._quota_paused = False
             await self._quota_notice("ready")
             emitted = False
+            delivered_response = False
             usage = None
-            pending = []
+            delivery = AudioDeliveryGate(guarded=guarded)
+            first_response_ms = None
+            first_delivery_ms = None
             try:
                 # Both SDK and LiveKit retries are disabled: this is the only retry owner.
                 async with self.session.llm.chat(
                     chat_ctx=context, tools=tools,
-                    tool_choice=model_settings.tool_choice if model_settings else NOT_GIVEN,
+                    tool_choice=tool_choice,
                     conn_options=APIConnectOptions(max_retry=0, timeout=30),
                 ) as stream:
                     async for chunk in stream:
                         if chunk.usage:
                             usage = chunk.usage
                         emitted = emitted or chunk.has_response()
-                        pending.append(chunk)
-                # Buffer one short completion so text accompanying a correction
-                # tool call cannot reach TTS before we know it's a written card.
-                for chunk in audio_safe_chunks(pending):
+                        if first_response_ms is None and chunk.has_response():
+                            first_response_ms = round((time.monotonic() - request_started) * 1000)
+                        for safe_chunk in delivery.push(chunk):
+                            delivered_response = delivered_response or safe_chunk.has_response()
+                            if first_delivery_ms is None and safe_chunk.has_response():
+                                first_delivery_ms = round((time.monotonic() - request_started) * 1000)
+                            yield safe_chunk
+                for chunk in delivery.finish():
+                    delivered_response = delivered_response or chunk.has_response()
+                    if first_delivery_ms is None and chunk.has_response():
+                        first_delivery_ms = round((time.monotonic() - request_started) * 1000)
                     yield chunk
                 if usage:
                     actual = max(0, usage.prompt_tokens - usage.prompt_cached_tokens) + usage.completion_tokens
@@ -231,6 +249,9 @@ class EnglishTutor(Agent):
                     await self.practice.publish()
                 logger.info("llm.request.completed", extra={**log_fields,
                             "duration_ms": round((time.monotonic() - request_started) * 1000),
+                            "first_response_ms": first_response_ms,
+                            "first_delivery_ms": first_delivery_ms,
+                            "narration_guarded": guarded,
                             "input_tokens": usage.prompt_tokens if usage else None,
                             "output_tokens": usage.completion_tokens if usage else None})
                 return
@@ -252,9 +273,10 @@ class EnglishTutor(Agent):
                     await self.practice.practice_control("pause")
                     self._quota_paused = True
                 logger.warning("%s request failed (status %s)", self.model_policy.provider, exc.status_code)
-                for chunk in audio_safe_chunks(pending):
+                for chunk in delivery.finish(complete=False):
+                    delivered_response = delivered_response or chunk.has_response()
                     yield chunk
-                if not emitted:
+                if not delivered_response:
                     yield quota_message(self.practice.language, "error")
                 return
             except APIError as exc:
@@ -262,9 +284,10 @@ class EnglishTutor(Agent):
                     "error_type": type(exc).__name__,
                     "duration_ms": round((time.monotonic() - request_started) * 1000)})
                 await self._quota_notice("limited", reason="connection")
-                for chunk in audio_safe_chunks(pending):
+                for chunk in delivery.finish(complete=False):
+                    delivered_response = delivered_response or chunk.has_response()
                     yield chunk
-                if not emitted:
+                if not delivered_response:
                     yield quota_message(self.practice.language, "error")
                 return
 
@@ -473,6 +496,7 @@ async def _run_session(ctx: JobContext) -> None:
         # the structured tool_calls field. See agent/text_filters.py.
         tts_text_transforms=[strip_tool_call_leakage],
     )
+    attach_latency_logging(session)
 
     collector: progress.TranscriptCollector | None = None
 

@@ -15,19 +15,22 @@ def correction_was_shown(context) -> bool:
     return False
 
 
-def audio_safe_chunks(chunks):
-    written = False
-    for chunk in chunks:
-        if not chunk.delta:
-            continue
-        for call in chunk.delta.tool_calls:
-            if call.name == "record_learning":
-                try:
-                    written |= json.loads(call.arguments).get("kind") == "correction"
-                except (ValueError, AttributeError):
-                    pass
-    if not written:
-        return chunks
+def _contains_written_correction(chunk):
+    if not chunk.delta:
+        return False
+    for call in chunk.delta.tool_calls:
+        if call.name == "record_learning":
+            try:
+                arguments = json.loads(call.arguments)
+                if not isinstance(arguments, dict) or arguments.get("kind") == "correction":
+                    return True
+            except (ValueError, TypeError):
+                # Do not narrate an ambiguous/incomplete learning card.
+                return True
+    return False
+
+
+def _without_narration(chunks):
     filtered = []
     for chunk in chunks:
         copy = chunk.model_copy(deep=True)
@@ -36,6 +39,40 @@ def audio_safe_chunks(chunks):
         if copy.usage or (copy.delta and copy.delta.tool_calls):
             filtered.append(copy)
     return filtered
+
+
+def audio_safe_chunks(chunks):
+    return _without_narration(chunks) if any(_contains_written_correction(c) for c in chunks) else chunks
+
+
+class AudioDeliveryGate:
+    """Stream safe turns; quarantine narration when a later tool could be a card.
+
+    Completed correction calls can be handed to LiveKit immediately (without
+    their narration). Nothing is re-emitted on completion or a failed stream.
+    """
+    def __init__(self, *, guarded: bool):
+        self.guarded = guarded
+        self.written = False
+        self.pending = []
+
+    def push(self, chunk):
+        if not self.guarded:
+            return [chunk]
+        self.written = self.written or _contains_written_correction(chunk)
+        self.pending.append(chunk)
+        if self.written:
+            chunks, self.pending = self.pending, []
+            return _without_narration(chunks)
+        return []
+
+    def finish(self, *, complete=True):
+        chunks, self.pending = self.pending, []
+        # On a transport error we cannot know whether a correction would have
+        # followed the buffered narration. Keep that narration out of audio.
+        if self.written or (self.guarded and not complete):
+            return _without_narration(chunks)
+        return chunks
 
 
 def recovery_invitation(language: str) -> str:
