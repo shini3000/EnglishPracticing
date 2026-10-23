@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ParameterCard } from '@/components/progress/parameter-card';
 import { SessionExplorer } from '@/components/progress/session-explorer';
@@ -8,6 +9,7 @@ import { TrajectoryReport } from '@/components/progress/trajectory-report';
 import { StrengthCard, WeaknessCard } from '@/components/progress/weakness-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { translateStatic } from '@/i18n/static-text';
 import { PARAMETER_GROUPS } from '@/lib/progress/parameters';
 import { CEFR_LEVELS, type ParameterSummary, type ProgressSummary } from '@/lib/progress/types';
 
@@ -38,16 +40,15 @@ const LEVEL_BLURB: Record<string, string> = {
 };
 
 function LevelCard({ summary }: { summary: ProgressSummary }) {
+  const t = useTranslations('ui');
+
   const { level } = summary;
 
   if (!level.band) {
     return (
       <Card className="p-6">
-        <h2 className="text-card-foreground text-sm font-semibold">Your level</h2>
-        <p className="text-muted-foreground mt-2 text-sm leading-6">
-          Not enough to go on yet. Have a proper conversation with Ahmad — a few minutes of real
-          talking — and an estimate will appear here.
-        </p>
+        <h2 className="text-card-foreground text-sm font-semibold">{t('m5f0a4073704d')}</h2>
+        <p className="text-muted-foreground mt-2 text-sm leading-6">{t('me03d818a6154')}</p>
       </Card>
     );
   }
@@ -56,13 +57,15 @@ function LevelCard({ summary }: { summary: ProgressSummary }) {
 
   return (
     <Card className="p-6">
-      <h2 className="text-card-foreground text-sm font-semibold">Your level</h2>
+      <h2 className="text-card-foreground text-sm font-semibold">{t('m5f0a4073704d')}</h2>
 
       <div className="mt-3 flex items-baseline gap-3">
         <span className="text-card-foreground text-5xl leading-none font-semibold tracking-tight">
           {level.band}
         </span>
-        <span className="text-muted-foreground text-sm">{LEVEL_BLURB[level.band]}</span>
+        <span className="text-muted-foreground text-sm">
+          {translateStatic(t, LEVEL_BLURB[level.band])}
+        </span>
       </div>
 
       {/* The CEFR scale, with the learner's position marked. A bare "B1" means nothing to
@@ -95,17 +98,9 @@ function LevelCard({ summary }: { summary: ProgressSummary }) {
           saying so is what makes the number worth anything at all. */}
       <p className="text-muted-foreground mt-4 text-xs leading-5">
         {level.isProvisional ? (
-          <>
-            <span className="text-card-foreground font-medium">First impression only</span> — based
-            on {level.gradedSessions} graded session
-            {level.gradedSessions === 1 ? '' : 's'}. This will move around until you&apos;ve
-            practiced a few more times.
-          </>
+          <>{t('gradedEvidence', { count: level.gradedSessions })}</>
         ) : (
-          <>
-            Based on {level.gradedSessions} graded sessions, weighted towards your recent ones.
-            Confidence: {percent}%.
-          </>
+          <>{t('confidenceEvidence', { count: level.gradedSessions, percent })}</>
         )}
       </p>
     </Card>
@@ -113,17 +108,14 @@ function LevelCard({ summary }: { summary: ProgressSummary }) {
 }
 
 function EmptyState() {
+  const t = useTranslations('ui');
+
   return (
     <div className="mx-auto max-w-md py-20 text-center">
-      <h1 className="text-foreground text-xl font-semibold">
-        No completed conversation reports yet
-      </h1>
-      <p className="text-muted-foreground mt-3 text-sm leading-6">
-        Have your first conversation with Ahmad and your progress will show up here — your level,
-        the mistakes worth fixing, and how both change over time.
-      </p>
+      <h1 className="text-foreground text-xl font-semibold">{t('mfd0e67f002f7')}</h1>
+      <p className="text-muted-foreground mt-3 text-sm leading-6">{t('m2f4902fc0926')}</p>
       <Button asChild size="lg" className="mt-6 rounded-full">
-        <Link href="/call">Start talking</Link>
+        <Link href="/call">{t('ma5e3cc5d34c6')}</Link>
       </Button>
     </div>
   );
@@ -147,14 +139,18 @@ function ParameterGroupSection({
   blurb: string;
   parameters: ParameterSummary[];
 }) {
+  const t = useTranslations('ui');
+
   if (parameters.length === 0) {
     return null;
   }
 
   return (
     <section className="mb-8">
-      <h3 className="text-foreground mb-1 text-base font-semibold">{title}</h3>
-      <p className="text-muted-foreground mb-4 max-w-prose text-sm leading-6">{blurb}</p>
+      <h3 className="text-foreground mb-1 text-base font-semibold">{translateStatic(t, title)}</h3>
+      <p className="text-muted-foreground mb-4 max-w-prose text-sm leading-6">
+        {translateStatic(t, blurb)}
+      </p>
       <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {parameters.map((parameter) => (
           <ParameterCard key={parameter.key} parameter={parameter} />
@@ -165,6 +161,8 @@ function ParameterGroupSection({
 }
 
 export function Dashboard({ summary }: { summary: ProgressSummary }) {
+  const t = useTranslations('ui');
+
   const { totals, parameters, strengths, weaknesses, recentCorrections, dataQuality } = summary;
 
   if (totals.sessions === 0) {
@@ -175,7 +173,9 @@ export function Dashboard({ summary }: { summary: ProgressSummary }) {
     <div>
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-foreground text-3xl font-semibold tracking-tight">Your progress</h1>
+          <h1 className="text-foreground text-3xl font-semibold tracking-tight">
+            {t('m433a720b7e1d')}
+          </h1>
           {summary.latestSummary && (
             <p className="text-muted-foreground mt-2 max-w-prose text-sm leading-6">
               {summary.latestSummary}
@@ -183,26 +183,26 @@ export function Dashboard({ summary }: { summary: ProgressSummary }) {
           )}
         </div>
         <Button asChild className="rounded-full">
-          <Link href="/call">Practice again</Link>
+          <Link href="/call">{t('m5154621cce5c')}</Link>
         </Button>
       </header>
 
       <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatTile label="Sessions" value={String(totals.sessions)} />
+        <StatTile label={t('m6fa3cbf451b2')} value={String(totals.sessions)} />
         <StatTile
-          label="Practice time"
-          value={`${totals.practiceMinutes} min`}
-          hint={`${totals.wordsSpoken.toLocaleString()} words spoken`}
+          label={t('m0280f4c411e9')}
+          value={t('m4a1b30338cd5', { v0: totals.practiceMinutes })}
+          hint={t('m7c3a0d52e715', { v0: totals.wordsSpoken.toLocaleString() })}
         />
         <StatTile
-          label="Words used"
+          label={t('m7245a9e5643f')}
           value={totals.vocabularySize.toLocaleString()}
-          hint="words produced, not proof of mastery"
+          hint={t('m7b60c1eb00fa')}
         />
         <StatTile
-          label="Streak"
-          value={`${totals.currentStreakDays} day${totals.currentStreakDays === 1 ? '' : 's'}`}
-          hint="consecutive days practiced"
+          label={t('m41db983fdf4e')}
+          value={t('dayCount', { count: totals.currentStreakDays })}
+          hint={t('ma587b4eb2b9e')}
         />
       </section>
 
@@ -212,11 +212,8 @@ export function Dashboard({ summary }: { summary: ProgressSummary }) {
 
       {weaknesses.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-foreground mb-1 text-lg font-semibold">Work on this next</h2>
-          <p className="text-muted-foreground mb-4 text-sm leading-6">
-            Ordered by what matters most. Anything you&apos;d fixed and have started doing again
-            comes first.
-          </p>
+          <h2 className="text-foreground mb-1 text-lg font-semibold">{t('meb888732f44f')}</h2>
+          <p className="text-muted-foreground mb-4 text-sm leading-6">{t('mc9d58083a4a9')}</p>
           <ul className="grid gap-3 md:grid-cols-2">
             {weaknesses.slice(0, 6).map((weakness) => (
               <WeaknessCard key={`${weakness.category}-${weakness.label}`} weakness={weakness} />
@@ -227,7 +224,7 @@ export function Dashboard({ summary }: { summary: ProgressSummary }) {
 
       {strengths.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-foreground mb-4 text-lg font-semibold">What&apos;s going well</h2>
+          <h2 className="text-foreground mb-4 text-lg font-semibold">{t('mc24e37b6ae75')}</h2>
           <ul className="grid gap-3 md:grid-cols-2">
             {strengths.slice(0, 4).map((strength) => (
               <StrengthCard key={strength.label} strength={strength} />
@@ -237,14 +234,13 @@ export function Dashboard({ summary }: { summary: ProgressSummary }) {
       )}
 
       <section className="mb-8">
-        <h2 className="text-foreground mb-1 text-lg font-semibold">Everything you can track</h2>
+        <h2 className="text-foreground mb-1 text-lg font-semibold">{t('md46fecb126b8')}</h2>
         <p className="text-muted-foreground mb-6 max-w-prose text-sm leading-6">
-          Each card compares you against your own earlier sessions — never against other learners,
-          and never against a target. Two numbers, because they answer different questions:{' '}
-          <span className="text-foreground font-medium">since you started</span> is whether you are
-          better than when you began, and{' '}
-          <span className="text-foreground font-medium">in your recent sessions</span> is whether
-          you are still moving or have settled where you are.
+          {t('mbe3f91e048fb')}{' '}
+          <span className="text-foreground font-medium">{t('maec954e12878')}</span>{' '}
+          {t('m1844a67ea2c0')}{' '}
+          <span className="text-foreground font-medium">{t('m2b0fa6cd1bf5')}</span>{' '}
+          {t('mab81d351d33a')}
         </p>
 
         {PARAMETER_GROUPS.map((group) => (
@@ -263,7 +259,7 @@ export function Dashboard({ summary }: { summary: ProgressSummary }) {
 
       {recentCorrections.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-foreground mb-4 text-lg font-semibold">Recent corrections</h2>
+          <h2 className="text-foreground mb-4 text-lg font-semibold">{t('m3b698b096f05')}</h2>
           <ul className="divide-border bg-card border-border divide-y rounded-xl border">
             {recentCorrections.map((correction, index) => (
               <li key={index} className="p-4">
@@ -295,16 +291,13 @@ export function Dashboard({ summary }: { summary: ProgressSummary }) {
       */}
       <footer className="text-muted-foreground border-border border-t pt-6 text-xs leading-5">
         <p className="max-w-prose">
-          <span className="text-foreground font-medium">How this is measured.</span> Ahmad scores
-          what the speech recogniser heard, so an occasional &ldquo;mistake&rdquo; may be a
-          mis-hearing rather than something you said — if one looks wrong, it probably is. Pace and
-          vocabulary numbers are counted directly from your words and are exact. Pronunciation is{' '}
-          <em>not</em> scored: this measures what you said, not how it sounded.
+          <span className="text-foreground font-medium">{t('m89d03b25d914')}</span>{' '}
+          {t('m40d4bb5b2aa0')} <em>{t('m254bb97b57f1')}</em> {t('me1ed87feb465')}
         </p>
         {dataQuality.ungradedSessions > 0 && (
           <p className="mt-2 max-w-prose">
-            {dataQuality.ungradedSessions} of your {totals.sessions} sessions were too short to
-            score for grammar, so they appear as gaps in the accuracy chart.
+            {dataQuality.ungradedSessions} {t('m9cec8b5eba8b')} {totals.sessions}{' '}
+            {t('mf38a5114b1a9')}
           </p>
         )}
       </footer>

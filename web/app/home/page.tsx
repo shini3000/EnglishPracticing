@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PracticeHome } from '@/components/home/practice-home';
@@ -11,18 +12,17 @@ import { getLearner } from '@/lib/learners';
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
+  const t = await getTranslations('ui');
+
   const learnerId = await requireLearnerId();
   const sql = getDb();
   if (!sql)
     return (
       <main className="study-empty">
-        <h1 className="study-title">El progreso no está disponible</h1>
-        <p>
-          La base de datos no está conectada. Puedes practicar con el tutor, pero esta sesión no se
-          guardará.
-        </p>
+        <h1 className="study-title">{t('mb4d548950279')}</h1>
+        <p>{t('m6e693f4dbfa6')}</p>
         <Link className="study-button" href="/call">
-          Preparar una llamada
+          {t('m8f0565846c94')}
         </Link>
       </main>
     );

@@ -1,8 +1,10 @@
 'use client';
 
 import { Fragment, useMemo } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { DeltaChip } from '@/components/progress/parameter-card';
 import { Card } from '@/components/ui/card';
+import { translateStatic } from '@/i18n/static-text';
 import { buildGroupReport } from '@/lib/progress/analysis';
 import { formatShortDate } from '@/lib/progress/dates';
 import { PARAMETER_GROUPS, formatterFor } from '@/lib/progress/parameters';
@@ -33,16 +35,15 @@ function barFraction(value: number, rowMax: number, ordinal: boolean): number {
 }
 
 function ValueCell({ parameter, index }: { parameter: GroupedParameter; index: number }) {
+  const t = useTranslations('ui');
+
   const value = parameter.values[index];
   const format = formatterFor(parameter.key);
 
   if (value === null) {
     return (
       <td className="px-3 py-2.5 align-top">
-        <span
-          className="text-muted-foreground text-sm"
-          title="Nothing in these sessions was long enough to measure"
-        >
+        <span className="text-muted-foreground text-sm" title={t('m152a80b52680')}>
           —
         </span>
       </td>
@@ -76,9 +77,13 @@ function ParameterRow({
   parameter: GroupedParameter;
   groups: SessionGroup[];
 }) {
+  const t = useTranslations('ui');
+
   return (
     <tr className="border-border border-b last:border-b-0">
-      <td className="text-card-foreground px-3 py-2.5 align-top text-sm">{parameter.label}</td>
+      <td className="text-card-foreground px-3 py-2.5 align-top text-sm">
+        {translateStatic(t, parameter.label)}
+      </td>
       {groups.map((group, index) => (
         <ValueCell key={group.label} parameter={parameter} index={index} />
       ))}
@@ -87,7 +92,7 @@ function ParameterRow({
           <DeltaChip delta={parameter.delta} parameterKey={parameter.key} suffix="" />
         ) : (
           <span className="text-muted-foreground text-[11px]">
-            {parameter.cumulative ? 'running total' : 'not enough data'}
+            {parameter.cumulative ? t('m285f01adda3c') : t('m459c0288b77a')}
           </span>
         )}
       </td>
@@ -96,52 +101,54 @@ function ParameterRow({
 }
 
 export function TrajectoryReport({ parameters }: { parameters: ParameterSummary[] }) {
+  const t = useTranslations('ui');
+
+  const locale = useLocale();
   const report = useMemo(() => buildGroupReport(parameters), [parameters]);
 
   return (
     <section className="mb-8">
-      <h2 className="text-foreground mb-1 text-lg font-semibold">Your trajectory</h2>
+      <h2 className="text-foreground mb-1 text-lg font-semibold">{t('m308f2900f615')}</h2>
       <p className="text-muted-foreground mb-4 max-w-prose text-sm leading-6">
         {report ? (
           <>
-            Your sessions in groups of {report.groupSize}, oldest on the left. Each cell is that
-            group&apos;s average, so a single unusual session can&apos;t bend the story —{' '}
-            <span className="text-foreground font-medium">overall</span> compares your first group
-            against your latest one with data.
+            {t('m9e58c6b6ee03')} {report.groupSize} {t('m4dca94105d86')}{' '}
+            <span className="text-foreground font-medium">{t('mc1deb3268b97')}</span>{' '}
+            {t('mea6dc681daf5')}
           </>
         ) : (
-          <>Whether each stretch of practice beat the one before it.</>
+          <>{t('m2e72b73ec956')}</>
         )}
       </p>
 
       {report === null ? (
         <Card className="p-6">
-          <p className="text-muted-foreground text-sm leading-6">
-            This view groups your history into runs of five sessions and compares them — it needs
-            more than five sessions before there are two groups to compare. Keep practicing and it
-            will fill in by itself.
-          </p>
+          <p className="text-muted-foreground text-sm leading-6">{t('m917e999c1dff')}</p>
         </Card>
       ) : (
         <div className="border-border bg-card overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[640px] border-collapse text-left">
             <thead>
               <tr className="border-border border-b">
-                <th className="text-muted-foreground px-3 py-3 text-xs font-medium">Parameter</th>
+                <th className="text-muted-foreground px-3 py-3 text-xs font-medium">
+                  {t('mdd066ec1bf1d')}
+                </th>
                 {report.groups.map((group) => (
                   <th key={group.label} className="px-3 py-3">
                     <div className="text-card-foreground text-xs font-semibold whitespace-nowrap">
-                      Sessions {group.label}
+                      {t('m6fa3cbf451b2')} {group.label}
                     </div>
                     <div className="text-muted-foreground text-[10px] font-normal whitespace-nowrap">
-                      {formatShortDate(group.startDate)}
+                      {formatShortDate(group.startDate, locale)}
                       {group.startDate.slice(0, 10) === group.endDate.slice(0, 10)
                         ? ''
-                        : ` – ${formatShortDate(group.endDate)}`}
+                        : ` – ${formatShortDate(group.endDate, locale)}`}
                     </div>
                   </th>
                 ))}
-                <th className="text-muted-foreground px-3 py-3 text-xs font-medium">Overall</th>
+                <th className="text-muted-foreground px-3 py-3 text-xs font-medium">
+                  {t('m715b1458abbe')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -157,7 +164,7 @@ export function TrajectoryReport({ parameters }: { parameters: ParameterSummary[
                         colSpan={report.groups.length + 2}
                         className="text-muted-foreground bg-muted/40 px-3 py-2 text-left text-[11px] font-semibold tracking-wide uppercase"
                       >
-                        {group.title}
+                        {translateStatic(t, group.title)}
                       </th>
                     </tr>
                     {rows.map((parameter) => (
@@ -176,10 +183,7 @@ export function TrajectoryReport({ parameters }: { parameters: ParameterSummary[
       )}
 
       {report !== null && (
-        <p className="text-muted-foreground mt-2 text-[11px] leading-4">
-          A dash means nothing in that group was long enough to measure — it is a gap, not a zero.
-          Bars are scaled within each row, for shape only; the numbers are the measurement.
-        </p>
+        <p className="text-muted-foreground mt-2 text-[11px] leading-4">{t('m5c4808e10e59')}</p>
       )}
     </section>
   );

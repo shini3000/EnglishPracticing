@@ -1,7 +1,9 @@
+const { dependency: i18nDependency } = require('./i18n-test-helpers.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+let nativeLanguage = 'es';
 let authenticated = true,
   options;
 class Token {
@@ -25,7 +27,10 @@ const imports = {
   '@livekit/protocol': { RoomConfiguration: class {} },
   '@/lib/avatars': {},
   '@/lib/db': {},
-  '@/lib/practice-options': { NATIVE_LANGUAGES: { es: 'Español' } },
+  '@/lib/practice-options': { NATIVE_LANGUAGES: { es: 'Español', en: 'English' } },
+  '@/lib/preferences': {
+    currentPreferences: async () => ({ nativeLanguage, targetLanguage: 'en' }),
+  },
   '@/lib/session': { currentLearnerId: async () => (authenticated ? 'test-learner' : null) },
 };
 vm.runInNewContext(
@@ -34,7 +39,7 @@ vm.runInNewContext(
   }).outputText,
   {
     exports: exportsObject,
-    require: (name) => imports[name],
+    require: (name) => imports[name] ?? i18nDependency(name),
     process: {
       env: {
         LIVEKIT_URL: 'wss://test.invalid',
@@ -72,6 +77,15 @@ function request(mode, extra = {}) {
   assert.equal(options.attributes.practice_capture, '');
   await exportsObject.POST(request('fluency'));
   assert.equal(options.identity, 'learner_test-learner');
+  nativeLanguage = 'en';
+  await exportsObject.POST(request('fluency', { nativeLanguage: 'es' }));
+  assert.equal(
+    options.attributes.native_language,
+    'en',
+    'The signed token uses the saved profile, never an untrusted client override'
+  );
+  assert.equal(options.attributes.target_language, 'en');
+  nativeLanguage = 'es';
   for (const startStep of [0, 4, 15]) {
     assert.equal((await exportsObject.POST(request('fluency', { startStep }))).status, 200);
     assert.equal(options.attributes.practice_start_step, String(startStep));

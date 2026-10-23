@@ -17,8 +17,8 @@ export function practiceDay(iso: string | Date): string {
   }).format(new Date(iso));
 }
 
-export function formatPracticeDateTime(iso: string): string {
-  return new Intl.DateTimeFormat('es-CO', {
+export function formatPracticeDateTime(iso: string, locale = 'es'): string {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: PRACTICE_TIME_ZONE,
     year: 'numeric',
     month: 'short',
@@ -30,8 +30,8 @@ export function formatPracticeDateTime(iso: string): string {
 }
 
 /** "14 Jul" — compact, for session rows and group headers. */
-export function formatShortDate(iso: string): string {
-  return new Intl.DateTimeFormat('es-CO', {
+export function formatShortDate(iso: string, locale = 'es'): string {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: PRACTICE_TIME_ZONE,
     day: 'numeric',
     month: 'short',

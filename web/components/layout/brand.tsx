@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { cn } from '@/lib/shadcn/utils';
 
@@ -14,6 +15,8 @@ export function Brand({
   className?: string;
   size?: 'sm' | 'lg';
 }) {
+  const t = useTranslations('ui');
+
   const content = (
     <span className={cn('flex items-center gap-2.5', className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -34,7 +37,7 @@ export function Brand({
           size === 'lg' ? 'text-xl' : 'text-base'
         )}
       >
-        English Practicing
+        {t('mb9a86fb18e48')}
       </span>
     </span>
   );

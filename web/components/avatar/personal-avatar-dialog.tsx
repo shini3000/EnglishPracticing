@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { XIcon } from '@phosphor-icons/react/dist/ssr';
 import { prepareAvatarPhoto } from '@/components/avatar/photo-utils';
@@ -35,6 +36,8 @@ export function PersonalAvatarDialog({
   onClose,
   onReady,
 }: PersonalAvatarDialogProps) {
+  const t = useTranslations('ui');
+
   const hasPhoto = photoSrc !== null;
   const [passcode, setPasscode] = useState('');
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
@@ -64,7 +67,7 @@ export function PersonalAvatarDialog({
     try {
       setPhotoDataUrl(await prepareAvatarPhoto(file));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'That file could not be read.');
+      setError(e instanceof Error ? e.message : t('me9fe8433758b'));
     }
   };
 
@@ -84,13 +87,13 @@ export function PersonalAvatarDialog({
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
-        setError(body?.error ?? 'Something went wrong. Try again.');
+        setError(body?.error ?? t('m4def98c89240'));
         return;
       }
 
       onReady(true);
     } catch {
-      setError('Could not reach the server. Check your connection.');
+      setError(t('m143a7593dd9a'));
     } finally {
       setIsSubmitting(false);
     }
@@ -100,7 +103,7 @@ export function PersonalAvatarDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Personalized avatar"
+      aria-label={t('m1e4a32ebac4b')}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
@@ -110,16 +113,13 @@ export function PersonalAvatarDialog({
       >
         <div className="mb-3 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-foreground text-lg font-semibold">Personalized avatar</h2>
-            <p className="text-muted-foreground mt-1 text-xs leading-5">
-              Upload a photo and your tutor takes that face — with a matching voice. Only use a
-              photo of yourself, or someone who said it&rsquo;s okay.
-            </p>
+            <h2 className="text-foreground text-lg font-semibold">{t('m1e4a32ebac4b')}</h2>
+            <p className="text-muted-foreground mt-1 text-xs leading-5">{t('m7d194fbcda3a')}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('m7d9eb7acb13e')}
             className="text-muted-foreground hover:text-foreground -m-1 p-1 transition-colors"
           >
             <XIcon size={18} weight="bold" />
@@ -132,19 +132,17 @@ export function PersonalAvatarDialog({
               <div className="flex items-center gap-3">
                 <Image
                   src={photoSrc}
-                  alt="Your saved photo"
+                  alt={t('m24e99333c5bf')}
                   width={56}
                   height={56}
                   unoptimized
                   className="size-14 rounded-full object-cover"
                 />
-                <p className="text-muted-foreground text-sm">
-                  This is the photo your tutor will use.
-                </p>
+                <p className="text-muted-foreground text-sm">{t('md5d34b2be859')}</p>
               </div>
             )}
             <Button size="lg" className="w-full rounded-lg" onClick={() => onReady(false)}>
-              Use my saved photo
+              {t('m0527b609e339')}
             </Button>
             <Button
               size="lg"
@@ -152,13 +150,13 @@ export function PersonalAvatarDialog({
               className="w-full rounded-lg"
               onClick={() => setShowUploadForm(true)}
             >
-              Upload a different photo
+              {t('maed63d829d95')}
             </Button>
           </div>
         ) : (
           <div className="flex flex-col gap-3.5">
             <div>
-              <p className="text-foreground mb-1.5 text-sm font-medium">Photo</p>
+              <p className="text-foreground mb-1.5 text-sm font-medium">{t('md84eebada93e')}</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -174,7 +172,7 @@ export function PersonalAvatarDialog({
                 {photoDataUrl ? (
                   <Image
                     src={photoDataUrl}
-                    alt="Your chosen photo"
+                    alt={t('mbc37e53aa883')}
                     width={56}
                     height={56}
                     unoptimized
@@ -184,16 +182,14 @@ export function PersonalAvatarDialog({
                   <span className="bg-muted size-14 shrink-0 rounded-full" aria-hidden />
                 )}
                 <span className="text-muted-foreground text-sm">
-                  {photoDataUrl ? 'Tap to choose a different photo' : 'Tap to choose a photo'}
+                  {photoDataUrl ? t('m8bc0425b6f95') : t('mdecf13fd391b')}
                 </span>
               </button>
-              <p className="text-muted-foreground mt-1.5 text-xs leading-5">
-                A clear, front-facing photo of one person works best.
-              </p>
+              <p className="text-muted-foreground mt-1.5 text-xs leading-5">{t('m21de3e737284')}</p>
             </div>
 
             <TextField
-              label="Avatar passcode"
+              label={t('m3698d0bed2f8')}
               type="password"
               value={passcode}
               onChange={(e) => {
@@ -203,7 +199,7 @@ export function PersonalAvatarDialog({
               placeholder="••••••••"
               autoComplete="off"
               className="font-mono tracking-widest"
-              hint="This is a separate passcode from the one you signed in with — avatar minutes are limited, so ask Asad for it."
+              hint={t('m43c26d563937')}
             />
 
             <p
@@ -220,7 +216,7 @@ export function PersonalAvatarDialog({
               onClick={handleUpload}
               className="w-full rounded-lg"
             >
-              {isSubmitting ? 'Saving…' : 'Save and use this photo'}
+              {isSubmitting ? t('m23e39291d613') : t('m918c7962439d')}
             </Button>
           </div>
         )}

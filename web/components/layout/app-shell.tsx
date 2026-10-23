@@ -1,7 +1,9 @@
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { AccountButton } from '@/components/auth/account-button';
 import { Brand } from '@/components/layout/brand';
 import { SignOutButton } from '@/components/layout/sign-out-button';
+import { translateStatic } from '@/i18n/static-text';
 import type { Learner } from '@/lib/learners';
 import { cn } from '@/lib/shadcn/utils';
 
@@ -18,12 +20,15 @@ const TABS = [
   { key: 'progress', href: '/progress', label: 'Mi progreso' },
 ] as const;
 
-export type ShellTab = (typeof TABS)[number]['key'];
+// Keep direct /profile links compatible, without an extra navigation tab.
+export type ShellTab = (typeof TABS)[number]['key'] | 'profile';
 
 function NavTabs({ active }: { active: ShellTab }) {
+  const t = useTranslations('ui');
+
   return (
     <nav
-      aria-label="Navegación principal"
+      aria-label={t('m781509b25aa0')}
       className="bg-muted/60 flex items-center gap-1 rounded-full p-1"
     >
       {TABS.map((tab) => (
@@ -38,7 +43,7 @@ function NavTabs({ active }: { active: ShellTab }) {
               : 'text-muted-foreground hover:text-foreground'
           )}
         >
-          {tab.label}
+          {translateStatic(t, tab.label)}
         </Link>
       ))}
     </nav>
@@ -47,9 +52,35 @@ function NavTabs({ active }: { active: ShellTab }) {
 
 /** The learner's initial in a circle. Cheap identity confirmation at a glance. */
 function LearnerChip({ learner }: { learner: Learner }) {
+  const t = useTranslations('ui');
+  const profile = useTranslations('profile');
+
   return (
-    <span className="flex items-center gap-2" title={`Tu perfil: ${learner.displayName}`}>
-      <AccountButton />
+    <span
+      className="flex items-center gap-2"
+      title={t('meeac2e39320e', { v0: learner.displayName })}
+    >
+      <AccountButton
+        labels={{
+          menu: profile('menu'),
+          description: profile('description'),
+          loading: profile('loading'),
+          loadFailed: profile('loadFailed'),
+          retry: profile('retry'),
+          form: {
+            native: profile('native'),
+            target: profile('target'),
+            english: profile('english'),
+            fixed: profile('fixed'),
+            practice: profile('practice'),
+            save: profile('save'),
+            saving: profile('saving'),
+            saved: profile('saved'),
+            failed: profile('failed'),
+            migration: profile('migration'),
+          },
+        }}
+      />
       <span className="text-foreground hidden text-sm font-medium md:inline">
         {learner.displayName}
       </span>
@@ -63,10 +94,12 @@ type AppShellProps = {
 } & ({ learner: Learner; loading?: false } | { learner?: never; loading: true });
 
 export function AppShell({ learner, active, children, loading }: AppShellProps) {
+  const t = useTranslations('ui');
+
   return (
     <div className="study-shell bg-background min-h-svh">
       <a href="#main-content" className="skip-link">
-        Saltar al contenido
+        {t('mfdab69210d5c')}
       </a>
       <header className="border-border/70 bg-background/85 sticky top-0 z-40 border-b backdrop-blur-md">
         <div className="mx-auto flex min-h-20 w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4 md:px-8">

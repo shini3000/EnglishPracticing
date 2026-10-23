@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import {
   ArrowCounterClockwiseIcon,
   CheckCircleIcon,
@@ -7,6 +8,8 @@ import {
   WarningCircleIcon,
   WarningIcon,
 } from '@phosphor-icons/react/dist/ssr';
+import { progressText } from '@/i18n/progress-text';
+import { translateStatic } from '@/i18n/static-text';
 import type { Strength, Weakness, WeaknessStatus } from '@/lib/progress/types';
 
 /**
@@ -33,6 +36,8 @@ const STATUS: Record<WeaknessStatus, { label: string; color: string; Icon: typeo
 };
 
 export function WeaknessCard({ weakness }: { weakness: Weakness }) {
+  const t = useTranslations('ui');
+
   const status = STATUS[weakness.status];
   const { Icon } = status;
 
@@ -47,16 +52,26 @@ export function WeaknessCard({ weakness }: { weakness: Weakness }) {
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <h3 className="text-card-foreground text-sm font-semibold">{weakness.label}</h3>
+            <h3 className="text-card-foreground text-sm font-semibold">
+              {translateStatic(t, weakness.label)}
+            </h3>
             {/* The text label, not the colour, is what conveys the status. */}
             <span className="text-[11px] font-medium" style={{ color: status.color }}>
-              {status.label}
+              {translateStatic(t, status.label)}
             </span>
           </div>
 
-          <p className="text-muted-foreground mt-1 text-xs leading-5">{weakness.note}</p>
+          <p className="text-muted-foreground mt-1 text-xs leading-5">
+            {weakness.noteMessage
+              ? progressText(t, weakness.noteMessage)
+              : translateStatic(t, weakness.note)}
+          </p>
 
-          <p className="text-card-foreground/90 mt-2 text-xs leading-5">{weakness.advice}</p>
+          {weakness.category !== 'metric' && (
+            <p className="text-card-foreground/90 mt-2 text-xs leading-5">
+              {translateStatic(t, weakness.advice)}
+            </p>
+          )}
         </div>
       </div>
     </li>
@@ -64,6 +79,8 @@ export function WeaknessCard({ weakness }: { weakness: Weakness }) {
 }
 
 export function StrengthCard({ strength }: { strength: Strength }) {
+  const t = useTranslations('ui');
+
   return (
     <li className="bg-card border-border rounded-xl border p-4">
       <div className="flex items-start gap-3">
@@ -74,8 +91,14 @@ export function StrengthCard({ strength }: { strength: Strength }) {
           aria-hidden
         />
         <div className="min-w-0 flex-1">
-          <h3 className="text-card-foreground text-sm font-semibold">{strength.label}</h3>
-          <p className="text-muted-foreground mt-1 text-xs leading-5">{strength.detail}</p>
+          <h3 className="text-card-foreground text-sm font-semibold">
+            {translateStatic(t, strength.label)}
+          </h3>
+          <p className="text-muted-foreground mt-1 text-xs leading-5">
+            {strength.detailMessage
+              ? progressText(t, strength.detailMessage)
+              : translateStatic(t, strength.detail)}
+          </p>
         </div>
       </div>
     </li>

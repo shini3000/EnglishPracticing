@@ -1,4 +1,6 @@
+import { getTranslations } from 'next-intl/server';
 import { NextResponse } from 'next/server';
+import { translateStatic } from '@/i18n/static-text';
 import { MAX_PHOTO_BYTES, deleteAvatarPhoto, hasAvatarPhoto, saveAvatarPhoto } from '@/lib/avatars';
 import { getDb } from '@/lib/db';
 import { avatarPasscodeMatches, currentLearnerId } from '@/lib/session';
@@ -22,9 +24,11 @@ import { avatarPasscodeMatches, currentLearnerId } from '@/lib/session';
 export const revalidate = 0;
 
 export async function GET() {
+  const t = await getTranslations('ui');
+
   const learnerId = await currentLearnerId();
   if (!learnerId) {
-    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    return NextResponse.json({ error: translateStatic(t, 'Not signed in') }, { status: 401 });
   }
 
   const sql = getDb();
@@ -41,9 +45,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const t = await getTranslations('ui');
+
   const learnerId = await currentLearnerId();
   if (!learnerId) {
-    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    return NextResponse.json({ error: translateStatic(t, 'Not signed in') }, { status: 401 });
   }
 
   let passcode = '';
@@ -59,13 +65,16 @@ export async function POST(req: Request) {
   // Passcode first, same order as /api/login: no feedback about anything else without it.
   try {
     if (!avatarPasscodeMatches(passcode.trim())) {
-      return NextResponse.json({ error: "That passcode isn't right." }, { status: 401 });
+      return NextResponse.json(
+        { error: translateStatic(t, "That passcode isn't right.") },
+        { status: 401 }
+      );
     }
   } catch (error) {
     // AVATAR_PASSCODE missing on the server — a misconfiguration, not a wrong guess.
     console.error(error);
     return NextResponse.json(
-      { error: 'Personalized avatars are not set up on this server.' },
+      { error: translateStatic(t, 'Personalized avatars are not set up on this server.') },
       { status: 500 }
     );
   }
@@ -81,22 +90,36 @@ export async function POST(req: Request) {
   try {
     image = Buffer.from(payload, 'base64');
   } catch {
-    return NextResponse.json({ error: 'That image could not be read.' }, { status: 400 });
+    return NextResponse.json(
+      { error: translateStatic(t, 'That image could not be read.') },
+      { status: 400 }
+    );
   }
 
   // JPEG magic bytes (FF D8 FF): the client always sends JPEG, so anything else is not a
   // well-meaning user with an odd file format — it is a request the client never made.
   if (image.length < 4 || image[0] !== 0xff || image[1] !== 0xd8 || image[2] !== 0xff) {
-    return NextResponse.json({ error: 'Please upload a photo (JPEG).' }, { status: 400 });
+    return NextResponse.json(
+      { error: translateStatic(t, 'Please upload a photo (JPEG).') },
+      { status: 400 }
+    );
   }
   if (image.length > MAX_PHOTO_BYTES) {
-    return NextResponse.json({ error: 'That photo is too large.' }, { status: 400 });
+    return NextResponse.json(
+      { error: translateStatic(t, 'That photo is too large.') },
+      { status: 400 }
+    );
   }
 
   const sql = getDb();
   if (!sql) {
     return NextResponse.json(
-      { error: 'Avatars are unavailable — this server has no database configured.' },
+      {
+        error: translateStatic(
+          t,
+          'Avatars are unavailable — this server has no database configured.'
+        ),
+      },
       { status: 503 }
     );
   }
@@ -105,16 +128,21 @@ export async function POST(req: Request) {
     await saveAvatarPhoto(sql, learnerId, image);
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Could not save your photo. Try again.' }, { status: 500 });
+    return NextResponse.json(
+      { error: translateStatic(t, 'Could not save your photo. Try again.') },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE() {
+  const t = await getTranslations('ui');
+
   const learnerId = await currentLearnerId();
   if (!learnerId) {
-    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    return NextResponse.json({ error: translateStatic(t, 'Not signed in') }, { status: 401 });
   }
 
   const sql = getDb();
@@ -126,7 +154,10 @@ export async function DELETE() {
     await deleteAvatarPhoto(sql, learnerId);
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Could not remove your photo.' }, { status: 500 });
+    return NextResponse.json(
+      { error: translateStatic(t, 'Could not remove your photo.') },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ ok: true });

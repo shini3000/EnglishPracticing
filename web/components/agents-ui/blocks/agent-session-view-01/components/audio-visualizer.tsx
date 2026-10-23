@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { type MotionProps, motion } from 'motion/react';
 import { useVoiceAssistant } from '@livekit/components-react';
@@ -8,12 +9,14 @@ import { AgentAudioVisualizerBar } from '@/components/agents-ui/agent-audio-visu
 import { cn } from '@/lib/shadcn/utils';
 
 function VisualizerLoading() {
+  const t = useTranslations('ui');
+
   return (
     <div
       role="status"
       className="text-muted-foreground flex size-[300px] items-center justify-center text-sm"
     >
-      Cargando visualización de audio…
+      {t('mddf127653364')}
     </div>
   );
 }

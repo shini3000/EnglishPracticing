@@ -1,12 +1,15 @@
 import type { Viewport } from 'next';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import { Public_Sans } from 'next/font/google';
 import localFont from 'next/font/local';
 import { headers } from 'next/headers';
-import { esES } from '@clerk/localizations';
+import { enUS, esES } from '@clerk/localizations';
 import { ClerkProvider } from '@clerk/nextjs';
 import { ServiceWorker } from '@/components/app/service-worker';
 import { ThemeProvider } from '@/components/app/theme-provider';
 import { ThemeToggle } from '@/components/app/theme-toggle';
+import { translateStatic } from '@/i18n/static-text';
 import { clerkConfiguration } from '@/lib/auth-config';
 import { cn } from '@/lib/shadcn/utils';
 import { getAppConfig, getStyles } from '@/lib/utils';
@@ -70,6 +73,9 @@ interface RootLayoutProps {
 }
 
 export default async function RootLayout({ children }: RootLayoutProps) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+  const t = await getTranslations('ui');
   const hdrs = await headers();
   const appConfig = await getAppConfig(hdrs);
   const styles = getStyles(appConfig);
@@ -79,7 +85,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
     <ClerkProvider
       dynamic
       publishableKey={clerk.publishableKey}
-      localization={esES}
+      localization={locale === 'es' ? esES : enUS}
       signInUrl="/login"
       signUpUrl="/register"
       signInForceRedirectUrl="/home"
@@ -106,7 +112,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <html
-      lang="es"
+      lang={locale}
       suppressHydrationWarning
       className={cn(
         publicSans.variable,
@@ -116,8 +122,8 @@ export default async function RootLayout({ children }: RootLayoutProps) {
     >
       <head>
         {styles && <style>{styles}</style>}
-        <title>{pageTitle}</title>
-        <meta name="description" content={pageDescription} />
+        <title>{translateStatic(t, pageTitle)}</title>
+        <meta name="description" content={translateStatic(t, pageDescription)} />
 
         {/*
           Installed-app tags. The manifest (app/manifest.ts) covers Android on its own — Next
@@ -154,10 +160,12 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             (components/layout/app-shell.tsx), and a second fixed bar on top of it was two
             headers arguing about the same corner of the screen.
           */}
-          {content}
-          <div className="flex justify-end px-4 py-3">
-            <ThemeToggle className="w-auto" />
-          </div>
+          <NextIntlClientProvider locale={locale} messages={messages} timeZone="America/Bogota">
+            {content}
+            <div className="flex justify-end px-4 py-3">
+              <ThemeToggle className="w-auto" />
+            </div>
+          </NextIntlClientProvider>
         </ThemeProvider>
       </body>
     </html>

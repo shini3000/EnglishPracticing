@@ -1,3 +1,4 @@
+const { dependency: i18nDependency } = require('./i18n-test-helpers.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -19,6 +20,7 @@ function load(file, imports = {}) {
   vm.runInNewContext(code, {
     exports,
     require: (name) => {
+      if (i18nDependency(name)) return i18nDependency(name);
       if (name === 'react/jsx-runtime') return jsx;
       if (!(name in imports)) throw new Error(`Unexpected dependency in ${file}: ${name}`);
       return imports[name];
@@ -92,6 +94,10 @@ function load(file, imports = {}) {
   assert.match(agilityHtml, /no hay conversación ni voz del tutor/);
   assert.match(agilityHtml, /role="timer"/);
   assert.match(agilityHtml, /Pregunta abierta/);
+  assert.match(agilityHtml, /Preparación opcional/);
+  assert.match(agilityHtml, /gap-x-6/);
+  assert.match(agilityHtml, /micrófono y la transcripción se activan al iniciar la ronda/);
+  assert.doesNotMatch(agilityHtml, /<textarea/);
   const { PracticeRoadmap } = load('components/app/practice-roadmap.tsx', {
     '@/components/practice/block-rail': blockRail,
   });
@@ -349,11 +355,21 @@ function load(file, imports = {}) {
   if (process.argv.includes('--preview')) {
     const path = require('node:path');
     const cssRoot = process.env.PREVIEW_CSS_DIR || '.next/static/css';
-    const css = fs
-      .readdirSync(cssRoot, { recursive: true })
-      .filter((file) => file.endsWith('.css'))
-      .map((file) => fs.readFileSync(path.join(cssRoot, file), 'utf8'))
-      .join('\n');
+    const css = process.argv.includes('--fresh-css')
+      ? (
+          await require('node:module')
+            .createRequire(require.resolve('@tailwindcss/postcss'))('postcss')([
+              require('@tailwindcss/postcss')(),
+            ])
+            .process(fs.readFileSync('styles/globals.css', 'utf8'), {
+              from: path.resolve('styles/globals.css'),
+            })
+        ).css
+      : fs
+          .readdirSync(cssRoot, { recursive: true })
+          .filter((file) => file.endsWith('.css'))
+          .map((file) => fs.readFileSync(path.join(cssRoot, file), 'utf8'))
+          .join('\n');
     const server = require('node:http').createServer((req, res) => {
       const active = req.url === '/home' ? 'home' : 'progress';
       res.writeHead(200, {

@@ -1,5 +1,7 @@
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { BlockRail } from '@/components/practice/block-rail';
+import { translateStatic } from '@/i18n/static-text';
 
 const BLOCKS = [
   ['Gimnasia temporal', '7 min', '/drill'],
@@ -26,19 +28,25 @@ export function FluencyBlocks({
   disabled?: boolean;
   variant?: 'rail' | 'cards';
 }) {
+  const t = useTranslations('ui');
+
   if (variant === 'cards') {
     return (
-      <nav aria-label="Elegir bloque de la práctica B" className="fluency-block-grid">
+      <nav aria-label={t('m7362694bbacc')} className="fluency-block-grid">
         {BLOCKS.map(([title, duration, href], index) => (
           <Link key={href} href={href} className="fluency-block-card">
             <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="text-primary font-semibold">Bloque {index + 1}</span>
-              <span className="text-muted-foreground">{duration}</span>
+              <span className="text-primary font-semibold">
+                {t('mf8b1f3d598e5')} {index + 1}
+              </span>
+              <span className="text-muted-foreground">{translateStatic(t, duration)}</span>
             </div>
-            <h2 className="mt-5 text-xl font-semibold">{title}</h2>
-            <p className="text-muted-foreground mt-3 text-sm leading-6">{DESCRIPTIONS[index]}</p>
+            <h2 className="mt-5 text-xl font-semibold">{translateStatic(t, title)}</h2>
+            <p className="text-muted-foreground mt-3 text-sm leading-6">
+              {translateStatic(t, DESCRIPTIONS[index])}
+            </p>
             <span className="text-primary mt-auto block pt-6 text-sm font-semibold">
-              Elegir este bloque
+              {t('m8ca4d58be9c0')}
             </span>
           </Link>
         ))}
@@ -47,11 +55,11 @@ export function FluencyBlocks({
   }
   return (
     <BlockRail
-      label="Elegir bloque de la práctica B"
+      label={t('m7362694bbacc')}
       current={current}
       blocks={BLOCKS.map(([title, duration, href], index) => ({
-        label: `Bloque ${index + 1} · ${title}`,
-        detail: disabled ? 'Termina la grabación o espera la revisión antes de cambiar.' : duration,
+        label: `${t('mf8b1f3d598e5')} ${index + 1} · ${translateStatic(t, title)}`,
+        detail: disabled ? t('finishRecording') : translateStatic(t, duration),
         href,
         disabled,
       }))}

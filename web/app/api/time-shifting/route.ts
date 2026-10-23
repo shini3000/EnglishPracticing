@@ -1,7 +1,10 @@
+import { getTranslations } from 'next-intl/server';
 import { NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
+import { translateStatic } from '@/i18n/static-text';
 import { getDb } from '@/lib/db';
 import { NATIVE_LANGUAGES } from '@/lib/practice-options';
+import { currentPreferences } from '@/lib/preferences';
 import { currentLearnerId } from '@/lib/session';
 import { AGILITY_ROUNDS, DRILL_STEPS, validateCorrections } from '@/lib/time-shifting';
 
@@ -11,28 +14,42 @@ const busy = new Set<string>();
 const headers = { 'Cache-Control': 'private, no-store' };
 
 export async function POST(req: Request) {
+  const t = await getTranslations('ui');
+
   const learner = await currentLearnerId();
-  if (!learner) return NextResponse.json({ error: 'Inicia sesión.' }, { status: 401, headers });
+  if (!learner)
+    return NextResponse.json(
+      { error: translateStatic(t, 'Inicia sesión.') },
+      { status: 401, headers }
+    );
   if (req.headers.get('origin') !== new URL(req.url).origin)
-    return NextResponse.json({ error: 'Origen no permitido.' }, { status: 403, headers });
+    return NextResponse.json(
+      { error: translateStatic(t, 'Origen no permitido.') },
+      { status: 403, headers }
+    );
   const sql = getDb();
   if (!sql)
     return NextResponse.json(
-      { error: 'Base de datos no disponible; no se ha enviado nada a la IA.' },
+      { error: translateStatic(t, 'Base de datos no disponible; no se ha enviado nada a la IA.') },
       { status: 503, headers }
     );
   if (!process.env.DEEPSEEK_API_KEY)
     return NextResponse.json(
-      { error: 'Configura DEEPSEEK_API_KEY en el entorno privado del frontend.' },
+      {
+        error: translateStatic(t, 'Configura DEEPSEEK_API_KEY en el entorno privado del frontend.'),
+      },
       { status: 503, headers }
     );
   if (busy.has(learner))
     return NextResponse.json(
-      { error: 'Espera a que termine la revisión anterior.' },
+      { error: translateStatic(t, 'Espera a que termine la revisión anterior.') },
       { status: 429, headers }
     );
   if (Number(req.headers.get('content-length') ?? 0) > 9_000_000)
-    return NextResponse.json({ error: 'Máximo 8 MB de audio.' }, { status: 413, headers });
+    return NextResponse.json(
+      { error: translateStatic(t, 'Máximo 8 MB de audio.') },
+      { status: 413, headers }
+    );
   busy.add(learner);
   const id = crypto.randomUUID();
   let stage = 'validation';
@@ -42,7 +59,7 @@ export async function POST(req: Request) {
     const agility = exercise === 'agility';
     const steps = agility ? AGILITY_ROUNDS : DRILL_STEPS;
     const step = Number(form.get('step'));
-    const language = String(form.get('language') ?? 'es');
+    const { nativeLanguage: language } = await currentPreferences();
     const routine = String(form.get('routine') ?? '').trim();
     let text = String(form.get('text') ?? '').trim();
     const audio = form.get('audio');
@@ -57,7 +74,12 @@ export async function POST(req: Request) {
       (!text && !(audio instanceof File))
     ) {
       return NextResponse.json(
-        { error: 'Revisa el paso, la rutina y la respuesta (máximo 8.000 caracteres).' },
+        {
+          error: translateStatic(
+            t,
+            'Revisa el paso, la rutina y la respuesta (máximo 8.000 caracteres).'
+          ),
+        },
         { status: 400, headers }
       );
     }
@@ -66,7 +88,7 @@ export async function POST(req: Request) {
       (audio.size > 8_000_000 || !audio.size || !/^(audio|video)\//.test(audio.type))
     )
       return NextResponse.json(
-        { error: 'Archivo de audio inválido o mayor de 8 MB.' },
+        { error: translateStatic(t, 'Archivo de audio inválido o mayor de 8 MB.') },
         { status: 400, headers }
       );
     // Exact request identity, scoped to learner + model + prompt version.
@@ -116,8 +138,10 @@ export async function POST(req: Request) {
     if (audio instanceof File && !process.env.GROQ_API_KEY)
       return NextResponse.json(
         {
-          error:
-            'Configura GROQ_API_KEY en el entorno privado del frontend para transcribir, o pega el texto.',
+          error: translateStatic(
+            t,
+            'Configura GROQ_API_KEY en el entorno privado del frontend para transcribir, o pega el texto.'
+          ),
         },
         { status: 503, headers }
       );
@@ -130,7 +154,7 @@ export async function POST(req: Request) {
       AND created_at > now() - interval '24 hours'`;
     if (counts[0].recent >= 3 || counts[0].daily >= 60)
       return NextResponse.json(
-        { error: 'Límite local del ejercicio: 3 revisiones/minuto y 60/día.' },
+        { error: translateStatic(t, 'Límite local del ejercicio: 3 revisiones/minuto y 60/día.') },
         { status: 429, headers }
       );
     const base = {
@@ -228,8 +252,14 @@ export async function POST(req: Request) {
       {
         error:
           stage === 'saving'
-            ? 'La revisión no pudo guardarse. No se ha marcado el paso como completado.'
-            : 'No se pudo revisar ahora. Conserva tu respuesta y vuelve a intentarlo.',
+            ? translateStatic(
+                t,
+                'La revisión no pudo guardarse. No se ha marcado el paso como completado.'
+              )
+            : translateStatic(
+                t,
+                'No se pudo revisar ahora. Conserva tu respuesta y vuelve a intentarlo.'
+              ),
         requestId: id,
       },
       { status: 502, headers }

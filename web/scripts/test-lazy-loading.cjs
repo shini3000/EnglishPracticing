@@ -1,3 +1,4 @@
+const { dependency: i18nDependency } = require('./i18n-test-helpers.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -27,6 +28,7 @@ const imports = {
     }),
   },
   '@/components/app/welcome-view': { WelcomeView: () => jsx.jsx('p', { children: 'Preparación' }) },
+  '@/components/app/practice-panel': { PracticePanel: ({ children }) => children },
   '@/components/ui/skeleton': { Skeleton: () => jsx.jsx('div', {}) },
   'next/dynamic': {
     __esModule: true,
@@ -52,6 +54,7 @@ vm.runInNewContext(
   {
     exports: exportsObject,
     require(name) {
+      if (i18nDependency(name)) return i18nDependency(name);
       assert.ok(name in imports, `Unexpected eager import: ${name}`);
       return imports[name];
     },

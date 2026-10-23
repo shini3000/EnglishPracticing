@@ -2,6 +2,7 @@
 
 import type { ComponentProps, HTMLAttributes, ReactElement } from 'react';
 import { createContext, memo, useContext, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { FileUIPart, UIMessage } from 'ai';
 import { ChevronLeftIcon, ChevronRightIcon, PaperclipIcon, XIcon } from 'lucide-react';
 import { Streamdown } from 'streamdown';
@@ -206,11 +207,13 @@ export const MessageBranchSelector = ({
 export type MessageBranchPreviousProps = ComponentProps<typeof Button>;
 
 export const MessageBranchPrevious = ({ children, ...props }: MessageBranchPreviousProps) => {
+  const t = useTranslations('ui');
+
   const { goToPrevious, totalBranches } = useMessageBranch();
 
   return (
     <Button
-      aria-label="Previous branch"
+      aria-label={t('mfab33c7e5a6d')}
       disabled={totalBranches <= 1}
       onClick={goToPrevious}
       size="icon-sm"
@@ -226,11 +229,13 @@ export const MessageBranchPrevious = ({ children, ...props }: MessageBranchPrevi
 export type MessageBranchNextProps = ComponentProps<typeof Button>;
 
 export const MessageBranchNext = ({ children, className, ...props }: MessageBranchNextProps) => {
+  const t = useTranslations('ui');
+
   const { goToNext, totalBranches } = useMessageBranch();
 
   return (
     <Button
-      aria-label="Next branch"
+      aria-label={t('m35299a403fa4')}
       disabled={totalBranches <= 1}
       onClick={goToNext}
       size="icon-sm"
@@ -279,10 +284,12 @@ export type MessageAttachmentProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 export function MessageAttachment({ data, className, onRemove, ...props }: MessageAttachmentProps) {
+  const t = useTranslations('ui');
+
   const filename = data.filename || '';
   const mediaType = data.mediaType?.startsWith('image/') && data.url ? 'image' : 'file';
   const isImage = mediaType === 'image';
-  const attachmentLabel = filename || (isImage ? 'Image' : 'Attachment');
+  const attachmentLabel = filename || (isImage ? t('m1aa4cb0bcca7') : t('m040d2b3689dd'));
 
   return (
     <div className={cn('group relative size-24 overflow-hidden rounded-lg', className)} {...props}>
@@ -297,7 +304,7 @@ export function MessageAttachment({ data, className, onRemove, ...props }: Messa
           />
           {onRemove && (
             <Button
-              aria-label="Remove attachment"
+              aria-label={t('m595b066a8838')}
               className="bg-background/80 hover:bg-background absolute top-2 right-2 size-6 rounded-full p-0 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 [&>svg]:size-3"
               onClick={(e) => {
                 e.stopPropagation();
@@ -307,7 +314,7 @@ export function MessageAttachment({ data, className, onRemove, ...props }: Messa
               variant="ghost"
             >
               <XIcon />
-              <span className="sr-only">Remove</span>
+              <span className="sr-only">{t('mc3812fc4acb8')}</span>
             </Button>
           )}
         </>
@@ -325,7 +332,7 @@ export function MessageAttachment({ data, className, onRemove, ...props }: Messa
           </Tooltip>
           {onRemove && (
             <Button
-              aria-label="Remove attachment"
+              aria-label={t('m595b066a8838')}
               className="hover:bg-accent size-6 shrink-0 rounded-full p-0 opacity-0 transition-opacity group-hover:opacity-100 [&>svg]:size-3"
               onClick={(e) => {
                 e.stopPropagation();
@@ -335,7 +342,7 @@ export function MessageAttachment({ data, className, onRemove, ...props }: Messa
               variant="ghost"
             >
               <XIcon />
-              <span className="sr-only">Remove</span>
+              <span className="sr-only">{t('mc3812fc4acb8')}</span>
             </Button>
           )}
         </>

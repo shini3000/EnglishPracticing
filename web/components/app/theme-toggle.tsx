@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { MonitorIcon, MoonIcon, SunIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/shadcn/utils';
@@ -9,6 +10,8 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ className }: ThemeToggleProps) {
+  const t = useTranslations('ui');
+
   const { theme, setTheme } = useTheme();
 
   return (
@@ -18,13 +21,13 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         className
       )}
     >
-      <span className="sr-only">Tema de la interfaz</span>
+      <span className="sr-only">{t('m43393125b9b6')}</span>
       <button
         type="button"
         onClick={() => setTheme('dark')}
         className="flex size-10 cursor-pointer items-center justify-center"
       >
-        <span className="sr-only">Usar tema oscuro</span>
+        <span className="sr-only">{t('m880d418b13a6')}</span>
         <MoonIcon
           suppressHydrationWarning
           size={16}
@@ -37,7 +40,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         onClick={() => setTheme('light')}
         className="flex size-10 cursor-pointer items-center justify-center"
       >
-        <span className="sr-only">Usar tema claro</span>
+        <span className="sr-only">{t('m7e62a332c5f1')}</span>
         <SunIcon
           suppressHydrationWarning
           size={16}
@@ -50,7 +53,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         onClick={() => setTheme('system')}
         className="flex size-10 cursor-pointer items-center justify-center"
       >
-        <span className="sr-only">Usar tema del sistema</span>
+        <span className="sr-only">{t('mcb7960100e28')}</span>
         <MonitorIcon
           suppressHydrationWarning
           size={16}

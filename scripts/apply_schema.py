@@ -13,6 +13,7 @@ Reads PROGRESS_DATABASE_URL (the agent's name for it) from the repo-root .env.
 from __future__ import annotations
 
 import asyncio
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -25,6 +26,10 @@ sys.path.insert(0, str(ROOT))
 
 
 async def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--profile-preferences', action='store_true', help='Apply only the additive per-user language table')
+    args = parser.parse_args()
+    schema = ROOT / 'progress' / 'profile_preferences.sql' if args.profile_preferences else SCHEMA
     load_dotenv(ROOT / ".env")
 
     dsn = os.environ.get("PROGRESS_DATABASE_URL")
@@ -39,11 +44,11 @@ async def main() -> int:
     # previous connection collide and you get a baffling DuplicatePreparedStatementError.
     conn = await connect(dsn, statement_cache_size=0)
     try:
-        await conn.execute(SCHEMA.read_text(encoding="utf-8"))
+        await conn.execute(schema.read_text(encoding="utf-8"))
     finally:
         await conn.close()
 
-    print(f"applied {SCHEMA.relative_to(ROOT)}")
+    print(f"applied {schema.relative_to(ROOT)}")
     return 0
 
 

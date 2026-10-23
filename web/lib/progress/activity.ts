@@ -6,6 +6,8 @@ export type Activity = {
   at: string;
   type: 'call' | 'drill';
   label: string;
+  block?: number;
+  step?: number;
   text?: string;
   feedback?: string;
   corrections?: { original: string; corrected: string; explanation: string }[];
@@ -51,6 +53,8 @@ export async function getActivity(sql: Sql, learnerId: string): Promise<Activity
       id: d.id,
       at: iso(d.created_at),
       type: 'drill' as const,
+      block: d.entry.block,
+      step: d.entry.step,
       label: `Práctica B · ${d.entry.block === 4 ? 'Agilidad 4–3–2 · ronda' : 'Gimnasia temporal · paso'} ${(d.entry.step ?? 0) + 1}`,
       text: d.entry.text,
       feedback: d.entry.feedback,

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import {
   CartesianGrid,
   Line,
@@ -44,6 +45,8 @@ export function TrendChart({
   parameter: ParameterSummary;
   height?: number;
 }) {
+  const t = useTranslations('ui');
+
   const format = formatterFor(parameter.key);
 
   if (parameter.knownCount < 2) {
@@ -52,9 +55,7 @@ export function TrendChart({
         className="text-muted-foreground flex items-center justify-center text-center text-xs"
         style={{ height }}
       >
-        {parameter.knownCount === 0
-          ? 'Nothing to show yet.'
-          : 'One session so far — practice again to see a trend.'}
+        {parameter.knownCount === 0 ? t('m07d417d868a4') : t('m30ade2975d83')}
       </div>
     );
   }
@@ -89,12 +90,12 @@ export function TrendChart({
                 fontSize: 12,
                 color: 'var(--popover-foreground)',
               }}
-              labelFormatter={(v) => `Session ${v}`}
+              labelFormatter={(v) => t('mf1af9e2bbeb0', { v0: v })}
               formatter={(value, name) =>
-                [format(Number(value)), name === 'smoothed' ? 'Trend' : 'This session'] as [
-                  string,
-                  string,
-                ]
+                [
+                  format(Number(value)),
+                  name === 'smoothed' ? t('m9e217716c4e0') : t('m6da6530a0728'),
+                ] as [string, string]
               }
             />
 
@@ -129,10 +130,7 @@ export function TrendChart({
       {/* Said in words, because the difference between the two lines is the difference between
           "this is what happened" and "this is what it means", and a learner who mistakes one for
           the other will read noise as regression. */}
-      <p className="text-muted-foreground mt-2 text-[11px] leading-4">
-        Faint line: each session on its own. Bold line: your trend, averaged over three sessions.
-        Gaps are sessions too short to measure — not zeros.
-      </p>
+      <p className="text-muted-foreground mt-2 text-[11px] leading-4">{t('m3ec6046ac07f')}</p>
     </div>
   );
 }

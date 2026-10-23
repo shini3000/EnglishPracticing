@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
 
 const nextConfig: NextConfig = {
   // Standalone tracing creates symlinks on Windows. Keep normal local builds
@@ -6,4 +7,4 @@ const nextConfig: NextConfig = {
   output: process.env.NEXT_STANDALONE === '1' ? 'standalone' : undefined,
 };
 
-export default nextConfig;
+export default createNextIntlPlugin('./i18n/request.ts')(nextConfig);

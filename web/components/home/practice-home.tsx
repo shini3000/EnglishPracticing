@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import {
   ChartLineUpIcon,
@@ -15,37 +16,36 @@ export function PracticeHome({
   learner: Learner;
   overview: React.ReactNode;
 }) {
+  const t = useTranslations('ui');
+
   return (
     <AppShell learner={learner} active="home">
       <header className="study-intro">
         <div>
-          <p className="text-muted-foreground mb-3 text-sm">Tu espacio de entrenamiento</p>
+          <p className="text-muted-foreground mb-3 text-sm">{t('mfdd4b9c19002')}</p>
           <h1 className="study-title">
-            Un poco más de inglés,
+            {t('m039fd08ceede')}
             <br />
             {learner.displayName}.
           </h1>
-          <p className="text-muted-foreground mt-5 max-w-lg leading-7">
-            Elige cómo quieres practicar hoy. Habla a tu ritmo, revisa tus errores por escrito y
-            vuelve a usar lo aprendido.
-          </p>
+          <p className="text-muted-foreground mt-5 max-w-lg leading-7">{t('mab5ec1d32ea9')}</p>
         </div>
         <div className="study-summary">
-          <h2 className="font-semibold">Tu recorrido</h2>
+          <h2 className="font-semibold">{t('mf6bce1906a45')}</h2>
           {overview}
           <Link href="/progress" className="study-text-link mt-5 inline-flex items-center gap-2">
             <ChartLineUpIcon size={18} />
-            Ver mi progreso
+            {t('m3d64aae5bda7')}
           </Link>
         </div>
       </header>
       <section aria-labelledby="practice-heading" className="mt-12">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <h2 id="practice-heading" className="text-xl font-semibold">
-            Tu práctica de hoy
+            {t('mc2b2fb8bc495')}
           </h2>
           <Link href="/call?practice=diagnostic" className="study-text-link text-sm">
-            ¿Por dónde empezar? Hacer diagnóstico
+            {t('mea055d773e1c')}
           </Link>
         </div>
         <div className="practice-routes">
@@ -56,21 +56,19 @@ export function PracticeHome({
               </span>
               <span className="flex items-center gap-2 text-sm">
                 <ClockIcon size={18} />
-                145 minutos
+                {t('maa8b04330108')}
               </span>
             </div>
-            <h3>Entrenamiento integral</h3>
-            <p>
-              Conecta conversación, gramática y escucha en una práctica guiada de principio a fin.
-            </p>
+            <h3>{t('m60f8ba4caeab')}</h3>
+            <p>{t('m37a0828e5dae')}</p>
             <ul>
-              <li>Recuperación y conversación</li>
-              <li>Escucha, shadowing y vocabulario</li>
-              <li>Uso de lo aprendido en otro contexto</li>
+              <li>{t('m30f4620263e1')}</li>
+              <li>{t('m1f367e22ed84')}</li>
+              <li>{t('mc48529063243')}</li>
             </ul>
             <Link href="/call?practice=daily" className="study-button">
               <MicrophoneIcon size={18} />
-              Preparar práctica A
+              {t('m27f564332704')}
             </Link>
           </article>
           <article className="practice-route route-fluency">
@@ -80,48 +78,40 @@ export function PracticeHome({
               </span>
               <span className="flex items-center gap-2 text-sm">
                 <ClockIcon size={18} />
-                55 minutos
+                {t('mdc5a474d2ccd')}
               </span>
             </div>
-            <h3>Fluidez y resistencia</h3>
-            <p>Entrena los cambios de tiempo verbal y aprende a sostener una idea sin detenerte.</p>
+            <h3>{t('m754460102d8f')}</h3>
+            <p>{t('m9bf68370eac6')}</p>
             <ul>
-              <li>Gimnasia temporal con transcripción automática</li>
-              <li>Anclas temporales, escucha y réplica</li>
-              <li>Rondas 4–3–2 y microauditoría</li>
+              <li>{t('m2e1328265dbb')}</li>
+              <li>{t('mcc333a09d541')}</li>
+              <li>{t('mef8b76b593ca')}</li>
             </ul>
             <Link href="/practice-b" className="study-button">
-              Empezar práctica B
+              {t('m2867530d3a05')}
             </Link>
             <Link href="/call?practice=fluency" className="study-text-link mt-3 text-sm">
-              Preparar B con el tutor
+              {t('mc6d0eca97688')}
             </Link>
           </article>
         </div>
-        <p className="text-muted-foreground mt-4 text-sm">
-          Puedes pausar o terminar antes. Los pasos pendientes no se marcarán como completados.
-        </p>
+        <p className="text-muted-foreground mt-4 text-sm">{t('m52f6abe5af01')}</p>
       </section>
-      <section className="study-bottom-grid mt-10" aria-label="Más formas de avanzar">
+      <section className="study-bottom-grid mt-10" aria-label={t('m468d5e6461eb')}>
         <div className="quick-drill">
           <PencilLineIcon size={26} weight="duotone" aria-hidden="true" />
           <div>
-            <h2 className="text-lg font-semibold">¿Tienes siete minutos?</h2>
-            <p className="text-muted-foreground mt-2 text-sm leading-6">
-              Practica presente, pasado y present perfect. Habla en una llamada: tu respuesta se
-              transcribe automáticamente y se revisa por escrito al terminar.
-            </p>
+            <h2 className="text-lg font-semibold">{t('ma0495f339b70')}</h2>
+            <p className="text-muted-foreground mt-2 text-sm leading-6">{t('m39043ec72554')}</p>
             <Link href="/drill" className="study-text-link mt-4 inline-block">
-              Abrir gimnasia temporal
+              {t('m3815c1493b0f')}
             </Link>
           </div>
         </div>
         <aside className="learning-note">
-          <h2 className="font-semibold">Una palabra se aprende al volver a usarla.</h2>
-          <p className="text-muted-foreground mt-3 text-sm leading-6">
-            Una buena respuesta es un ensayo, no dominio. Tu progreso distingue lo que estás
-            practicando de lo que puedes usar de forma constante en distintos días y contextos.
-          </p>
+          <h2 className="font-semibold">{t('m8a6c22e99648')}</h2>
+          <p className="text-muted-foreground mt-3 text-sm leading-6">{t('mb19a58f44281')}</p>
         </aside>
       </section>
     </AppShell>

@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { AppShell, type ShellTab } from '@/components/layout/app-shell';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -19,9 +20,11 @@ function LoadingRegion({
 }
 
 export function OverviewSkeleton() {
+  const t = useTranslations('ui');
+
   return (
     <LoadingRegion
-      label="Cargando tu resumen"
+      label={t('md738b2e52a05')}
       className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5 [&>div]:contents"
     >
       {[0, 1, 2, 3].map((key) => (
@@ -35,8 +38,10 @@ export function OverviewSkeleton() {
 }
 
 export function LearningSkeleton() {
+  const t = useTranslations('ui');
+
   return (
-    <LoadingRegion label="Cargando tu aprendizaje" className="mb-10 space-y-5">
+    <LoadingRegion label={t('me251b100a19b')} className="mb-10 space-y-5">
       <Skeleton className="mb-3 h-7 w-80 max-w-full" />
       <Skeleton className="mb-5 h-10 w-full max-w-3xl" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -53,8 +58,10 @@ export function LearningSkeleton() {
 }
 
 export function HistorySkeleton() {
+  const t = useTranslations('ui');
+
   return (
-    <LoadingRegion label="Cargando tu historial" className="my-8">
+    <LoadingRegion label={t('me886e878a1da')} className="my-8">
       <Skeleton className="mb-5 h-6 w-64 max-w-full" />
       {[0, 1, 2].map((key) => (
         <Skeleton key={key} className="mb-3 h-16 w-full rounded-xl" />
@@ -64,8 +71,10 @@ export function HistorySkeleton() {
 }
 
 export function ChartsSkeleton() {
+  const t = useTranslations('ui');
+
   return (
-    <LoadingRegion label="Cargando tus estadísticas" className="space-y-5">
+    <LoadingRegion label={t('m91889a171baa')} className="space-y-5">
       <Skeleton className="h-8 w-60 max-w-full" />
       <div className="mt-5 grid gap-5 md:grid-cols-2">
         <Skeleton className="h-64 w-full rounded-xl" />
@@ -77,9 +86,11 @@ export function ChartsSkeleton() {
 
 /** No identity or personal data is needed to show immediate navigation feedback. */
 export function PageSkeleton({ active }: { active: ShellTab }) {
+  const t = useTranslations('ui');
+
   return (
     <AppShell active={active} loading>
-      <LoadingRegion label={active === 'home' ? 'Cargando prácticas' : 'Cargando tu progreso'}>
+      <LoadingRegion label={active === 'home' ? t('mc068add86a36') : t('mdea7505f435b')}>
         {active === 'home' ? (
           <>
             <div className="study-intro">

@@ -4,6 +4,7 @@ import { RoomConfiguration } from '@livekit/protocol';
 import { hasAvatarPhoto } from '@/lib/avatars';
 import { getDb } from '@/lib/db';
 import { NATIVE_LANGUAGES } from '@/lib/practice-options';
+import { currentPreferences } from '@/lib/preferences';
 import { currentLearnerId } from '@/lib/session';
 
 type ConnectionDetails = {
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
 
     // Parse room config from request body.
     const body = await req.json();
-    const nativeLanguage = body?.nativeLanguage ?? 'es';
+    const { nativeLanguage } = await currentPreferences();
     const practiceMode = body?.practiceMode ?? 'daily';
     const startStep = body?.startStep ?? (body?.startAtAnchors === true ? 4 : 0);
     if (

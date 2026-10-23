@@ -1,6 +1,7 @@
 'use client';
 
 import { type ComponentProps } from 'react';
+import { useTranslations } from 'next-intl';
 import { type VariantProps } from 'class-variance-authority';
 import { PhoneOffIcon } from 'lucide-react';
 import { useSessionContext } from '@livekit/components-react';
@@ -56,6 +57,8 @@ export function AgentDisconnectButton({
   onClick,
   ...props
 }: AgentDisconnectButtonProps) {
+  const t = useTranslations('ui');
+
   const { end } = useSessionContext();
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
@@ -67,7 +70,9 @@ export function AgentDisconnectButton({
   return (
     <Button size={size} variant={variant} onClick={handleClick} {...props}>
       {icon ?? <PhoneOffIcon />}
-      {children ?? <span className={cn(size?.includes('icon') && 'sr-only')}>END CALL</span>}
+      {children ?? (
+        <span className={cn(size?.includes('icon') && 'sr-only')}>{t('m5e11ef322268')}</span>
+      )}
     </Button>
   );
 }

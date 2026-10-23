@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import {
   ArrowsHorizontalIcon,
@@ -10,6 +11,8 @@ import {
   WarningIcon,
 } from '@phosphor-icons/react/dist/ssr';
 import { TrendChart } from '@/components/progress/trend-chart';
+import { progressText } from '@/i18n/progress-text';
+import { translateStatic } from '@/i18n/static-text';
 import { formatterFor } from '@/lib/progress/parameters';
 import type { ParameterDelta, ParameterSummary } from '@/lib/progress/types';
 
@@ -46,6 +49,8 @@ export function DeltaChip({
   parameterKey: string;
   suffix: string;
 }) {
+  const t = useTranslations('ui');
+
   const { word, color, Icon } = VERDICT[delta.verdict];
   const format = formatterFor(parameterKey);
 
@@ -63,7 +68,7 @@ export function DeltaChip({
     <span className="inline-flex items-center gap-1.5 text-[11px] leading-4 font-medium">
       <Icon weight="fill" className="size-3.5 shrink-0" style={{ color }} aria-hidden />
       <span style={{ color }}>
-        {word}
+        {translateStatic(t, word)}
         {magnitude}
       </span>
       <span className="text-muted-foreground font-normal">{suffix}</span>
@@ -101,13 +106,15 @@ export function ParameterCard({
   // Overridable because the session explorer renders these same cards over a *filtered window*,
   // where "since you started" would silently mean "since the start of the window" — true, but
   // not what the words say. The defaults keep the full-history dashboard byte-identical.
-  sinceSuffix = 'since you started',
-  recentSuffix = 'in your recent sessions',
+  sinceSuffix,
+  recentSuffix,
 }: {
   parameter: ParameterSummary;
   sinceSuffix?: string;
   recentSuffix?: string;
 }) {
+  const t = useTranslations('ui');
+
   const [expanded, setExpanded] = useState(false);
   const format = formatterFor(parameter.key);
 
@@ -115,7 +122,9 @@ export function ParameterCard({
     <li className="bg-card border-border rounded-xl border p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-card-foreground text-sm font-semibold">{parameter.label}</h3>
+          <h3 className="text-card-foreground text-sm font-semibold">
+            {translateStatic(t, parameter.label)}
+          </h3>
 
           <div className="text-card-foreground mt-1.5 text-2xl leading-none font-semibold">
             {parameter.current !== null ? format(parameter.current) : '—'}
@@ -126,10 +135,10 @@ export function ParameterCard({
               they differ deserves to know why rather than to lose faith in both. */}
           <div className="text-muted-foreground mt-1 text-[11px] leading-4">
             {parameter.cumulative
-              ? 'total so far'
+              ? t('mcc814b0a4d01')
               : parameter.knownCount > 0
-                ? `average of your last ${Math.min(3, parameter.knownCount)} session${Math.min(3, parameter.knownCount) === 1 ? '' : 's'}`
-                : 'not measured yet'}
+                ? t('averageSessions', { count: Math.min(3, parameter.knownCount) })
+                : t('m9dbb8efacd06')}
           </div>
         </div>
 
@@ -143,7 +152,7 @@ export function ParameterCard({
             <DeltaChip
               delta={parameter.sinceStart}
               parameterKey={parameter.key}
-              suffix={sinceSuffix}
+              suffix={sinceSuffix ?? t('maec954e12878')}
             />
           </div>
         )}
@@ -156,13 +165,17 @@ export function ParameterCard({
             <DeltaChip
               delta={parameter.recent}
               parameterKey={parameter.key}
-              suffix={recentSuffix}
+              suffix={recentSuffix ?? t('m2b0fa6cd1bf5')}
             />
           </div>
         )}
 
         {parameter.gate && (
-          <p className="text-muted-foreground text-[11px] leading-4">{parameter.gate}</p>
+          <p className="text-muted-foreground text-[11px] leading-4">
+            {parameter.gateMessage
+              ? progressText(t, parameter.gateMessage)
+              : translateStatic(t, parameter.gate)}
+          </p>
         )}
       </div>
 
@@ -172,7 +185,7 @@ export function ParameterCard({
         aria-expanded={expanded}
         className="text-muted-foreground hover:text-card-foreground mt-3 inline-flex items-center gap-1 text-[11px] font-medium transition-colors"
       >
-        {expanded ? 'Hide' : 'Show'} chart
+        {expanded ? t('mac20a57bfde0') : t('m0df6f1cad36c')} {t('mcc57fc1903e4')}
         <CaretDownIcon
           className={`size-3 transition-transform ${expanded ? 'rotate-180' : ''}`}
           aria-hidden
@@ -181,7 +194,9 @@ export function ParameterCard({
 
       {expanded && (
         <div className="mt-3">
-          <p className="text-muted-foreground mb-3 text-xs leading-5">{parameter.caption}</p>
+          <p className="text-muted-foreground mb-3 text-xs leading-5">
+            {translateStatic(t, parameter.caption)}
+          </p>
           <TrendChart parameter={parameter} />
         </div>
       )}

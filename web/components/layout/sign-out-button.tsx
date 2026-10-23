@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useClerk } from '@clerk/nextjs';
 import { SignOutIcon } from '@phosphor-icons/react/dist/ssr';
 import { Button } from '@/components/ui/button';
 
 export function SignOutButton() {
+  const t = useTranslations('ui');
+
   const { signOut } = useClerk();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
@@ -15,7 +18,7 @@ export function SignOutButton() {
         variant="ghost"
         size="sm"
         disabled={busy}
-        aria-label="Cerrar sesión"
+        aria-label={t('mc6e6960395f4')}
         className="text-muted-foreground hover:text-foreground gap-1.5"
         onClick={async () => {
           setBusy(true);
@@ -31,11 +34,11 @@ export function SignOutButton() {
         }}
       >
         <SignOutIcon size={16} weight="bold" />
-        <span>{busy ? 'Saliendo…' : 'Salir'}</span>
+        <span>{busy ? t('md435eba3f2a6') : t('m93fffbf7ce79')}</span>
       </Button>
       {error && (
         <p role="alert" className="text-destructive text-xs">
-          No se pudo cerrar sesión. Reintenta.
+          {t('mff0bf170f4ca')}
         </p>
       )}
     </div>

@@ -1,8 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { CaretDownIcon } from '@phosphor-icons/react/dist/ssr';
 import { ParameterCard } from '@/components/progress/parameter-card';
+import { translateStatic } from '@/i18n/static-text';
 import { buildParameters, isGraded } from '@/lib/progress/analysis';
 import { formatPracticeDateTime } from '@/lib/progress/dates';
 import { SESSION_FILTERS, type SessionFilterKey, errorsForSessions } from '@/lib/progress/filters';
@@ -35,11 +37,13 @@ function FilterChips({
   active: SessionFilterKey;
   onSelect: (key: SessionFilterKey) => void;
 }) {
+  const t = useTranslations('ui');
+
   return (
     <div
       className="mb-4 flex flex-wrap items-center gap-2"
       role="group"
-      aria-label="Filter sessions"
+      aria-label={t('m9c1b9c9ff9d9')}
     >
       {SESSION_FILTERS.map((filter) => {
         const isActive = filter.key === active;
@@ -55,7 +59,7 @@ function FilterChips({
                 : 'border-border text-muted-foreground hover:text-foreground rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors'
             }
           >
-            {filter.label}
+            {translateStatic(t, filter.label)}
           </button>
         );
       })}
@@ -75,17 +79,19 @@ function SessionValueTile({
   typical: number | null;
   format: (value: number) => string;
 }) {
+  const t = useTranslations('ui');
+
   return (
     <li className="border-border rounded-lg border p-3">
-      <div className="text-muted-foreground text-xs leading-4">{label}</div>
+      <div className="text-muted-foreground text-xs leading-4">{translateStatic(t, label)}</div>
       <div className="text-card-foreground mt-1 text-lg leading-none font-semibold">
         {value !== null ? format(value) : '—'}
       </div>
       <div className="text-muted-foreground mt-1 text-[11px] leading-4">
         {value === null
-          ? 'not measured — too little said'
+          ? t('m9041399ab29c')
           : typical !== null
-            ? `typically ${format(typical)}`
+            ? t('md357d3f72110', { v0: format(typical) })
             : ''}
       </div>
     </li>
@@ -103,6 +109,8 @@ function SessionDetail({
   summary: ProgressSummary;
   typical: Map<string, number | null>;
 }) {
+  const t = useTranslations('ui');
+
   const corrections = summary.errors.filter((error) => error.session_id === session.id);
 
   // Registry parameters only: the running total is meaningless for one session, and the
@@ -133,9 +141,7 @@ function SessionDetail({
 
       {corrections.length > 0 ? (
         <div className="mt-4">
-          <h4 className="text-card-foreground mb-2 text-xs font-semibold">
-            Corrections from this session
-          </h4>
+          <h4 className="text-card-foreground mb-2 text-xs font-semibold">{t('mde158dbcb762')}</h4>
           <ul className="divide-border border-border divide-y rounded-lg border">
             {corrections.map((correction, index) => (
               <li key={index} className="p-3">
@@ -159,16 +165,11 @@ function SessionDetail({
         </div>
       ) : (
         <p className="text-muted-foreground mt-4 text-xs leading-5">
-          {isGraded(session)
-            ? 'No corrections recorded — this session was graded clean.'
-            : 'This session was too short to grade, so there is no grammar read for it.'}
+          {isGraded(session) ? t('m6ef2700879e5') : t('mb7e1412776ad')}
         </p>
       )}
 
-      <p className="text-muted-foreground mt-3 text-[11px] leading-4">
-        One session&apos;s numbers swing with the topic — the trends above are the fairer read.
-        &ldquo;Typically&rdquo; is your own average across every measured session.
-      </p>
+      <p className="text-muted-foreground mt-3 text-[11px] leading-4">{t('m37f85121bd75')}</p>
     </div>
   );
 }
@@ -188,18 +189,21 @@ function SessionListItem({
   open: boolean;
   onToggle: () => void;
 }) {
+  const t = useTranslations('ui');
+
+  const locale = useLocale();
   const minutes = Math.max(1, Math.round(session.duration_seconds / 60));
   const graded = isGraded(session);
 
   const meta = [
-    `${minutes} min`,
-    `${session.word_count.toLocaleString()} words`,
+    t('m4a1b30338cd5', { v0: minutes }),
+    t('m021620b379d4', { v0: session.word_count.toLocaleString() }),
     graded
-      ? `${session.error_count} correction${session.error_count === 1 ? '' : 's'}`
-      : 'too short to grade',
+      ? t('m0de5da19dc31', { v0: session.error_count, v1: session.error_count === 1 ? '' : 's' })
+      : t('mf707cc9c3b91'),
   ];
   if (session.cefr_estimate) {
-    meta.push(`read as ${session.cefr_estimate}`);
+    meta.push(t('mcf46b7e3984a', { v0: session.cefr_estimate }));
   }
 
   return (
@@ -213,10 +217,10 @@ function SessionListItem({
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="text-card-foreground text-sm font-semibold">
-              Session #{fullIndex + 1}
+              {t('m902d63964cee')} {fullIndex + 1}
             </span>
             <span className="text-muted-foreground text-xs">
-              {formatPracticeDateTime(session.started_at)} · Colombia
+              {formatPracticeDateTime(session.started_at, locale)} {t('m1e5bd08aacfb')}
             </span>
           </div>
           <div className="text-muted-foreground mt-0.5 text-[11px] leading-4">
@@ -242,6 +246,8 @@ function SessionListItem({
 }
 
 export function SessionExplorer({ summary }: { summary: ProgressSummary }) {
+  const t = useTranslations('ui');
+
   const [filterKey, setFilterKey] = useState<SessionFilterKey>('all');
   const [openSessionId, setOpenSessionId] = useState<string | null>(null);
 
@@ -314,10 +320,9 @@ export function SessionExplorer({ summary }: { summary: ProgressSummary }) {
 
   return (
     <section className="mb-8">
-      <h2 className="text-foreground mb-1 text-lg font-semibold">Session by session</h2>
+      <h2 className="text-foreground mb-1 text-lg font-semibold">{t('m23b3464fe8cf')}</h2>
       <p className="text-muted-foreground mb-4 max-w-prose text-sm leading-6">
-        Every session you&apos;ve had, newest first. Open one to see its own numbers next to what is
-        typical for you — or narrow the view to a recent stretch.
+        {t('mbd318670ae1b')}
       </p>
 
       <FilterChips active={filterKey} onSelect={setFilterKey} />
@@ -325,8 +330,13 @@ export function SessionExplorer({ summary }: { summary: ProgressSummary }) {
       {filterKey !== 'all' && (
         <p className="text-muted-foreground mb-4 text-sm">
           {filtered.length === 0
-            ? 'No sessions in this range.'
-            : `Showing ${filtered.length} of ${summary.sessions.length} sessions — ${windowMinutes} min, ${windowWords.toLocaleString()} words.`}
+            ? t('m16f9e318fb9d')
+            : t('m5c95e14bcfc6', {
+                v0: filtered.length,
+                v1: summary.sessions.length,
+                v2: windowMinutes,
+                v3: windowWords.toLocaleString(),
+              })}
         </p>
       )}
 
@@ -350,10 +360,9 @@ export function SessionExplorer({ summary }: { summary: ProgressSummary }) {
 
       {windowParameters && (
         <div className="mt-8">
-          <h3 className="text-foreground mb-1 text-base font-semibold">This window at a glance</h3>
+          <h3 className="text-foreground mb-1 text-base font-semibold">{t('m975b3c345a82')}</h3>
           <p className="text-muted-foreground mb-4 max-w-prose text-sm leading-6">
-            The same cards as above, computed over only the {filtered.length} sessions shown here —
-            so &ldquo;improved&rdquo; means improved within this window, not since you started.
+            {t('mf8b582c08402')} {filtered.length} {t('me73ed618cad3')}
           </p>
 
           {PARAMETER_GROUPS.map((group) => {
@@ -365,14 +374,16 @@ export function SessionExplorer({ summary }: { summary: ProgressSummary }) {
             }
             return (
               <div key={group.key} className="mb-6">
-                <h4 className="text-foreground mb-2 text-sm font-semibold">{group.title}</h4>
+                <h4 className="text-foreground mb-2 text-sm font-semibold">
+                  {translateStatic(t, group.title)}
+                </h4>
                 <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {parameters.map((parameter) => (
                     <ParameterCard
                       key={parameter.key}
                       parameter={parameter}
-                      sinceSuffix={`across these ${filtered.length} sessions`}
-                      recentSuffix="in the latest of them"
+                      sinceSuffix={t('m244beb011440', { v0: filtered.length })}
+                      recentSuffix={t('mba3879e6e4dc')}
                     />
                   ))}
                 </ul>

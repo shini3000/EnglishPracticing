@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 type Block = {
@@ -18,14 +19,15 @@ export function BlockRail({
   current?: number;
   label: string;
 }) {
+  const t = useTranslations('ui');
+
   const item = (block: Block, index: number, compact: boolean) => {
     const content = (
       <>
         {compact && <span aria-hidden="true" className="block-rail-tick" />}
         <span className={compact ? 'block-rail-label' : ''}>
           <strong className="block font-medium">
-            {block.label}
-            {current === index ? ' · Actual' : ''}
+            {block.label} {current === index ? t('mf3b9ca3958ff') : ''}
           </strong>
           <span className="text-muted-foreground mt-1 block text-xs">{block.detail}</span>
         </span>
@@ -64,10 +66,10 @@ export function BlockRail({
       </nav>
       <details className="practice-block-touch">
         <summary className="bg-card cursor-pointer rounded-lg border px-3 py-2 text-sm shadow-sm">
-          Bloques{current !== undefined ? ` · ${current + 1}` : ''}
+          {t('m55361731020e')} {current !== undefined ? ` · ${current + 1}` : ''}
         </summary>
         <nav
-          aria-label={`${label} · táctil`}
+          aria-label={t('m15ec783438ad', { v0: label })}
           className="bg-card mt-2 max-h-[60vh] w-64 overflow-auto rounded-xl border p-2 shadow-lg"
         >
           {blocks.map((block, index) => (

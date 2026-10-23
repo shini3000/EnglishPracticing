@@ -1,8 +1,10 @@
 import { ReactNode, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast as sonnerToast } from 'sonner';
 import { useAgent, useSessionContext } from '@livekit/components-react';
 import { WarningIcon } from '@phosphor-icons/react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { translateStatic } from '@/i18n/static-text';
 
 interface ToastProps {
   title: ReactNode;
@@ -25,6 +27,7 @@ function toastAlert(toast: ToastProps) {
 }
 
 export function useAgentErrors() {
+  const t = useTranslations('ui');
   const agent = useAgent();
   const { isConnected, end } = useSessionContext();
 
@@ -33,17 +36,17 @@ export function useAgentErrors() {
       const reasons = agent.failureReasons;
 
       toastAlert({
-        title: 'Session ended',
+        title: translateStatic(t, 'Session ended'),
         description: (
           <>
             {reasons.length > 1 && (
               <ul className="list-inside list-disc">
                 {reasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
+                  <li key={reason}>{translateStatic(t, reason)}</li>
                 ))}
               </ul>
             )}
-            {reasons.length === 1 && <p className="w-full">{reasons[0]}</p>}
+            {reasons.length === 1 && <p className="w-full">{translateStatic(t, reasons[0])}</p>}
             <p className="w-full">
               <a
                 target="_blank"
@@ -51,7 +54,7 @@ export function useAgentErrors() {
                 href="https://docs.livekit.io/agents/start/voice-ai/"
                 className="whitespace-nowrap underline"
               >
-                See quickstart guide
+                {translateStatic(t, 'See quickstart guide')}
               </a>
               .
             </p>
@@ -61,5 +64,5 @@ export function useAgentErrors() {
 
       end();
     }
-  }, [agent, isConnected, end]);
+  }, [agent, isConnected, end, t]);
 }

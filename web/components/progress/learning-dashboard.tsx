@@ -1,11 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from '@/components/ui/button';
+import { translateStatic } from '@/i18n/static-text';
 import type { LearningSummary } from '@/lib/progress/learning';
 
 export function LearningDashboard({ initial }: { initial: LearningSummary }) {
+  const t = useTranslations('ui');
+
   const [summary, setSummary] = useState(initial);
   const [filter, setFilter] = useState('all');
   const [busy, setBusy] = useState(false);
@@ -15,12 +19,12 @@ export function LearningDashboard({ initial }: { initial: LearningSummary }) {
     setError('');
     try {
       const res = await fetch('/api/learning-progress', { cache: 'no-store' });
-      if (!res.ok) throw new Error('No se pudo actualizar.');
+      if (!res.ok) throw new Error(t('m0580380f9c0e'));
       const next = await res.json();
-      if (!next.available) throw new Error('Registro de aprendizaje no disponible.');
+      if (!next.available) throw new Error(t('mfe5901c4a751'));
       setSummary(next);
     } catch {
-      setError('No se pudo actualizar. Se mantiene la última información disponible.');
+      setError(t('me4bed5ea134b'));
     } finally {
       setBusy(false);
     }
@@ -30,18 +34,14 @@ export function LearningDashboard({ initial }: { initial: LearningSummary }) {
   );
   const total = summary.totals;
   return (
-    <section className="mb-10 space-y-5" aria-label="Aprendizaje acumulativo">
+    <section className="mb-10 space-y-5" aria-label={t('m71ce43881086')}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold">Tu aprendizaje, práctica a práctica</h2>
-          <p className="text-muted-foreground mt-2 max-w-3xl text-sm">
-            Usar una palabra una vez no demuestra que la aprendiste. Consolidación: al menos tres
-            días correctos sin ayuda, siete días de separación y dos contextos. Una repetición o
-            lectura no cuenta. Son evidencias del tutor sobre transcripciones, no una certificación.
-          </p>
+          <h2 className="text-2xl font-semibold">{t('me9c2b988af2c')}</h2>
+          <p className="text-muted-foreground mt-2 max-w-3xl text-sm">{t('me3652e980d21')}</p>
         </div>
         <Button variant="outline" onClick={refresh} disabled={busy}>
-          {busy ? 'Actualizando…' : 'Actualizar progreso'}
+          {busy ? t('m211b1c37458e') : t('meea6aee2018f')}
         </Button>
       </div>
       {error && (
@@ -50,24 +50,21 @@ export function LearningDashboard({ initial }: { initial: LearningSummary }) {
         </p>
       )}
       {!summary.available ? (
-        <p className="rounded-lg border p-4">
-          El registro no está disponible. Configura la base de datos, aplica el esquema y
-          reconstruye las evidencias anteriores. No se muestran ceros como si fueran datos reales.
-        </p>
+        <p className="rounded-lg border p-4">{t('m47c94f2657c7')}</p>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
-              ['Elementos trabajados', total.introduced],
-              ['En consolidación', total.consolidating],
-              ['Consolidados', total.consolidated],
-              ['Repasos pendientes', total.due],
-              ['Días con recuperación', total.practiceDays],
-              ['Minutos cronometrados', total.measuredMinutes],
-              ['Usos sin ayuda', total.unaided],
+              [t('meef77ef9144a'), total.introduced],
+              [t('ma8cec9edb9a0'), total.consolidating],
+              [t('md9801725bc9f'), total.consolidated],
+              [t('m08944353c48c'), total.due],
+              [t('m12f7b5100eef'), total.practiceDays],
+              [t('m322f96a221d4'), total.measuredMinutes],
+              [t('mdecd81751ee6'), total.unaided],
               [
-                'Éxito sin ayuda',
-                total.successRate === null ? 'Sin datos' : total.successRate + '%',
+                t('m235fe86d5bde'),
+                total.successRate === null ? t('m03dc8297d3d6') : total.successRate + '%',
               ],
             ].map(([label, value]) => (
               <div key={label} className="bg-card rounded-xl border p-5">
@@ -77,18 +74,14 @@ export function LearningDashboard({ initial }: { initial: LearningSummary }) {
             ))}
           </div>
           <p className="text-muted-foreground text-xs">
-            Vocabulario: {total.vocabulary} · Estructuras: {total.structures} · Con ayuda:{' '}
-            {total.helped} · Fallos: {total.failed}. El porcentaje incluye solo intentos observados
-            de revisión o transferencia. El tiempo registrado incluye actividades, no solo habla;
-            las llamadas sin cierre guardado no suman minutos aquí.
+            {t('md4e884916872')} {total.vocabulary} {t('m50e7e762d89a')} {total.structures}{' '}
+            {t('m30c5c380fa14')} {total.helped} {t('m72987603cb50')} {total.failed}{' '}
+            {t('m10a3f0229fd3')}
           </p>
           <div className="rounded-xl border p-4">
-            <h2 className="font-semibold">Recuperación a lo largo de los días</h2>
+            <h2 className="font-semibold">{t('m9b284c37b2d9')}</h2>
             {summary.trend.length === 0 ? (
-              <p className="mt-3 text-sm">
-                Todavía no hay intentos verificados. Las entradas antiguas sin contexto se
-                conservan, pero no acreditan dominio.
-              </p>
+              <p className="mt-3 text-sm">{t('m72cdfc95748a')}</p>
             ) : (
               <div className="mt-4 h-56">
                 <ResponsiveContainer width="100%" height="100%">
@@ -97,71 +90,65 @@ export function LearningDashboard({ initial }: { initial: LearningSummary }) {
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                     <YAxis allowDecimals={false} />
                     <Tooltip />
-                    <Bar dataKey="unaided" name="Sin ayuda" fill="#15803d" />
-                    <Bar dataKey="helped" name="Con ayuda" fill="#d97706" />
-                    <Bar dataKey="failed" name="Falló" fill="#dc2626" />
+                    <Bar dataKey="unaided" name={t('m6c9a5a5ee0a0')} fill="#15803d" />
+                    <Bar dataKey="helped" name={t('m707d40c295e6')} fill="#d97706" />
+                    <Bar dataKey="failed" name={t('m184f9f08775f')} fill="#dc2626" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
           </div>
           <div className="flex items-center gap-3">
-            <h2 className="font-semibold">Vocabulario y estructuras</h2>
+            <h2 className="font-semibold">{t('m451e394a9899')}</h2>
             <select
-              aria-label="Filtrar aprendizaje"
+              aria-label={t('m05f761f6c824')}
               className="bg-background rounded border p-2 text-sm"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             >
-              <option value="all">Todos</option>
-              <option value="vocabulary">Vocabulario</option>
-              <option value="structure">Estructuras</option>
-              <option value="due">Repasos pendientes</option>
+              <option value="all">{t('mbd02b9a7d71d')}</option>
+              <option value="vocabulary">{t('m6002766a4ef3')}</option>
+              <option value="structure">{t('m353f159e8bb2')}</option>
+              <option value="due">{t('m08944353c48c')}</option>
             </select>
           </div>
-          {!items.length && (
-            <p className="text-muted-foreground text-sm">
-              Aún no hay elementos en este filtro. Comienza una práctica para registrar evidencia.
-            </p>
-          )}
+          {!items.length && <p className="text-muted-foreground text-sm">{t('mbe4bfc70cc6d')}</p>}
           <div className="grid gap-3 md:grid-cols-2">
             {items.map((item) => (
               <article key={item.item_type + item.key} className="rounded-xl border p-4">
                 <p className="text-muted-foreground text-xs">
-                  {item.item_type === 'structure' ? 'Estructura' : 'Vocabulario'}
+                  {item.item_type === 'structure' ? t('m77350c0d891d') : t('m6002766a4ef3')}
                 </p>
                 <h3 className="mt-1 font-semibold">{item.label}</h3>
-                <p className="mt-1 text-sm">{item.state}</p>
+                <p className="mt-1 text-sm">{translateStatic(t, item.state)}</p>
                 <p className="text-muted-foreground mt-2 text-xs">
-                  Días correctos: {item.successful_days.length}/{item.policy.min_days} · Separación:{' '}
-                  {item.span_days}/{item.policy.min_span_days} días · Contextos:{' '}
-                  {item.context_count}/{item.policy.min_contexts}
+                  {t('m85e99c2d3c42')} {item.successful_days.length}/{item.policy.min_days}{' '}
+                  {t('m880c49c315e9')} {item.span_days}/{item.policy.min_span_days}{' '}
+                  {t('m457927e06dad')} {item.context_count}/{item.policy.min_contexts}
                 </p>
                 <p className="mt-2 text-xs">
-                  Próximo repaso: {item.next_review ?? 'Por programar'}{' '}
-                  {item.due ? '· pendiente' : ''}
+                  {t('m3a4c9125ea8a')} {item.next_review ?? t('m7a7455300406')}{' '}
+                  {item.due ? t('mdff91ab03abe') : ''}
                 </p>
                 <details className="mt-3 text-sm">
                   <summary className="cursor-pointer">
-                    Ver evidencia ({item.attempt_count} intentos)
+                    {t('attemptCount', { count: item.attempt_count })}
                   </summary>
                   <ul className="mt-2 space-y-2">
                     {item.attempts.map((attempt, index) => (
                       <li key={index} className="border-t pt-2 text-xs">
                         {attempt.date} ·{' '}
                         {attempt.result === 'unaided'
-                          ? 'Sin ayuda'
+                          ? t('m6c9a5a5ee0a0')
                           : attempt.result === 'helped'
-                            ? 'Con ayuda'
-                            : 'Falló'}{' '}
-                        · {attempt.context || 'Sin contexto registrado'}
+                            ? t('m707d40c295e6')
+                            : t('m184f9f08775f')}{' '}
+                        · {attempt.context || t('mc021647bd8da')}
                         <p className="mt-1">{attempt.evidence}</p>
                         {(!attempt.observed ||
                           attempt.attempt_type === 'repetition' ||
                           attempt.attempt_type === 'legacy') && (
-                          <p className="text-muted-foreground">
-                            No acredita consolidación: repetición o evidencia no verificada.
-                          </p>
+                          <p className="text-muted-foreground">{t('mcbcbeb840351')}</p>
                         )}
                       </li>
                     ))}

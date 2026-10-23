@@ -1,6 +1,7 @@
 'use client';
 
 import { useId } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion } from 'motion/react';
 import { useTrackVolume, useVoiceAssistant } from '@livekit/components-react';
 import { cn } from '@/lib/shadcn/utils';
@@ -35,6 +36,8 @@ const EYE_STYLE: React.CSSProperties = {
 };
 
 export function AnimatedTutor({ character, className }: AnimatedTutorProps) {
+  const t = useTranslations('ui');
+
   const { state, audioTrack } = useVoiceAssistant();
   const rawVolume = useTrackVolume(audioTrack);
   // useId can contain colons, which break url(#...) references in some SVG engines.
@@ -65,7 +68,10 @@ export function AnimatedTutor({ character, className }: AnimatedTutorProps) {
   return (
     <div
       role="img"
-      aria-label={`${isGirl ? 'Sara' : 'Ahmad'}, your tutor, ${speaking ? 'speaking' : thinking ? 'thinking' : 'listening'}`}
+      aria-label={t('m63afd295c068', {
+        v0: isGirl ? t('m53b1fb446230') : t('m4b4440482b36'),
+        v1: speaking ? 'speaking' : thinking ? 'thinking' : 'listening',
+      })}
       className={cn(
         'bg-muted relative flex aspect-square items-end justify-center overflow-hidden rounded-full',
         className

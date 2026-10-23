@@ -1,6 +1,7 @@
 'use client';
 
 import { type ComponentProps, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Track } from 'livekit-client';
 import { Loader, MessageSquareTextIcon, SendHorizontal } from 'lucide-react';
 import { type MotionProps, motion } from 'motion/react';
@@ -68,6 +69,8 @@ interface AgentChatInputProps {
 }
 
 function AgentChatInput({ chatOpen, onSend = async () => {}, className }: AgentChatInputProps) {
+  const t = useTranslations('ui');
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isSending, setIsSending] = useState(false);
   const [message, setMessage] = useState<string>('');
@@ -114,7 +117,7 @@ function AgentChatInput({ chatOpen, onSend = async () => {}, className }: AgentC
         ref={inputRef}
         value={message}
         disabled={!chatOpen || isSending}
-        placeholder="Type something..."
+        placeholder={t('m1ff3bbc3fc11')}
         onKeyDown={handleKeyDown}
         onChange={(e) => setMessage(e.target.value)}
         className="field-sizing-content max-h-16 min-h-8 flex-1 resize-none py-2 [scrollbar-width:thin] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
@@ -124,7 +127,7 @@ function AgentChatInput({ chatOpen, onSend = async () => {}, className }: AgentC
         type="button"
         disabled={isDisabled}
         variant={isDisabled ? 'secondary' : 'default'}
-        title={isSending ? 'Sending...' : 'Send'}
+        title={isSending ? t('m286a3af7348e') : t('mf6f4688ff23d')}
         onClick={handleButtonClick}
         className="self-end disabled:cursor-not-allowed"
       >
@@ -251,6 +254,8 @@ export function AgentControlBar({
   className,
   ...props
 }: AgentControlBarProps & ComponentProps<'div'>) {
+  const t = useTranslations('ui');
+
   const { send } = useChat();
   const publishPermissions = usePublishPermissions();
   const [isChatOpenUncontrolled, setIsChatOpenUncontrolled] = useState(isChatOpen);
@@ -286,7 +291,7 @@ export function AgentControlBar({
 
   return (
     <div
-      aria-label="Voice assistant controls"
+      aria-label={t('mf0c32d029627')}
       className={cn(
         'bg-background border-input/50 dark:border-muted flex flex-col border p-3 drop-shadow-md/3',
         variant === 'livekit' ? 'rounded-[31px]' : 'rounded-lg',
@@ -314,7 +319,7 @@ export function AgentControlBar({
             <AgentTrackControl
               variant={variant === 'outline' ? 'outline' : 'default'}
               kind="audioinput"
-              aria-label="Toggle microphone"
+              aria-label={t('m542e869334d0')}
               source={Track.Source.Microphone}
               pressed={microphoneToggle.enabled}
               disabled={microphoneToggle.pending}
@@ -336,7 +341,7 @@ export function AgentControlBar({
             <AgentTrackControl
               variant={variant === 'outline' ? 'outline' : 'default'}
               kind="videoinput"
-              aria-label="Toggle camera"
+              aria-label={t('mb50eae6645b0')}
               source={Track.Source.Camera}
               pressed={cameraToggle.enabled}
               pending={cameraToggle.pending}
@@ -357,7 +362,7 @@ export function AgentControlBar({
           {visibleControls.screenShare && (
             <AgentTrackToggle
               variant={variant === 'outline' ? 'outline' : 'default'}
-              aria-label="Toggle screen share"
+              aria-label={t('m0101c8cde6bf')}
               source={Track.Source.ScreenShare}
               pressed={screenShareToggle.enabled}
               disabled={screenShareToggle.pending}
@@ -371,7 +376,7 @@ export function AgentControlBar({
             <Toggle
               variant={variant === 'outline' ? 'outline' : 'default'}
               pressed={isChatOpen || isChatOpenUncontrolled}
-              aria-label="Toggle transcript"
+              aria-label={t('mc1cb7df9b629')}
               onPressedChange={(state) => {
                 if (!onIsChatOpenChange) setIsChatOpenUncontrolled(state);
                 else onIsChatOpenChange(state);
@@ -396,7 +401,7 @@ export function AgentControlBar({
                 'bg-destructive/10 dark:bg-destructive/10 text-destructive hover:bg-destructive/20 dark:hover:bg-destructive/20 focus:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/4 rounded-full font-mono text-xs font-bold tracking-wider'
             )}
           >
-            <span className="hidden md:inline">END CALL</span>
+            <span className="hidden md:inline">{t('m5e11ef322268')}</span>
             <span className="inline md:hidden">END</span>
           </AgentDisconnectButton>
         )}

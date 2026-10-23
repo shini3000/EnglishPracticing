@@ -1,10 +1,12 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ArrowLeftIcon, MicrophoneIcon } from '@phosphor-icons/react/dist/ssr';
 import { AvatarPicker } from '@/components/avatar/avatar-picker';
 import { FluencyBlocks } from '@/components/practice/fluency-blocks';
 import { Button } from '@/components/ui/button';
+import { translateStatic } from '@/i18n/static-text';
 import { type AvatarChoice, tutorNameFor } from '@/lib/avatar-choice';
 import { NATIVE_LANGUAGES, type NativeLanguage, type PracticeMode } from '@/lib/practice-options';
 
@@ -22,7 +24,6 @@ interface WelcomeViewProps {
   startStep: number;
   nativeLanguage: NativeLanguage;
   practiceMode: PracticeMode;
-  onNativeLanguage: (value: NativeLanguage) => void;
   onPracticeMode: (value: PracticeMode) => void;
   startButtonText: string;
   learnerName: string | null;
@@ -44,76 +45,64 @@ export const WelcomeView = ({
   onStartCall,
   nativeLanguage,
   practiceMode,
-  onNativeLanguage,
   onPracticeMode,
   ref,
 }: React.ComponentProps<'div'> & WelcomeViewProps) => {
+  const t = useTranslations('ui');
+
   const tutorName = tutorNameFor(avatarChoice);
 
   return (
     <div ref={ref} className="call-preparation">
       <Link href="/home" className="study-text-link inline-flex items-center gap-2 text-sm">
         <ArrowLeftIcon size={16} />
-        Volver a las prácticas
+        {t('m23e939f389fb')}
       </Link>
       <section className="call-preparation-grid">
         <div>
           <h1 className="study-title">
-            {learnerName ? `A tu ritmo, ${learnerName}.` : 'Prepara tu práctica.'}
+            {learnerName ? t('m74bfca76a7ed', { v0: learnerName }) : t('m8c19d33e95f4')}
           </h1>
 
           <p className="text-muted-foreground mt-5 leading-7 text-pretty">
-            Practicarás inglés con {capitalize(tutorName)}. Las correcciones gramaticales aparecerán
-            por escrito, con explicaciones en tu idioma nativo.
+            {t('m461d7ebb40e2')} {capitalize(tutorName)} {t('mcc277488410d')}
           </p>
           <div className="learning-note mt-8 border-t">
-            <h2 className="font-semibold">Antes de abrir el micrófono</h2>
+            <h2 className="font-semibold">{t('me8d67fde2492')}</h2>
             <p className="text-muted-foreground mt-3 text-sm leading-6">
-              Elige un lugar tranquilo y, si puedes, usa auriculares. La llamada solo comenzará al
-              pulsar «{startButtonText}».
+              {t('mf532349ac3bf')} {translateStatic(t, startButtonText)}».
             </p>
-            <p className="text-muted-foreground mt-3 text-sm leading-6">
-              Puedes hacer pausas y terminar antes. Las actividades pendientes se conservan como
-              pendientes.
-            </p>
+            <p className="text-muted-foreground mt-3 text-sm leading-6">{t('mcd5bdc88f472')}</p>
           </div>
         </div>
         <div className="preparation-form">
-          <h2 className="mb-5 text-xl font-semibold">Configura tu sesión</h2>
+          <h2 className="mb-5 text-xl font-semibold">{t('m6503a20f6865')}</h2>
           <div className="grid w-full gap-4 text-left">
+            <p className="text-sm">
+              {t('medca6f0ab6be')} {translateStatic(t, NATIVE_LANGUAGES[nativeLanguage])}.{' '}
+              <Link href="/profile" className="study-text-link">
+                {t('m1096db3ab260')}
+              </Link>
+            </p>
+            <p className="text-muted-foreground text-xs">{t('m3486390d66a1')}</p>
             <label className="text-sm">
-              Idioma nativo para explicaciones
-              <select
-                value={nativeLanguage}
-                onChange={(e) => onNativeLanguage(e.target.value as NativeLanguage)}
-                className="study-field"
-              >
-                {Object.entries(NATIVE_LANGUAGES).map(([code, label]) => (
-                  <option key={code} value={code}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="text-muted-foreground text-xs">Idioma de aprendizaje: inglés.</p>
-            <label className="text-sm">
-              Tipo de sesión
+              {t('m8e2ff3119cc8')}
               <select
                 value={practiceMode}
                 onChange={(e) => onPracticeMode(e.target.value as PracticeMode)}
                 className="study-field"
               >
-                <option value="daily">Práctica tipo A · 145 min · práctica integral</option>
-                <option value="diagnostic">Diagnóstico inicial · 30–40 min</option>
-                <option value="fluency">Práctica tipo B · 55 min · fluidez y resistencia</option>
+                <option value="daily">{t('m6f00f74be8a8')}</option>
+                <option value="diagnostic">{t('mba5897446d51')}</option>
+                <option value="fluency">{t('m90471cb77372')}</option>
               </select>
             </label>
             <p className="text-muted-foreground text-xs">
               {practiceMode === 'daily'
-                ? 'Tipo A: conversación, gramática aplicada, escucha, shadowing, vocabulario y transferencia.'
+                ? t('m1d51c8f00cab')
                 : practiceMode === 'fluency'
-                  ? 'Tipo B: cambios de tiempo verbal, monólogo, escucha y réplica, rondas 4–3–2 y microauditoría.'
-                  : 'Diagnóstico: evaluación inicial para identificar tu nivel aproximado y prioridades.'}
+                  ? t('ma09c558ddd02')
+                  : t('m1d8ccfca8304')}
             </p>
             {practiceMode === 'fluency' && (
               <FluencyBlocks
@@ -133,10 +122,7 @@ export const WelcomeView = ({
           </div>
 
           <div className="mt-6 w-full text-left">
-            <p className="text-muted-foreground mb-4 text-sm">
-              Habla en inglés por el micrófono. Si necesitas preguntar algo en otro idioma,
-              escríbelo en el chat de la llamada.
-            </p>
+            <p className="text-muted-foreground mb-4 text-sm">{t('m3db74c6117c1')}</p>
             <AvatarPicker
               choice={avatarChoice}
               photoSrc={photoSrc}
@@ -151,13 +137,10 @@ export const WelcomeView = ({
             className="mt-6 w-full gap-2 rounded-xl font-medium"
           >
             <MicrophoneIcon size={17} weight="bold" />
-            {startButtonText}
+            {translateStatic(t, startButtonText)}
           </Button>
 
-          <p className="text-muted-foreground mt-4 text-xs leading-5">
-            Tu navegador pedirá permiso para usar el micrófono. Elige «Permitir» para que el tutor
-            pueda escucharte.
-          </p>
+          <p className="text-muted-foreground mt-4 text-xs leading-5">{t('mbb3c98d48783')}</p>
         </div>
       </section>
     </div>

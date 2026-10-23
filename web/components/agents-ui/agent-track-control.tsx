@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { type VariantProps, cva } from 'class-variance-authority';
 import { LocalAudioTrack, LocalVideoTrack } from 'livekit-client';
 import {
@@ -136,6 +137,8 @@ function TrackDeviceSelect({
   onActiveDeviceChange,
   ...props
 }: TrackDeviceSelectProps) {
+  const t = useTranslations('ui');
+
   const room = useMaybeRoomContext();
   const [open, setOpen] = useState(false);
   const [requestPermissionsState, setRequestPermissionsState] = useState(requestPermissions);
@@ -178,7 +181,10 @@ function TrackDeviceSelect({
     >
       <SelectTrigger className={cn(selectVariants({ size, variant }), className)} {...props}>
         {size !== 'sm' && (
-          <SelectValue className="font-mono text-sm" placeholder={`Select a ${kind}`} />
+          <SelectValue
+            className="font-mono text-sm"
+            placeholder={t('m81cda496ac45', { v0: kind })}
+          />
         )}
       </SelectTrigger>
       <SelectContent position="popper">

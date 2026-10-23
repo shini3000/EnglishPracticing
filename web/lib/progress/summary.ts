@@ -146,6 +146,7 @@ export async function buildSummary(sql: Sql, learnerId: string): Promise<Progres
         totalErrors: 0,
         sessionsAffected: 3,
         note: s.detail,
+        noteMessage: s.detailMessage,
       })),
     ],
 

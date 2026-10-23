@@ -1,3 +1,6 @@
+import { useLocale, useTranslations } from 'next-intl';
+import { translateStatic } from '@/i18n/static-text';
+
 type Correction = {
   [key: string]: unknown;
   learner_text?: unknown;
@@ -7,43 +10,81 @@ type Correction = {
   recovery_task?: unknown;
 };
 
-export function CorrectionCard({ entry }: { entry: Correction }) {
-  const fields: [string, unknown][] = [
-    ['Lo que dijiste', entry.learner_text],
-    ['Frase corregida', entry.corrected_text],
-    ['Estructura', entry.pattern],
-    ['Por qué', entry.explanation],
-    ['Ahora practica', entry.recovery_task],
-  ];
+export function CorrectionCard({
+  entry,
+  number,
+  source,
+  date,
+  answersVisible = true,
+}: {
+  entry: Correction;
+  number?: number;
+  source?: string;
+  date?: string;
+  answersVisible?: boolean;
+}) {
+  const t = useTranslations('ui');
+  const locale = useLocale();
+
+  const read = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+  const parsed = date?.includes('T') ? new Date(date) : null;
+  const when =
+    parsed && !Number.isNaN(parsed.getTime())
+      ? new Intl.DateTimeFormat(locale, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+          timeZone: 'America/Bogota',
+        }).format(parsed)
+      : date;
   return (
-    <section
-      aria-label="Corrección escrita"
-      className="mt-3 rounded-lg border border-blue-500/40 bg-blue-500/5 p-3"
+    <article
+      aria-label={number ? t('m76af9344395c', { v0: number }) : t('mf5f06a57d668')}
+      className="correction-card"
     >
-      <h2 className="font-semibold">Corrección escrita</h2>
-      <p className="text-muted-foreground mt-1 text-xs">
-        Lee la explicación y luego reformula sin mirar.
-      </p>
-      <dl className="mt-3 space-y-3">
-        {fields.map(
-          ([label, value]) =>
-            typeof value === 'string' &&
-            value.trim() && (
-              <div key={String(label)}>
-                <dt className="text-muted-foreground text-xs font-medium">{label}</dt>
-                <dd
-                  className={
-                    label === 'Estructura'
-                      ? 'bg-muted mt-1 rounded p-2 font-mono text-sm break-words'
-                      : 'mt-1 text-sm break-words whitespace-pre-wrap'
-                  }
-                >
-                  {value}
-                </dd>
-              </div>
-            )
-        )}
+      <header className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+        <h2 className="font-semibold">
+          {number ? t('m76af9344395c', { v0: number }) : t('mf5f06a57d668')}
+        </h2>
+        <p className="text-muted-foreground text-xs">
+          {translateStatic(t, source ?? '')}
+          {when && (
+            <>
+              {' '}
+              · <time dateTime={date}>{when}</time>
+            </>
+          )}
+        </p>
+      </header>
+      <dl>
+        <div className="correction-comparison">
+          <div>
+            <dt className="text-muted-foreground text-xs font-semibold">{t('m9399ee11688b')}</dt>
+            <dd lang="en" className="mt-2 leading-7 whitespace-pre-wrap">
+              {read(entry.learner_text)}
+            </dd>
+          </div>
+          <div className="correction-answer">
+            <dt className="text-primary text-xs font-semibold">{t('mb89f68931d3e')}</dt>
+            <dd lang="en" className="mt-2 leading-7 whitespace-pre-wrap">
+              {answersVisible ? read(entry.corrected_text) : t('m61de14fb5ee9')}
+            </dd>
+          </div>
+        </div>
+        {answersVisible &&
+          [
+            [t('m77350c0d891d'), entry.pattern],
+            [t('mfd59d58ec34b'), entry.explanation],
+            [t('m3b8a9ea044da'), entry.recovery_task],
+          ].map(
+            ([label, value]) =>
+              read(value) && (
+                <div key={String(label)} className="mt-5 border-t pt-4">
+                  <dt className="text-muted-foreground text-xs font-semibold">{String(label)}</dt>
+                  <dd className="mt-2 text-sm leading-7 whitespace-pre-wrap">{read(value)}</dd>
+                </div>
+              )
+          )}
       </dl>
-    </section>
+    </article>
   );
 }

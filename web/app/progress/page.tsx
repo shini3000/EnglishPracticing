@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
@@ -29,6 +30,8 @@ import { getLearner } from '@/lib/learners';
 export const dynamic = 'force-dynamic';
 
 export default async function ProgressPage() {
+  const t = await getTranslations('ui');
+
   const learnerId = await requireLearnerId();
 
   const sql = getDb();
@@ -38,15 +41,10 @@ export default async function ProgressPage() {
     return (
       <main className="bg-background grid min-h-svh place-content-center px-6">
         <div className="mx-auto max-w-md text-center">
-          <h1 className="text-foreground text-xl font-semibold">
-            Progress tracking isn&apos;t set up
-          </h1>
-          <p className="text-muted-foreground mt-3 text-sm leading-6">
-            This server has no database configured, so sessions aren&apos;t being recorded. The
-            tutor itself works fine.
-          </p>
+          <h1 className="text-foreground text-xl font-semibold">{t('m2112af8467fe')}</h1>
+          <p className="text-muted-foreground mt-3 text-sm leading-6">{t('me98af31dbba4')}</p>
           <Button asChild className="mt-6 rounded-full">
-            <Link href="/call">Talk to Ahmad</Link>
+            <Link href="/call">{t('mf60f8550e091')}</Link>
           </Button>
         </div>
       </main>
@@ -61,11 +59,8 @@ export default async function ProgressPage() {
   return (
     <AppShell learner={learner} active="progress">
       <header className="mb-10 max-w-2xl">
-        <h1 className="study-title">Lo que estás construyendo.</h1>
-        <p className="text-muted-foreground mt-4 leading-7">
-          Tu constancia, el vocabulario que vuelves a usar y las estructuras que necesitan otro
-          intento. Una sola respuesta no equivale a aprendizaje consolidado.
-        </p>
+        <h1 className="study-title">{t('ma7fd8228eff1')}</h1>
+        <p className="text-muted-foreground mt-4 leading-7">{t('m380ae0cc53a1')}</p>
       </header>
       <Suspense fallback={<LearningSkeleton />}>
         <LearningSection sql={sql} learnerId={learnerId} />

@@ -1,3 +1,4 @@
+const { dependency: i18nDependency } = require('./i18n-test-helpers.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -9,7 +10,7 @@ function compile(path, imports, globals = {}) {
   const exports = {};
   vm.runInNewContext(js, {
     exports,
-    require: (name) => imports[name],
+    require: (name) => imports[name] ?? i18nDependency(name),
     process: { env: { DEEPSEEK_API_KEY: 'test', GROQ_API_KEY: 'test' } },
     crypto: require('node:crypto').webcrypto,
     Buffer,
@@ -44,6 +45,8 @@ const corrections = helpers.validateCorrections(
 );
 assert.equal(corrections.length, 1);
 let authenticated = true;
+let nativeLanguage = 'es',
+  sentPrompt = '';
 let calls = 0;
 let recent = 0;
 const writes = [];
@@ -67,13 +70,17 @@ const route = compile(
           return [];
         },
     },
-    '@/lib/practice-options': { NATIVE_LANGUAGES: { es: 'Español' } },
+    '@/lib/practice-options': { NATIVE_LANGUAGES: { es: 'Español', en: 'English' } },
+    '@/lib/preferences': {
+      currentPreferences: async () => ({ nativeLanguage, targetLanguage: 'en' }),
+    },
     '@/lib/time-shifting': helpers,
   },
   {
-    fetch: async (url) => {
+    fetch: async (url, options) => {
       calls++;
       if (url.includes('/audio/transcriptions')) return Response.json({ text: 'I work yesterday' });
+      sentPrompt = JSON.parse(options.body).messages[0].content;
       return Response.json({
         choices: [
           { message: { content: JSON.stringify({ corrections, feedback: 'Revisa el pasado.' }) } },
@@ -88,6 +95,7 @@ function request(origin = 'http://localhost:3000', reference = '') {
   body.set('routine', 'work');
   body.set('text', 'I work yesterday');
   body.set('previousPresent', reference);
+  body.set('nativeLanguage', 'es');
   return new Request('http://localhost:3000/api/time-shifting', {
     method: 'POST',
     headers: { origin },
@@ -157,6 +165,10 @@ function request(origin = 'http://localhost:3000', reference = '') {
   assert.equal(calls, 5);
   assert.equal((await route.POST(agilityRequest('unknown'))).status, 400);
   assert.equal((await route.POST(agilityRequest('agility', '3'))).status, 400);
+  nativeLanguage = 'en';
+  assert.equal((await route.POST(request())).status, 200);
+  assert.match(sentPrompt, /Explain in English; examples\/corrections in English/);
+  assert.equal(calls, 6, 'A different saved profile language must not reuse the previous review');
   console.log(
     'PASS: 7-minute schedule, quote validation, authentication, origin, rate limit and saved text-only review. No real API calls.'
   );

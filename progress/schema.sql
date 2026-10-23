@@ -43,6 +43,14 @@ ALTER TABLE learners ADD COLUMN IF NOT EXISTS username text;
 ALTER TABLE learners ADD COLUMN IF NOT EXISTS clerk_user_id text;
 CREATE UNIQUE INDEX IF NOT EXISTS learners_clerk_user_id_uq ON learners (clerk_user_id);
 
+-- Native language drives the UI and tutor explanations; English is the fixed target.
+CREATE TABLE IF NOT EXISTS learner_preferences (
+  learner_id uuid PRIMARY KEY REFERENCES learners(id) ON DELETE CASCADE,
+  native_language text NOT NULL DEFAULT 'es' CHECK (native_language IN ('es', 'en')),
+  target_language text NOT NULL DEFAULT 'en' CHECK (target_language = 'en'),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- Backfill: give each pre-username learner the username their display name implies, so that
 -- someone who practiced as "Asad" before the login screen existed gets their old history back
 -- by logging in as "asad" rather than silently starting from zero.

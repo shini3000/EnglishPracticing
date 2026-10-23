@@ -11,7 +11,7 @@ function compile(path, imports, env = {}) {
   vm.runInNewContext(code, { exports, require: name => {
     if (!(name in imports)) throw new Error(`Unexpected import: ${name}`);
     return imports[name];
-  }, process: { env }, Buffer });
+  }, process: { env }, Buffer, URL });
   return exports;
 }
 

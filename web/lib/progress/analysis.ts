@@ -208,6 +208,10 @@ export function analyseWeaknesses(
       improving.push({
         label: labelFor(category),
         detail: `No mistakes in your last ${sessionsSinceLastSeen} sessions — this used to trip you up ${tally.total} times.`,
+        detailMessage: {
+          key: 'cleanSessions',
+          values: { sessions: sessionsSinceLastSeen, errors: tally.total },
+        },
       });
       continue;
     }
@@ -243,6 +247,15 @@ export function analyseWeaknesses(
       totalErrors: tally.total,
       sessionsAffected: indices.length,
       note,
+      noteMessage: {
+        key: `weakness_${status}`,
+        values: {
+          recent: recentCount,
+          window: Math.min(PERSISTENCE_WINDOW, graded.length),
+          errors: tally.total,
+          sessions: indices.length,
+        },
+      },
     });
   }
 
@@ -427,6 +440,10 @@ function summariseSeries(
         known.length === 0
           ? 'No sessions long enough to measure this yet.'
           : `${needed} more session${needed === 1 ? '' : 's'} and this can be compared against where you started.`,
+      gateMessage: {
+        key: known.length === 0 ? 'gateEmpty' : 'gateBaseline',
+        values: { count: needed },
+      },
     };
   }
 
@@ -459,6 +476,10 @@ function summariseSeries(
       recent === null
         ? `${MIN_FOR_MOMENTUM - known.length} more session${MIN_FOR_MOMENTUM - known.length === 1 ? '' : 's'} and this can also show whether you are still moving.`
         : null,
+    gateMessage:
+      recent === null
+        ? { key: 'gateMomentum', values: { count: MIN_FOR_MOMENTUM - known.length } }
+        : undefined,
   };
 }
 
@@ -571,7 +592,14 @@ export function analyseMetricTrends(parameters: ParameterSummary[]): {
     const magnitude = change === null ? '' : ` ${Math.abs(Math.round(change * 100))}%`;
     const detail = `${verdict === 'improved' ? 'Improved' : 'Slipped'}${magnitude} over your last ${windowSize} sessions — now ${describerFor(parameter.key)(to)}.`;
 
-    (verdict === 'improved' ? strengths : slipping).push({ label: parameter.label, detail });
+    (verdict === 'improved' ? strengths : slipping).push({
+      label: parameter.label,
+      detail,
+      detailMessage: {
+        key: 'metricTrend',
+        values: { verdict, magnitude, sessions: windowSize, parameter: parameter.key, value: to },
+      },
+    });
   }
 
   return { strengths, slipping };

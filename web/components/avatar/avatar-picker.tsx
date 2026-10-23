@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { LockSimpleIcon } from '@phosphor-icons/react/dist/ssr';
 import { AnimatedTutor } from '@/components/avatar/animated-tutor';
@@ -56,16 +57,18 @@ function Tile({ label, sublabel, selected, onClick, children }: TileProps) {
 }
 
 export function AvatarPicker({ choice, photoSrc, onPick, onPickPhoto }: AvatarPickerProps) {
+  const t = useTranslations('ui');
+
   const [voice, setVoice] = useState('boy');
   useEffect(() => {
     setVoice(localStorage.getItem('photo-voice') === 'girl' ? 'girl' : 'boy');
   }, []);
   return (
     <div className="w-full">
-      <p className="text-foreground mb-2 text-sm font-medium">Elige tu tutor</p>
+      <p className="text-foreground mb-2 text-sm font-medium">{t('m69a93c20ccce')}</p>
       {choice === 'photo' && (
         <label className="mb-3 block text-sm">
-          Voz de tu avatar (sin analizar la foto)
+          {t('mf732f5ede2da')}
           <select
             className="bg-background ml-2 rounded border p-2"
             value={voice}
@@ -74,14 +77,14 @@ export function AvatarPicker({ choice, photoSrc, onPick, onPickPhoto }: AvatarPi
               localStorage.setItem('photo-voice', e.target.value);
             }}
           >
-            <option value="boy">Ahmad</option>
-            <option value="girl">Sara</option>
+            <option value="boy">{t('m4b4440482b36')}</option>
+            <option value="girl">{t('m53b1fb446230')}</option>
           </select>
         </label>
       )}
       <div className="flex w-full gap-2.5">
         <Tile
-          label="Ahmad"
+          label={t('m4b4440482b36')}
           sublabel="Voz de Ahmad"
           selected={choice === 'boy'}
           onClick={() => onPick('boy')}
@@ -90,7 +93,7 @@ export function AvatarPicker({ choice, photoSrc, onPick, onPickPhoto }: AvatarPi
         </Tile>
 
         <Tile
-          label="Sara"
+          label={t('m53b1fb446230')}
           sublabel="Voz de Sara"
           selected={choice === 'girl'}
           onClick={() => onPick('girl')}
@@ -99,7 +102,7 @@ export function AvatarPicker({ choice, photoSrc, onPick, onPickPhoto }: AvatarPi
         </Tile>
 
         <Tile
-          label="Mi foto"
+          label={t('ma0437fd08bab')}
           sublabel={photoSrc ? 'Lista' : 'Con clave'}
           selected={choice === 'photo'}
           onClick={onPickPhoto}
@@ -107,7 +110,7 @@ export function AvatarPicker({ choice, photoSrc, onPick, onPickPhoto }: AvatarPi
           {photoSrc ? (
             <Image
               src={photoSrc}
-              alt="Tu foto de avatar"
+              alt={t('m84f7616b66f9')}
               width={56}
               height={56}
               unoptimized

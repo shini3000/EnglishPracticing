@@ -55,6 +55,8 @@ export type WeaknessStatus =
   | 'new' /** only appeared in the latest session. Might be noise; might be a new topic. */
   | 'active'; /** happening, but without a clear pattern yet. */
 
+export type DisplayMessage = { key: string; values: Record<string, string | number> };
+
 export interface Weakness {
   category: string;
   label: string;
@@ -64,11 +66,13 @@ export interface Weakness {
   sessionsAffected: number;
   /** Human-readable reason for the status. Shown verbatim — never make the user infer it. */
   note: string;
+  noteMessage?: DisplayMessage;
 }
 
 export interface Strength {
   label: string;
   detail: string;
+  detailMessage?: DisplayMessage;
 }
 
 /** One point on every trend chart. Nulls are genuine gaps and must not be drawn as zero. */
@@ -149,6 +153,7 @@ export interface ParameterSummary {
    * matter of evidence and not a bug.
    */
   gate: string | null;
+  gateMessage?: DisplayMessage;
   points: ParameterPoint[];
   knownCount: number;
 }
