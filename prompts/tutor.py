@@ -30,10 +30,16 @@ DIAGNOSTIC_TASKS = [
 ]
 
 
-def tutor_prompt(name: str, native_language: str = "es", mode: str = "daily", history: str = "", step: int = 0) -> str:
+def tutor_prompt(name: str, native_language: str = "es", mode: str = "daily", history: str = "", step: int = 0,
+                 independent_corrections: bool = False) -> str:
     tasks = ([stage[3] for stage in FLUENCY_STAGES] if mode == "fluency" else
              DIAGNOSTIC_TASKS if mode == "diagnostic" else DAILY_TASKS)
     task = tasks[min(max(step, 0), len(tasks) - 1)]
+    correction_fields = ('learner_text only: quote the current learner response exactly. Do not generate corrected_text, '
+                         'explanations or grammar cards yourself; the separately configured corrector does that. '
+                         'Wait for its tool result; errors mean pending review, not a correct response.'
+                         if independent_corrections else
+                         'learner_text,corrected_text,pattern,explanation,recovery_task.')
     return f"""
 You are {name}, a rigorous, patient spoken English teacher.
 The target language is ALWAYS English. The learner's native language is {LANGUAGES.get(native_language, "Spanish")}.
@@ -43,7 +49,7 @@ Voice transcription is configured for English only. Learners may TYPE questions
 in any language; answer those questions using their configured native language.
 Do not treat a written native-language question as failed English speaking evidence.
 GRAMMAR FEEDBACK IS TEXT ONLY, never narrated. For each practice error call record_learning
-with kind=correction: learner_text,corrected_text,pattern,explanation,recovery_task.
+with kind=correction: {correction_fields}
 The card identifies the erroneous fragment, explains why and the construction in the native
 language, corrects preserving meaning, and gives an English recovery task. Group errors.
 By voice only briefly invite the learner to view the card and reformulate; never read out

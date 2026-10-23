@@ -4,7 +4,7 @@ import sys
 import os
 from types import SimpleNamespace
 from unittest.mock import patch
-from agent.models import model_policy, create_llm
+from agent.models import model_policy, create_llm, grading_config
 
 
 def settings(provider="groq", key="test"):
@@ -23,6 +23,18 @@ def settings(provider="groq", key="test"):
 
 
 class ModelsTests(unittest.TestCase):
+    def test_grading_selection_is_independent_of_conversation(self):
+        config = settings('deepseek')
+        config.GRADING_MODEL = 'groq-grade'
+        config.GOOGLE_GRADING_MODEL = 'google-grade'
+        config.DEEPSEEK_GRADING_MODEL = 'deepseek-grade'
+        for provider, expected in [('groq', ('groq-test', 'groq-grade')),
+                                   ('google', ('test', 'google-grade')),
+                                   ('deepseek', ('test', 'deepseek-grade'))]:
+            config.GRADING_PROVIDER = provider
+            self.assertEqual(grading_config(config), expected)
+            self.assertEqual(model_policy(config).provider, 'deepseek')
+
     def test_deepseek_policy_and_missing_key(self):
         p = model_policy(settings("deepseek"))
         self.assertEqual((p.provider, p.model, p.max_request),

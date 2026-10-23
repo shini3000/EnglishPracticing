@@ -40,6 +40,8 @@ import logging
 
 from groq import AsyncGroq
 from openai import AsyncOpenAI
+from google import genai
+from google.genai import types
 from agent.quota import QuotaLedger, estimate_tokens
 
 from .models import Grading, GrammarError
@@ -203,8 +205,8 @@ async def grade(transcript_text: str, *, api_key: str, model: str, provider: str
     # Keep the complete local evidence; an unavailable full-session grade is NULL,
     # not a fabricated perfect score or a sample presented as the whole session.
     output_budget = 1400
-    prefix = "DEEPSEEK" if provider == "deepseek" else "GROQ"
-    if provider not in {"groq", "deepseek"} or not api_key:
+    prefix = {"groq": "GROQ", "google": "GOOGLE", "deepseek": "DEEPSEEK"}.get(provider)
+    if not prefix or not api_key.strip() or not model.strip():
         logger.warning("grading unavailable: unsupported provider or missing key")
         return None
     known = prior_corrections(known_corrections or [], transcript_text)
@@ -221,7 +223,7 @@ async def grade(transcript_text: str, *, api_key: str, model: str, provider: str
         )
         user_content = json.dumps({"transcript": transcript_text, "prior_corrections": known}, ensure_ascii=False)
     cost = estimate_tokens(system_prompt + user_content) + output_budget + 128
-    request_limit = int(os.getenv("DEEPSEEK_MAX_REQUEST_TOKENS", "32000")) if provider == "deepseek" else 6500
+    request_limit = int(os.getenv(f"{prefix}_MAX_REQUEST_TOKENS", "6500" if provider == "groq" else "32000"))
     if known and cost > request_limit:
         # Reuse must not displace the actual evidence and lose a grade that
         # previously fitted. Fall back to the original full-transcript request.
@@ -232,40 +234,57 @@ async def grade(transcript_text: str, *, api_key: str, model: str, provider: str
         logger.warning("Full-session grading deferred: transcript exceeds safe request budget")
         return None
     ledger = QuotaLedger(
-        provider + ":" + api_key if provider == "deepseek" else api_key, model,
-        int(os.getenv(f"{prefix}_TPM_BUDGET", "60000" if provider == "deepseek" else "7200")),
-        int(os.getenv(f"{prefix}_TPD_BUDGET", "300000" if provider == "deepseek" else "180000")),
-        int(os.getenv(f"{prefix}_RPM_BUDGET", "10" if provider == "deepseek" else "24")),
-        int(os.getenv(f"{prefix}_RPD_BUDGET", "300" if provider == "deepseek" else "900")),
+        provider + ":" + api_key, model,
+        int(os.getenv(f"{prefix}_TPM_BUDGET", "7200" if provider == "groq" else "60000")),
+        int(os.getenv(f"{prefix}_TPD_BUDGET", "180000" if provider == "groq" else "300000")),
+        int(os.getenv(f"{prefix}_RPM_BUDGET", "24" if provider == "groq" else "5" if provider == "google" else "10")),
+        int(os.getenv(f"{prefix}_RPD_BUDGET", "900" if provider == "groq" else "20" if provider == "google" else "300")),
     )
     reservation, _, reason = await asyncio.to_thread(ledger.reserve, cost)
     if not reservation:
         logger.warning("Full-session grading deferred: %s quota; metrics still saved", reason)
         return None
-    client = (AsyncOpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1",
-                          timeout=TIMEOUT_SECONDS, max_retries=0)
-              if provider == "deepseek" else
-              AsyncGroq(api_key=api_key, timeout=TIMEOUT_SECONDS, max_retries=0))
+    client = None
     logger.info("grading.started", extra={"provider": provider, "model": model, "estimated_tokens": cost})
 
     try:
-        response = await client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content},
-            ],
-            # Deterministic-ish: the same session re-graded should not swing B1/B2 on a coin
-            # flip. Level estimates are noisy enough without sampling adding to it.
-            temperature=0.2,
-            response_format={"type": "json_object"},
-            max_completion_tokens=output_budget,
-            **({"extra_body": {"thinking": {"type": "disabled"}}} if provider == "deepseek" else {}),
-            **({"reasoning_effort": "low"} if model.startswith("openai/gpt-oss") else {}),
-        )
-        if response.usage:
-            await asyncio.to_thread(ledger.settle, reservation, response.usage.total_tokens)
-        content = response.choices[0].message.content or ""
+        if provider == "google":
+            client = genai.Client(api_key=api_key, http_options=types.HttpOptions(
+                timeout=int(TIMEOUT_SECONDS * 1000), retry_options=types.HttpRetryOptions(attempts=1)))
+            response = await asyncio.wait_for(client.aio.models.generate_content(
+                model=model, contents=user_content,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt, temperature=0.2,
+                    response_mime_type="application/json", max_output_tokens=output_budget)),
+                timeout=TIMEOUT_SECONDS)
+            if not response.candidates or response.candidates[0].finish_reason != "STOP":
+                raise ValueError("Incomplete Google grading response")
+            content = response.text or ""
+            if response.usage_metadata and response.usage_metadata.total_token_count is not None:
+                await asyncio.to_thread(ledger.settle, reservation, response.usage_metadata.total_token_count)
+        else:
+            client = (AsyncOpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1",
+                                  timeout=TIMEOUT_SECONDS, max_retries=0)
+                      if provider == "deepseek" else
+                      AsyncGroq(api_key=api_key, timeout=TIMEOUT_SECONDS, max_retries=0))
+            response = await client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+                # Keep assessment sampling low; estimates are already noisy.
+                temperature=0.2,
+                response_format={"type": "json_object"},
+                max_completion_tokens=output_budget,
+                **({"extra_body": {"thinking": {"type": "disabled"}}} if provider == "deepseek" else {}),
+                **({"reasoning_effort": "low"} if provider == "groq" and model.startswith("openai/gpt-oss") else {}),
+            )
+            if response.usage:
+                await asyncio.to_thread(ledger.settle, reservation, response.usage.total_tokens)
+            if getattr(response.choices[0], "finish_reason", None) not in (None, "stop"):
+                raise ValueError("Incomplete grading response")
+            content = response.choices[0].message.content or ""
         if known:
             payload = json.loads(content)
             if not isinstance(payload, dict):
@@ -294,4 +313,11 @@ async def grade(transcript_text: str, *, api_key: str, model: str, provider: str
         logger.exception("grading call failed; session will be stored ungraded")
         return None
     finally:
-        await client.close()
+        if client is not None:
+            try:
+                if provider == "google":
+                    await client.aio.aclose()
+                else:
+                    await client.close()
+            except Exception:
+                logger.warning("grading client cleanup failed", extra={"provider": provider})

@@ -56,3 +56,12 @@ def create_llm(settings):
                               retry_options=types.HttpRetryOptions(attempts=1)))
     return groq.LLM(model=policy.model, api_key=policy.api_key,
                     max_completion_tokens=policy.max_output, max_retries=0)
+
+
+def grading_config(settings) -> tuple[str, str]:
+    """Select grading independently of the conversation provider. No fallback."""
+    provider = settings.GRADING_PROVIDER
+    prefix = {"google": "GOOGLE", "groq": "GROQ", "deepseek": "DEEPSEEK"}[provider]
+    key = getattr(settings, f"{prefix}_API_KEY") or ""
+    model = settings.GRADING_MODEL if provider == "groq" else getattr(settings, f"{prefix}_GRADING_MODEL")
+    return key, model

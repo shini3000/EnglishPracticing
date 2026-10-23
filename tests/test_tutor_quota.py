@@ -1,4 +1,5 @@
 import os
+import json
 import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, PropertyMock, patch, AsyncMock
@@ -37,6 +38,30 @@ class Stream:
 
 
 class TutorQuotaTests(unittest.IsolatedAsyncioTestCase):
+    async def test_independent_live_corrector_reviews_once_and_publishes_written_cards(self):
+        self.practice.latest_user_text = 'I did went to work.'
+        self.tutor._independent_corrections = True
+        result = {'corrections': [{'learner_text': 'I did went', 'corrected_text': 'I went',
+                  'pattern': 'Past simple', 'explanation': 'Usa pasado.', 'recovery_task': 'Describe yesterday.'}],
+                  'feedback': 'Practice the past.'}
+        with patch('agent.tutor.correction_config', return_value=('groq', 'GROQ', 'test', 'chosen')), \
+             patch('agent.tutor.review_response', new=AsyncMock(return_value=result)) as review:
+            first = await self.tutor.record_learning('correction', '{"learner_text":"I did went"}')
+            second = await self.tutor.record_learning('correction', '{"learner_text":"to work"}')
+        self.assertEqual(first, second)
+        review.assert_awaited_once()
+        self.assertEqual(json.loads(first)['delivery'], 'text_only')
+        self.assertEqual(len([e for e in self.practice.entries if e['kind'] == 'correction']), 1)
+
+    async def test_failed_live_correction_does_not_save_fake_feedback(self):
+        self.practice.latest_user_text = 'I did went to work.'
+        self.tutor._independent_corrections = True
+        with patch('agent.tutor.correction_config', return_value=('groq', 'GROQ', 'test', 'chosen')), \
+             patch('agent.tutor.review_response', new=AsyncMock(side_effect=TimeoutError())):
+            result = await self.tutor.record_learning('correction', '{"learner_text":"I did went"}')
+        self.assertIn('pending', result)
+        self.assertFalse(self.practice.entries)
+
     def setUp(self):
         room = SimpleNamespace(name="test", local_participant=SimpleNamespace(publish_data=AsyncMock()))
         self.practice = Practice(None, room, None, "daily", "es")

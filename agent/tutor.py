@@ -6,14 +6,15 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 
-from livekit.agents import Agent, AgentSession, JobContext, APIStatusError, APIError, TurnHandlingOptions
+from livekit.agents import Agent, AgentSession, JobContext, APIStatusError, APIError, TurnHandlingOptions, function_tool
 from livekit.agents.types import APIConnectOptions, NOT_GIVEN
 from livekit.plugins import groq, silero
 
 import progress
 from agent import avatars, personas
 from agent.practice import Practice
-from agent.models import model_policy, create_llm
+from agent.models import model_policy, create_llm, grading_config
+from agent.corrections import correction_config, review_response
 from agent.quota import QuotaLedger, compact_context, request_tokens, retry_delay, quota_message
 from agent.text_filters import strip_tool_call_leakage
 from agent.text_feedback import correction_was_shown, AudioDeliveryGate, recovery_invitation
@@ -49,6 +50,8 @@ class EnglishTutor(Agent):
         self._name = persona.name
         self._history = history
         self._quota_paused = False
+        self._correction_cache = {}
+        self._independent_corrections = correction_config(settings) is not None
         self.model_policy = model_policy(settings)
         p = self.model_policy
         self.quota = QuotaLedger(
@@ -56,10 +59,49 @@ class EnglishTutor(Agent):
             p.tpm, p.tpd, p.rpm, p.rpd,
         )
         super().__init__(
-            instructions=tutor_prompt(persona.name, practice.language, practice.mode, history),
-            tools=[search_web, find_listening_video, practice.practice_control, practice.record_learning],
+            instructions=tutor_prompt(persona.name, practice.language, practice.mode, history,
+                                      independent_corrections=self._independent_corrections),
+            tools=[search_web, find_listening_video, practice.practice_control, self.record_learning],
         )
         self._greeting = persona.greeting
+
+    @function_tool
+    async def record_learning(self, kind: str, details_json: str) -> str:
+        """Save learning evidence. Correction: exact learner_text; when a separate
+        corrector is configured it generates the card, otherwise include corrected_text,
+        pattern, explanation, recovery_task. Vocabulary: element,observed_need,meaning,
+        pattern,pronunciation,restrictions,collocations,examples (2),transfer_task.
+        Structure: element,meaning,pattern,examples (2),transfer_task.
+        Retrieval: element,item_type (vocabulary/structure),result (unaided/helped/failed),
+        attempt_type (repetition/review/transfer),context,evidence (exact learner quote).
+        Feedback: summary. Other kinds: listening/assessment.
+        """
+        if kind != "correction" or not self._independent_corrections:
+            return await self.practice.record_learning(kind, details_json)
+        try:
+            data = json.loads(details_json)
+            quote = data.get("learner_text") if isinstance(data, dict) else None
+            text = self.practice.latest_user_text
+            if not isinstance(quote, str) or not quote.strip() or quote not in text:
+                return "Provide an exact quote from the current learner response; nothing was reviewed."
+            # Review the whole current response once, not one paid request per error.
+            cache_key = (correction_config(settings), self.practice.language, text)
+            if cache_key in self._correction_cache:
+                return self._correction_cache[cache_key]
+            result = await review_response(settings, text, LANGUAGES.get(self.practice.language, "Spanish"))
+            outcomes = [json.loads(await self.practice.record_learning("correction", json.dumps(card)))
+                        for card in result["corrections"]]
+            feedback = json.loads(await self.practice.record_learning("feedback", json.dumps({"summary": result["feedback"]})))
+            response = json.dumps({"kind": "correction_review", "saved": feedback.get("saved") and all(c.get("saved") for c in outcomes),
+                                   "delivery": "text_only" if outcomes else "journal",
+                                   "feedback": result["feedback"], "correction_count": len(outcomes)})
+            self._correction_cache[cache_key] = response
+            if len(self._correction_cache) > 128:
+                self._correction_cache.pop(next(iter(self._correction_cache)))
+            return response
+        except Exception as exc:
+            logger.warning("correction.failed", extra={"error_type": type(exc).__name__})
+            return "Correction unavailable. Keep the response pending and offer a retry. Do not invent a correction or claim no errors."
 
     async def on_enter(self) -> None:
         """Called once when the agent joins the session. Used for the greeting."""
@@ -160,7 +202,8 @@ class EnglishTutor(Agent):
             yield recovery_invitation(self.practice.language)
             return
         policy = tutor_prompt(self._name, self.practice.language,
-                              self.practice.mode, step=self.practice.index)
+                              self.practice.mode, step=self.practice.index,
+                              independent_corrections=self._independent_corrections)
         clock = self.practice.status()
         policy += "\nMeasured state: " + json.dumps({
             key: clock[key] for key in ("step", "remaining_seconds", "running", "started", "finished")
@@ -522,8 +565,8 @@ async def _run_session(ctx: JobContext) -> None:
                 dsn=settings.PROGRESS_DATABASE_URL,
                 # Legacy parameter name retained for compatibility; key belongs
                 # to the explicitly selected grading provider.
-                groq_api_key=(settings.DEEPSEEK_API_KEY or "") if settings.GRADING_PROVIDER == "deepseek" else settings.GROQ_API_KEY,
-                grading_model=settings.DEEPSEEK_GRADING_MODEL if settings.GRADING_PROVIDER == "deepseek" else settings.GRADING_MODEL,
+                groq_api_key=grading_config(settings)[0],
+                grading_model=grading_config(settings)[1],
                 grading_provider=settings.GRADING_PROVIDER,
                 known_corrections=[entry for entry in practice.entries if entry.get("kind") == "correction"],
             )

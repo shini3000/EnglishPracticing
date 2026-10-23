@@ -19,7 +19,12 @@ class Settings(BaseSettings):
     LLM_PROVIDER: Literal["groq", "google", "deepseek"] = "groq"
     DEEPSEEK_API_KEY: str | None = None
     DEEPSEEK_LLM_MODEL: str = "deepseek-flash"
-    GRADING_PROVIDER: Literal["groq", "deepseek"] = "groq"
+    GRADING_PROVIDER: Literal["groq", "google", "deepseek"] = "groq"
+    GOOGLE_GRADING_MODEL: str = "gemini-3-flash-preview"
+    # Optional for backwards compatibility: unset keeps live corrections in the
+    # conversational model. Set explicitly to separate this responsibility.
+    CORRECTION_PROVIDER: Literal["groq", "google", "deepseek"] | None = None
+    CORRECTION_MODEL: str | None = None
     DEEPSEEK_GRADING_MODEL: str = "deepseek-flash"
     DEEPSEEK_HISTORY_TURNS: int = Field(default=48, ge=1, le=200)
     # Local safeguards, not provider quotas or a hard monetary spending cap.
