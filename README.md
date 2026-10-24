@@ -187,6 +187,16 @@ El idioma se cambia desde **avatar de Clerk → Preferencias**.
 
 ## Documentación
 
+### Android nativo y despliegue para móvil
+
+- [`movil/android`](movil/android/README.md): cliente Kotlin con Jetpack Compose,
+  pantalla inicial de modalidades y configuración para compilar una APK. La
+  autenticación y las llamadas LiveKit todavía están pendientes de integrar.
+- [`deploy/vps`](deploy/vps/README.md): despliegue Docker del agente y backend de
+  APIs por HTTPS. La interfaz web permanece privada en esta configuración.
+- [Horarios de la VM en Azure](deploy/vps/azure/README.md): encendido diario y
+  apagado con desasignación para controlar el consumo de cómputo.
+
 La **[Wiki](https://github.com/shini3000/EnglishPracticing/wiki)** reúne las guías de uso y operación:
 
 - **Practicar:** [Práctica A y diagnóstico](https://github.com/shini3000/EnglishPracticing/wiki/Practica-A-y-diagnostico) · [Práctica B](https://github.com/shini3000/EnglishPracticing/wiki/Practica-B).

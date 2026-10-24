@@ -185,7 +185,7 @@ export async function POST(req: Request) {
       stage = 'transcription';
       const upload = new FormData();
       upload.set('file', audio);
-      upload.set('model', 'whisper-large-v3-turbo');
+      upload.set('model', process.env.STT_MODEL || 'whisper-large-v3');
       upload.set('language', 'en');
       const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
         method: 'POST',

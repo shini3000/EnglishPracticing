@@ -18,6 +18,9 @@ __pycache__/
 **/*.key
 .data/
 logs/
+# Neither runtime image builds from the native client or private deployment files.
+movil/
+deploy/
 Dockerfile
 .dockerignore
 README.md

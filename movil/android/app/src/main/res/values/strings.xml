@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">English Practicing</string>
+    <string name="home_title">Tu espacio\npara hablar inglés.</string>
+    <string name="home_description">Elige cómo quieres practicar hoy.</string>
+    <string name="practice_daily">Práctica A</string>
+    <string name="practice_daily_focus">Conversación y fundamentos</string>
+    <string name="practice_daily_description">Recupera lo aprendido, conversa y trabaja gramática, escucha y transferencia.</string>
+    <string name="practice_fluency">Práctica B</string>
+    <string name="practice_fluency_focus">Fluidez y autonomía</string>
+    <string name="practice_fluency_description">Practica cambios de tiempo, monólogo, escucha activa y rondas 4–3–2.</string>
+    <string name="practice_diagnostic">Diagnóstico</string>
+    <string name="practice_diagnostic_focus">Conoce tu punto de partida</string>
+    <string name="practice_diagnostic_description">Identifica fortalezas y prioridades para orientar tus siguientes sesiones.</string>
+    <string name="view_practice">Ver modalidad</string>
+    <string name="integration_pending">Esta primera versión permite explorar las modalidades. El inicio de sesión y las llamadas aún no están disponibles.</string>
+    <string name="close">Volver</string>
+</resources>

@@ -1,0 +1,12 @@
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Android consumes authenticated APIs; the web UI remains private.
+	handle /api/* {
+		reverse_proxy web:3000
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+}

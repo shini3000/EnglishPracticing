@@ -85,7 +85,11 @@ const route = compile(
     process: { env: correctionEnv },
     fetch: async (url, options) => {
       calls++;
-      if (url.includes('/audio/transcriptions')) return Response.json({ text: 'I work yesterday' });
+      if (url.includes('/audio/transcriptions')) {
+        assert.equal(options.body.get('model'), correctionEnv.STT_MODEL || 'whisper-large-v3');
+        assert.equal(options.body.get('language'), 'en');
+        return Response.json({ text: 'I work yesterday' });
+      }
       const body = JSON.parse(options.body);
       sentPrompt = body.messages?.[0].content || body.systemInstruction?.parts[0].text;
       if (providerFailure) return Response.json({ secret: 'must-not-leak' }, { status: 429 });

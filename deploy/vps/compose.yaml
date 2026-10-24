@@ -1,0 +1,60 @@
+name: english-practicing
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  agent:
+    image: ghcr.io/shini3000/english-practicing-agent:${IMAGE_TAG:?Define IMAGE_TAG}
+    env_file:
+      - path: ./agent.env
+        format: raw
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 5m
+    logging: *logging
+
+  web:
+    image: ghcr.io/shini3000/english-practicing-web:${IMAGE_TAG:?Define IMAGE_TAG}
+    env_file:
+      - path: ./web.env
+        format: raw
+    restart: unless-stopped
+    init: true
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/login',{signal:AbortSignal.timeout(5000)}).then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    logging: *logging
+
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Define DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  caddy_data:
+  caddy_config:

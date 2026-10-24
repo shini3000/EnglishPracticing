@@ -72,8 +72,8 @@ class Settings(BaseSettings):
     # They point at the same model today; this exists so raising one doesn't slow the other.
     GRADING_MODEL: str = "llama-3.3-70b-versatile"
 
-    # STT — whisper-large-v3-turbo: faster than v3 with comparable accuracy
-    STT_MODEL: str = "whisper-large-v3-turbo"
+    # STT — prefer full Whisper v3 for faithful learner speech transcription.
+    STT_MODEL: str = "whisper-large-v3"
 
     # Conservative local caps; Groq's organization-wide limits remain authoritative.
     GROQ_TPM_BUDGET: int = 7200

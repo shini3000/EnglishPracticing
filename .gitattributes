@@ -1,2 +1,4 @@
 # GitHub's Linux runners must receive LF shell scripts even from Windows edits.
 *.sh text eol=lf
+**/gradlew text eol=lf
+*.bat text eol=crlf
