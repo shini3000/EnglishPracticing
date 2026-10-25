@@ -46,6 +46,8 @@ class TutorQuotaTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("practice_control", names)
 
     async def test_independent_live_corrector_reviews_once_and_publishes_written_cards(self):
+        self.practice.mode = 'fluency'
+        self.practice.index = 4  # Practice B block 2: publish feedback before continuing.
         self.practice.latest_user_text = 'I did went to work.'
         self.tutor._independent_corrections = True
         result = {'corrections': [{'learner_text': 'I did went', 'corrected_text': 'I went',
@@ -53,12 +55,17 @@ class TutorQuotaTests(unittest.IsolatedAsyncioTestCase):
                   'feedback': 'Practice the past.'}
         with patch('agent.tutor.correction_config', return_value=('groq', 'GROQ', 'test', 'chosen')), \
              patch('agent.tutor.review_response', new=AsyncMock(return_value=result)) as review:
-            first = await self.tutor.record_learning('correction', '{"learner_text":"I did went"}')
+            first = await self.tutor.record_learning('correction', '{"learner_text":"i DID went"}')
             second = await self.tutor.record_learning('correction', '{"learner_text":"to work"}')
         self.assertEqual(first, second)
         review.assert_awaited_once()
         self.assertEqual(json.loads(first)['delivery'], 'text_only')
         self.assertEqual(len([e for e in self.practice.entries if e['kind'] == 'correction']), 1)
+        self.assertTrue(self.practice.feedback_ready)
+        published = [json.loads(call.args[0]) for call in self.practice.room.local_participant.publish_data.await_args_list
+                     if call.kwargs.get('topic') == 'practice-journal']
+        self.assertEqual([packet['entry']['kind'] for packet in published], ['correction', 'feedback'])
+        self.assertEqual(published[0]['entry']['learner_text'], 'I did went')
 
     async def test_failed_live_correction_does_not_save_fake_feedback(self):
         self.practice.latest_user_text = 'I did went to work.'

@@ -3,11 +3,56 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-from agent.corrections import correction_config, review_response
+from agent.corrections import anchored_quote, correction_config, review_response, CorrectionValidationError
 from tests.test_models import settings
 
 
 class CorrectionProviderTests(unittest.IsolatedAsyncioTestCase):
+    def test_typography_is_anchored_without_changing_evidence_words(self):
+        self.assertEqual(anchored_quote('well, i  go yesterday. Next.', 'I go yesterday.'), 'i  go yesterday')
+        self.assertEqual(anchored_quote('I don’t work there.', "I don't work there."), 'I don’t work there')
+        self.assertIsNone(anchored_quote('I do not work there.', 'I work there'))
+        self.assertIsNone(anchored_quote('I go yesterday.', 'I went yesterday'))
+        self.assertIsNone(anchored_quote('homework', 'work'))
+        self.assertIsNone(anchored_quote('I go.', '...'))
+
+    async def test_typographic_quote_and_noop_do_not_discard_valid_cards(self):
+        config = settings()
+        config.CORRECTION_PROVIDER = 'groq'
+        config.CORRECTION_MODEL = None
+        card = {'learner_text': 'I go yesterday.', 'corrected_text': 'I went yesterday.',
+                'pattern': 'Past simple', 'explanation': 'Usa pasado.', 'recovery_task': 'Describe yesterday.'}
+        noop = {**card, 'learner_text': 'I like apples.', 'corrected_text': 'i like apples!'}
+        for cards, expected in [([card, noop], 1), ([noop], 0)]:
+            with self.subTest(cards=len(cards)):
+                response = SimpleNamespace(usage=None, choices=[SimpleNamespace(finish_reason='stop',
+                    message=SimpleNamespace(content=json.dumps({'corrections': cards, 'feedback': 'Revisa la respuesta.'})))])
+                client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=AsyncMock(return_value=response))), close=AsyncMock())
+                ledger = Mock()
+                ledger.reserve.return_value = ('reservation', 0, 'ready')
+                with patch('agent.corrections.AsyncGroq', return_value=client), patch('agent.corrections.QuotaLedger', return_value=ledger):
+                    result = await review_response(config, 'i  go yesterday. I like apples.', 'Spanish')
+                self.assertEqual(len(result['corrections']), expected)
+                self.assertEqual(result['feedback'], 'Revisa la respuesta.')
+                if expected:
+                    self.assertEqual(result['corrections'][0]['learner_text'], 'i  go yesterday')
+                client.close.assert_awaited_once()
+
+    async def test_truncated_and_malformed_responses_have_safe_reason_codes(self):
+        config = settings()
+        config.CORRECTION_PROVIDER = 'groq'
+        config.CORRECTION_MODEL = None
+        for finish, content, code in [('length', '{', 'incomplete_response'), ('stop', 'private malformed response', 'invalid_json')]:
+            response = SimpleNamespace(usage=None, choices=[SimpleNamespace(finish_reason=finish, message=SimpleNamespace(content=content))])
+            client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=AsyncMock(return_value=response))), close=AsyncMock())
+            ledger = Mock()
+            ledger.reserve.return_value = ('reservation', 0, 'ready')
+            with patch('agent.corrections.AsyncGroq', return_value=client), patch('agent.corrections.QuotaLedger', return_value=ledger):
+                with self.assertRaises(CorrectionValidationError) as raised:
+                    await review_response(config, 'I go yesterday.', 'Spanish')
+            self.assertEqual(raised.exception.code, code)
+            self.assertNotIn('private', str(raised.exception))
+
     async def test_all_live_providers_use_only_the_selected_model_and_json_transport(self):
         for provider in ('groq', 'google', 'deepseek'):
             with self.subTest(provider=provider):
