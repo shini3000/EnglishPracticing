@@ -16,6 +16,9 @@ def attach_latency_logging(session):
     @session.on("conversation_item_added")
     def on_item(event):
         item = event.item
+        # Conversation events also include handoffs and tool calls, not just messages.
+        if getattr(item, "type", None) not in (None, "message") or not hasattr(item, "role"):
+            return
         fields = {"message_id": item.id, "role": item.role}
         for name in _DURATIONS:
             value = item.metrics.get(name)

@@ -8,10 +8,16 @@ function compile(path, imports, env = {}) {
   const code = ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  vm.runInNewContext(code, { exports, require: name => {
-    if (!(name in imports)) throw new Error(`Unexpected import: ${name}`);
-    return imports[name];
-  }, process: { env }, Buffer, URL });
+  vm.runInNewContext(code, {
+    exports,
+    require: (name) => {
+      if (!(name in imports)) throw new Error(`Unexpected import: ${name}`);
+      return imports[name];
+    },
+    process: { env },
+    Buffer,
+    URL,
+  });
   return exports;
 }
 
@@ -22,15 +28,21 @@ function compile(path, imports, env = {}) {
 
   let middlewareCalls = 0;
   let middlewareOptions;
-  const middleware = compile('middleware.ts', {
-    'next/server': { NextResponse: { next: () => 'setup-only' } },
-    '@clerk/nextjs/server': { clerkMiddleware: (_handler, options) => () => {
-      middlewareCalls++;
-      middlewareOptions = options();
-      return 'clerk-context';
-    } },
-    '@/lib/auth-config': config,
-  }, env);
+  const middleware = compile(
+    'middleware.ts',
+    {
+      'next/server': { NextResponse: { next: () => 'setup-only' } },
+      '@clerk/nextjs/server': {
+        clerkMiddleware: (_handler, options) => (request) => {
+          middlewareCalls++;
+          middlewareOptions = options(request);
+          return 'clerk-context';
+        },
+      },
+      '@/lib/auth-config': config,
+    },
+    env
+  );
   assert.equal(middleware.default({}, {}), 'setup-only');
   assert.equal(middlewareCalls, 0);
   env.CLERK_AUTHORIZED_PARTIES = ' , ';
@@ -45,24 +57,42 @@ function compile(path, imports, env = {}) {
     const query = strings.join('?');
     if (query.includes('INSERT INTO learners')) {
       // Mimic the unique-index upsert under parallel provisioning.
-      if (!rows.has(values[0])) rows.set(values[0], {
-        id: `uuid-${rows.size + 1}`, clerk_user_id: values[0], display_name: values[1],
-      });
+      if (!rows.has(values[0]))
+        rows.set(values[0], {
+          id: `uuid-${rows.size + 1}`,
+          clerk_user_id: values[0],
+          display_name: values[1],
+        });
       return [rows.get(values[0])];
     }
     assert.ok(query.includes('WHERE clerk_user_id ='));
     return rows.has(values[0]) ? [rows.get(values[0])] : [];
   };
-  let subject = null, profileCalls = 0, authCalls = 0, dbAvailable = true;
-  const session = compile('lib/session.ts', {
-    '@clerk/nextjs/server': {
-      auth: async () => { authCalls++; return { userId: subject }; },
-      currentUser: async () => { profileCalls++; return { id: subject, fullName: 'Ana' }; },
+  let subject = null,
+    profileCalls = 0,
+    authCalls = 0,
+    dbAvailable = true;
+  const session = compile(
+    'lib/session.ts',
+    {
+      '@clerk/nextjs/server': {
+        auth: async () => {
+          authCalls++;
+          return { userId: subject };
+        },
+        currentUser: async () => {
+          profileCalls++;
+          return { id: subject, fullName: 'Ana' };
+        },
+      },
+      react: { cache: (fn) => fn },
+      crypto: require('node:crypto'),
+      '@/lib/auth-config': config,
+      '@/lib/db': { getDb: () => (dbAvailable ? sql : null) },
+      '@/lib/learners': learners,
     },
-    react: { cache: fn => fn }, crypto: require('node:crypto'),
-    '@/lib/auth-config': config, '@/lib/db': { getDb: () => dbAvailable ? sql : null },
-    '@/lib/learners': learners,
-  }, env);
+    env
+  );
   assert.equal(await session.currentLearnerId(), null);
   assert.equal(authCalls, 0); // Missing configuration never activates keyless mode.
   env.CLERK_PUBLISHABLE_KEY = 'pk_test_fake';
@@ -71,6 +101,40 @@ function compile(path, imports, env = {}) {
   assert.equal(middlewareOptions.publishableKey, 'pk_test_fake');
   assert.equal('secretKey' in middlewareOptions, false); // No dynamic-secret encryption requirement.
   assert.equal('secretKey' in config.clerkConfiguration(), false);
+  const nativeRequest = (path, method = 'GET', extraHeaders = {}) =>
+    new Request(`https://tutor.example.com${path}`, {
+      method,
+      headers: { authorization: 'Bearer header.payload.signature', ...extraHeaders },
+    });
+  for (const [path, method] of [
+    ['/api/token', 'POST'],
+    ['/api/time-shifting', 'POST'],
+    ['/api/profile', 'GET'],
+    ['/api/profile', 'PATCH'],
+    ['/api/progress', 'GET'],
+    ['/api/practice-journal', 'GET'],
+  ]) {
+    const request = nativeRequest(path, method);
+    assert.equal(config.isNativeBearerRequest(request), true);
+    assert.equal(middleware.default(request, {}), 'clerk-context');
+    assert.equal(middlewareOptions.authorizedParties, undefined);
+  }
+  for (const request of [
+    nativeRequest('/home'),
+    nativeRequest('/api/time-shifting', 'POST', { cookie: 'session=anything' }),
+    nativeRequest('/api/time-shifting', 'POST', { origin: 'https://untrusted.example' }),
+    nativeRequest('/api/progress', 'PATCH'),
+    nativeRequest('/api/profile', 'PATCH', { origin: 'https://untrusted.example' }),
+    nativeRequest('/api/profile', 'PATCH', { cookie: '__session=anything' }),
+    nativeRequest('/api/token', 'POST', { cookie: '__session=anything' }),
+    nativeRequest('/api/token', 'POST', { origin: 'https://untrusted.example' }),
+    nativeRequest('/api/token', 'POST', { origin: '' }),
+    nativeRequest('/api/token', 'POST', { authorization: 'Bearer malformed' }),
+  ]) {
+    assert.equal(config.isNativeBearerRequest(request), false);
+    middleware.default(request, {});
+    assert.equal(middlewareOptions.authorizedParties[0], 'http://localhost:3000');
+  }
   env.APP_PASSCODE = 'legacy-passcode';
   env.LIVEKIT_API_SECRET = 'legacy-secret';
   assert.equal(await session.currentLearnerId(), null); // Legacy secrets cannot sign in.
@@ -131,5 +195,10 @@ function compile(path, imports, env = {}) {
   }
   active = null;
   assert.equal((await journal.GET(request)).status, 401);
-  console.log('PASS: self-service Clerk accounts, session checks, isolated profiles/progress, legacy rejection and concurrent provisioning. No network.');
-})().catch(error => { console.error(error); process.exitCode = 1; });
+  console.log(
+    'PASS: self-service Clerk accounts, session checks, isolated profiles/progress, legacy rejection and concurrent provisioning. No network.'
+  );
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

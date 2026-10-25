@@ -4,6 +4,7 @@
 .idea/
 **/build/
 local.properties
+mobile.properties
 *.iml
 *.jks
 *.keystore

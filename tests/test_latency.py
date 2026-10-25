@@ -7,6 +7,14 @@ from utils.latency import attach_latency_logging
 
 
 class LatencyTests(unittest.IsolatedAsyncioTestCase):
+    async def test_handoff_event_is_ignored_without_callback_errors(self):
+        session = AgentSession()
+        attach_latency_logging(session)
+        # Invoke callbacks directly: the SDK emitter catches callback exceptions.
+        event = SimpleNamespace(item=llm.AgentHandoff(old_agent_id="old", new_agent_id="new"))
+        for callback in session._events["conversation_item_added"]:
+            callback(event)
+
     async def test_real_session_event_logs_only_known_timings(self):
         session = AgentSession()
         attach_latency_logging(session)

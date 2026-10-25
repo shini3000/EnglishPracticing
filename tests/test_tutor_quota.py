@@ -38,6 +38,13 @@ class Stream:
 
 
 class TutorQuotaTests(unittest.IsolatedAsyncioTestCase):
+    async def test_agent_tools_flatten_without_duplicate_record_learning(self):
+        from livekit.agents.llm.tool_context import ToolContext
+        tools = ToolContext(self.tutor.tools).flatten()
+        names = [tool.info.name for tool in tools]
+        self.assertEqual(names.count("record_learning"), 1)
+        self.assertIn("practice_control", names)
+
     async def test_independent_live_corrector_reviews_once_and_publishes_written_cards(self):
         self.practice.latest_user_text = 'I did went to work.'
         self.tutor._independent_corrections = True

@@ -1,14 +1,20 @@
 import { type NextFetchEvent, type NextRequest, NextResponse } from 'next/server';
 import { clerkMiddleware } from '@clerk/nextjs/server';
-import { clerkAuthorizedParties, clerkConfiguration } from '@/lib/auth-config';
+import {
+  clerkAuthorizedParties,
+  clerkConfiguration,
+  isNativeBearerRequest,
+} from '@/lib/auth-config';
 
 const withClerk = clerkMiddleware(
   () => {},
-  () => ({
+  (request) => ({
     publishableKey: clerkConfiguration().publishableKey,
     // Clerk reads CLERK_SECRET_KEY directly at runtime. Passing secretKey here
     // would enable dynamic-secret propagation and require a separate encryption key.
-    authorizedParties: clerkAuthorizedParties(),
+    // Clerk still verifies signature, issuer, expiry and session token type.
+    // Native SDK tokens may omit azp; accept them only on explicit bearer-only APIs.
+    authorizedParties: isNativeBearerRequest(request) ? undefined : clerkAuthorizedParties(),
     signInUrl: '/login',
     signUpUrl: '/register',
   })

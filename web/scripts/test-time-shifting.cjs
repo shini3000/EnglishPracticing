@@ -60,6 +60,7 @@ const route = compile(
   'app/api/time-shifting/route.ts',
   {
     'node:crypto': require('node:crypto'),
+    '@/lib/auth-config': compile('lib/auth-config.ts'),
     'next/server': { NextResponse: { json: (body, options) => Response.json(body, options) } },
     '@/lib/session': { currentLearnerId: async () => (authenticated ? 'learner-test' : null) },
     '@/lib/db': {
@@ -218,6 +219,32 @@ function request(origin = 'http://localhost:3000', reference = '') {
     (await route.POST(request('http://localhost:3000', 'different context'))).status,
     200
   );
+  const nativeReview = () => {
+    const browser = request();
+    return new Request('http://localhost:3000/api/time-shifting', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer header.payload.signature',
+        'content-type': browser.headers.get('content-type'),
+      },
+      body: browser.body,
+      duplex: 'half',
+    });
+  };
+  assert.equal(
+    (await route.POST(nativeReview())).status,
+    200,
+    'authenticated native bearer review has no browser Origin'
+  );
+  for (const extra of [{ cookie: 'session=value' }, { origin: 'https://untrusted.example' }]) {
+    const native = nativeReview();
+    for (const [key, value] of Object.entries(extra)) native.headers.set(key, value);
+    assert.equal(
+      (await route.POST(native)).status,
+      403,
+      'native exception never applies to browser-origin or cookie requests'
+    );
+  }
   correctionEnv.CORRECTION_PROVIDER = 'google';
   delete correctionEnv.GOOGLE_API_KEY;
   const beforeMissing = calls;

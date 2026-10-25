@@ -12,3 +12,22 @@ export function clerkAuthorizedParties(): string[] {
     .filter(Boolean);
   return origins.length ? origins : ['http://localhost:3000'];
 }
+
+/** Native clients have no browser azp claim. Never apply this exception to cookies. */
+export function isNativeBearerRequest(request?: Request): boolean {
+  if (!request || typeof request.url !== 'string' || !request.headers) return false;
+  if (request.headers.has('origin') || request.headers.has('cookie')) return false;
+  if (
+    !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(
+      request.headers.get('authorization') || ''
+    )
+  )
+    return false;
+  const path = new URL(request.url).pathname;
+  return (
+    (request.method === 'POST' && ['/api/token', '/api/time-shifting'].includes(path)) ||
+    (request.method === 'PATCH' && path === '/api/profile') ||
+    (request.method === 'GET' &&
+      ['/api/profile', '/api/progress', '/api/practice-journal'].includes(path))
+  );
+}

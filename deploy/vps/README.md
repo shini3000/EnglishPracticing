@@ -1,4 +1,7 @@
-# Despliegue Docker en un VPS (incluida una VM de Azure)
+# Plantilla para desplegar tu propio servidor
+
+Cada usuario proporciona su propio servidor, dominio, servicios y credenciales.
+Esta plantilla no conecta con un despliegue compartido.
 
 Configuración de despliegue. Ejecuta las imágenes publicadas
 del agente y Next.js. Caddy publica únicamente `/api/*` por HTTPS para Android.
@@ -99,8 +102,9 @@ administradores tienen acceso a los secretos del contenedor.
 La URL pública del backend será `https://DOMINIO_REAL`. La app no se conecta a una
 URL HTTP del agente. El backend valida la identidad y devuelve URL/token LiveKit.
 Next.js se conserva como servidor de API interno, sin servir su interfaz al público.
-La app Android actual todavía requiere integrar Clerk, el cliente HTTP y el SDK
-LiveKit antes de poder llamar; este despliegue no sustituye esa implementación.
+La app Android integra Clerk, el cliente HTTPS y LiveKit. Requiere habilitar
+Native API en la misma instancia Clerk. La validación de una llamada autenticada
+es independiente de las comprobaciones de infraestructura.
 
 ## Verificación local de la plantilla
 
@@ -112,3 +116,44 @@ docker compose --env-file .env.example config --no-env-resolution --quiet
 
 Esta comprobación solo valida la estructura Compose. No valida imágenes,
 credenciales, certificados, cuotas, permisos ni una sesión real.
+
+## Backend y agente con soporte Android
+
+`compose.android.yaml` permite usar la imagen local `english-practicing-web:android-0.4`
+con el ajuste de validación de tokens nativos. También selecciona el agente
+`english-practicing-agent:android-0.2`, que corrige el registro duplicado de
+`record_learning` y omite eventos de handoff en las métricas de mensajes.
+Se construye desde la raíz con
+`docker build -t english-practicing-agent:android-0.2 -f deploy/vps/Dockerfile.agent-android .`. Compilar fuera de la VM de 4 GB para
+no competir con los procesos de audio. La imagen no incluye credenciales; sigue
+usando `web.env` en ejecución. Transferir la imagen con `docker save`, copiarla al
+servidor y cargarla con `docker load` antes de aplicar el overlay.
+
+Desde la carpeta de despliegue en el VPS (anteponer `sudo` si es necesario):
+
+```bash
+docker compose -f compose.yaml -f compose.android.yaml up -d --no-deps --wait web agent
+```
+
+Para volver al backend versionado original:
+
+```bash
+docker compose -f compose.yaml up -d --no-deps --wait web agent
+```
+
+Al actualizar este despliegue móvil, incluir ambos archivos Compose. Un reinicio
+de la VM conserva el contenedor ya creado y su política de reinicio. El proxy
+sigue exponiendo únicamente `/api/*`. La excepción de `authorizedParties` se limita
+a JWT Bearer sin cookies ni Origin en las rutas móviles explícitas; Clerk sigue
+comprobando la firma y vigencia de la sesión.
+
+La imagen web Android 0.3 acepta también POST `/api/time-shifting` con sesión
+Bearer nativa sin cookies ni Origin, para revisar los ejercicios de la ruta B.
+Las solicitudes de navegador conservan el control de origen. No se modifica el
+proveedor de corrección configurado, la cuota ni el aislamiento por estudiante.
+
+La imagen web Android 0.4 añade PATCH `/api/profile` a la lista explícita de APIs
+nativas Bearer sin cookies ni Origin. Conserva la autorización de Clerk, la
+validación de campos/idiomas y el aislamiento por estudiante. Los navegadores
+siguen sujetos al control de origen y reciben su cookie de idioma; Android no
+recibe esa cookie para evitar contaminar sus siguientes solicitudes Bearer.

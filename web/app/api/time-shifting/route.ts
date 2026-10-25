@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import { translateStatic } from '@/i18n/static-text';
+import { isNativeBearerRequest } from '@/lib/auth-config';
 import { correctionConfig, requestCorrection } from '@/lib/correction-provider';
 import { getDb } from '@/lib/db';
 import { NATIVE_LANGUAGES } from '@/lib/practice-options';
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
       { error: translateStatic(t, 'Inicia sesión.') },
       { status: 401, headers }
     );
-  if (req.headers.get('origin') !== new URL(req.url).origin)
+  if (!isNativeBearerRequest(req) && req.headers.get('origin') !== new URL(req.url).origin)
     return NextResponse.json(
       { error: translateStatic(t, 'Origen no permitido.') },
       { status: 403, headers }

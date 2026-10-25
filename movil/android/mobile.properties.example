@@ -1,0 +1,5 @@
+# Copy to mobile.properties (ignored by Git) and use YOUR own infrastructure.
+# These values are embedded in the APK: do not publish an APK built with a private endpoint.
+API_BASE_URL=https://backend.example.com
+# Publicable key from YOUR Clerk application; never put a secret key here.
+CLERK_PUBLISHABLE_KEY=

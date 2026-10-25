@@ -61,7 +61,8 @@ class EnglishTutor(Agent):
         super().__init__(
             instructions=tutor_prompt(persona.name, practice.language, practice.mode, history,
                                       independent_corrections=self._independent_corrections),
-            tools=[search_web, find_listening_video, practice.practice_control, self.record_learning],
+            # Agent discovers @function_tool methods on this instance automatically.
+            tools=[search_web, find_listening_video, practice.practice_control],
         )
         self._greeting = persona.greeting
 

@@ -1,0 +1,5 @@
+# Temporary patch over the published agent until the next versioned release.
+# Build from repository root; contains no runtime environment files.
+FROM ghcr.io/shini3000/english-practicing-agent:1.3.1
+COPY --chown=agent:agent agent/tutor.py /app/agent/tutor.py
+COPY --chown=agent:agent utils/latency.py /app/utils/latency.py

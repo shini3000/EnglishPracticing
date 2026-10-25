@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { TARGET_LANGUAGE, isAppLocale } from '@/i18n/locales';
+import { isNativeBearerRequest } from '@/lib/auth-config';
 import { getDb } from '@/lib/db';
 import { readPreferences } from '@/lib/preferences';
 import { currentLearnerId } from '@/lib/session';
@@ -20,7 +21,8 @@ export async function GET() {
 export async function PATCH(request: Request) {
   const learnerId = await currentLearnerId();
   if (!learnerId) return NextResponse.json({ code: 'unauthorized' }, { status: 401, headers });
-  if (request.headers.get('origin') !== new URL(request.url).origin)
+  const native = isNativeBearerRequest(request);
+  if (!native && request.headers.get('origin') !== new URL(request.url).origin)
     return NextResponse.json({ code: 'origin' }, { status: 403, headers });
   let body;
   try {
@@ -49,13 +51,14 @@ export async function PATCH(request: Request) {
     );
     // Only a display-language hint for signed-out screens. Authenticated requests
     // always read their own durable profile, not a previous user's browser cookie.
-    response.cookies.set('app_locale', body.nativeLanguage, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 31536000,
-    });
+    if (!native)
+      response.cookies.set('app_locale', body.nativeLanguage, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 31536000,
+      });
     return response;
   } catch {
     return NextResponse.json({ code: 'unavailable' }, { status: 503, headers });

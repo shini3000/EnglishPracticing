@@ -107,6 +107,7 @@ const prefs = load('lib/preferences.ts', {
   '@/lib/session': session,
 });
 const route = load('app/api/profile/route.ts', {
+  '@/lib/auth-config': load('lib/auth-config.ts', {}),
   '@/i18n/locales': locales,
   '@/lib/db': db,
   '@/lib/session': session,
@@ -176,6 +177,39 @@ function request(body, origin = 'http://localhost:3000') {
   assert.equal((await config()).locale, 'en');
   cookie = 'fr';
   assert.equal((await config()).locale, 'es');
+  user = 'learner-native';
+  function nativeRequest(language = 'en', extraHeaders = {}) {
+    return new Request('http://localhost:3000/api/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        authorization: 'Bearer header.payload.signature',
+        ...extraHeaders,
+      },
+      body: JSON.stringify({ nativeLanguage: language, targetLanguage: 'en' }),
+    });
+  }
+  const nativeSaved = await route.PATCH(nativeRequest());
+  assert.equal(nativeSaved.status, 200);
+  assert.equal(
+    nativeSaved.headers.get('set-cookie'),
+    null,
+    'native responses must not create browser cookies'
+  );
+  assert.equal((await (await route.GET()).json()).nativeLanguage, 'en');
+  for (const extra of [
+    { origin: 'https://untrusted.invalid' },
+    { cookie: 'session=anything' },
+    { authorization: 'Bearer malformed' },
+  ])
+    assert.equal((await route.PATCH(nativeRequest('es', extra))).status, 403);
+  assert.equal((await route.PATCH(nativeRequest('fr'))).status, 400);
+  user = 'learner-a';
+  assert.equal(
+    (await (await route.GET()).json()).nativeLanguage,
+    'es',
+    'native writes remain scoped to their account'
+  );
   user = 'learner-a';
   available = false;
   assert.equal((await route.PATCH(request({ nativeLanguage: 'en' }))).status, 503);

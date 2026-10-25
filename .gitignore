@@ -16,3 +16,19 @@ htmlcov/
 # Private local learning evidence awaiting database recovery
 .data/
 logs/
+
+# Local infrastructure notes and runtime configuration; never publish these.
+.private/
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Personal mobile artifacts and signing material are never versioned.
+*.apk
+*.aab
+*.jks
+*.keystore
