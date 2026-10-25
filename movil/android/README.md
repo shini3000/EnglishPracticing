@@ -10,6 +10,8 @@ La guía completa de instalación, servidor, SDK, uso y diagnóstico está en la
 - Llamadas LiveKit, micrófono, silenciar/finalizar, transcripción y correcciones.
 - Práctica B con cinco bloques: gimnasia temporal, monólogo, input con réplica,
   agilidad 4–3–2 y microauditoría. Incluye pasos, cronómetros y revisión escrita.
+- Mi progreso: resumen, aprendizaje, m�tricas con gr�ficas, sesiones y actividad.
+  Consulta autenticada de los mismos registros y c�lculos que utiliza la web.
 - Interfaz Android fija en español. El idioma nativo guardado se usa en las
   explicaciones y correcciones y se comparte con la web.
 
@@ -54,7 +56,7 @@ Versión Android: 0.4.0. Gradle 8.13, AGP 8.13.2, Kotlin/Compose compiler 2.4.21
 Compose BOM 2026.06.01, Clerk 1.2.1 y LiveKit 2.29.1. Se fija R8 9.1.29 desde su
 repositorio oficial para compatibilidad con Kotlin 2.4.
 
-Se verificaron compilación debug/release, lint, seis pruebas unitarias y pantallas
+Se verificaron compilación debug/release, lint, nueve pruebas unitarias y pantallas
 en un emulador Android 11. Se comprobó el acceso y el guardado autenticado de
 preferencias contra un backend configurado. Faltan las pruebas completas de voz,
 grabación/revisión, reconexión y rendimiento en un teléfono físico.
@@ -63,3 +65,16 @@ Los ejercicios autónomos cierran la grabación al ocultar la app. La revisión 
 solicita explícitamente; el cero del cronómetro no corta la respuesta. El audio y
 el recorrido local no sobreviven al cierre del proceso. Las revisiones guardadas
 se conservan en el servidor. Consulta los detalles y límites en la wiki.
+
+## Estad�sticas
+
+Abre **Ver mi progreso** desde el inicio. La API `GET /api/mobile-progress` re�ne
+los c�lculos compartidos de progreso, aprendizaje y actividad para la cuenta
+autenticada. Requiere actualizar tambi�n el backend; no se consulta la base de
+datos directamente desde Android ni se llama a proveedores de IA al abrirla.
+
+Las m�tricas y sesiones permiten filtrar todas las llamadas, las �ltimas 5 o 10,
+o los �ltimos 7 o 30 d�as. Los totales y el nivel global no cambian con ese filtro.
+Actualizar vuelve a consultar el servidor; no hay sondeo continuo. Las mediciones
+ausentes se muestran sin datos y las curvas conservan sus huecos. La consulta no
+modifica el progreso.

@@ -13,10 +13,12 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     val calls = (application as EnglishPracticingApplication).calls
     val drills = com.englishpracticing.android.practice.DrillManager(application)
     val preferences = com.englishpracticing.android.data.ProfilePreferences(viewModelScope)
+    val progress = com.englishpracticing.android.data.ProgressManager(viewModelScope)
     private var accountId: String? = null
     fun bindAccount(id: String?) {
         calls.bindAccount(id)
         preferences.bindAccount(id)
+        progress.bindAccount(id)
         if (accountId != id) { drills.reset(); accountId = id }
     }
     override fun onCleared() { drills.reset(); super.onCleared() }
@@ -29,6 +31,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         calls.clear()
         drills.reset()
         preferences.bindAccount(null)
+        progress.bindAccount(null)
         viewModelScope.launch {
             if (Clerk.auth.signOut() is ClerkResult.Failure) {
                 calls.reportError("No se pudo cerrar sesión. Comprueba tu conexión y vuelve a intentarlo.")

@@ -24,6 +24,7 @@ idioma de las explicaciones. El idioma de aprendizaje es siempre **ingl茅s**.
 - **Tutor por voz:** conversaci贸n y actividades guiadas mediante LiveKit.
 - **Correcciones escritas:** frase original, correcci贸n, estructura y explicaci贸n, sin interrumpir con una explicaci贸n larga por voz.
 - **Historial diario:** correcciones recientes primero, b煤squeda y respuestas ocultables para practicar.
+- **Mi progreso en Android:** resumen, aprendizaje, gr醘icas de m閠ricas, sesiones y actividad con los mismos datos y c醠culos de la web.
 - **Aprendizaje progresivo:** vocabulario y estructuras con evidencias, repasos y estad铆sticas entre d铆as.
 - **Cuentas individuales:** acceso con Clerk, preferencias e historial separados por alumno.
 - **Actividades flexibles:** acceso directo a bloques, cron贸metros y ejercicios con transcripci贸n sin conversaci贸n.

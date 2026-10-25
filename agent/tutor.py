@@ -14,7 +14,7 @@ import progress
 from agent import avatars, personas
 from agent.practice import Practice
 from agent.models import model_policy, create_llm, grading_config
-from agent.corrections import correction_config, review_response
+from agent.corrections import CorrectionValidationError, anchored_quote, correction_config, review_response
 from agent.quota import QuotaLedger, compact_context, request_tokens, retry_delay, quota_message
 from agent.text_filters import strip_tool_call_leakage
 from agent.text_feedback import correction_was_shown, AudioDeliveryGate, recovery_invitation
@@ -83,7 +83,7 @@ class EnglishTutor(Agent):
             data = json.loads(details_json)
             quote = data.get("learner_text") if isinstance(data, dict) else None
             text = self.practice.latest_user_text
-            if not isinstance(quote, str) or not quote.strip() or quote not in text:
+            if not isinstance(quote, str) or not quote.strip() or anchored_quote(text, quote) is None:
                 return "Provide an exact quote from the current learner response; nothing was reviewed."
             # Review the whole current response once, not one paid request per error.
             cache_key = (correction_config(settings), self.practice.language, text)
@@ -101,7 +101,8 @@ class EnglishTutor(Agent):
                 self._correction_cache.pop(next(iter(self._correction_cache)))
             return response
         except Exception as exc:
-            logger.warning("correction.failed", extra={"error_type": type(exc).__name__})
+            logger.warning("correction.failed", extra={"error_type": type(exc).__name__,
+                "reason_code": exc.code if isinstance(exc, CorrectionValidationError) else "provider_or_delivery_error"})
             return "Correction unavailable. Keep the response pending and offer a retry. Do not invent a correction or claim no errors."
 
     async def on_enter(self) -> None:

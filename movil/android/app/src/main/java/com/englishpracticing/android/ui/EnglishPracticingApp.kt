@@ -81,6 +81,7 @@ fun EnglishPracticingApp(model: PracticeViewModel = viewModel()) {
     val initializationError by Clerk.initializationError.collectAsStateWithLifecycle()
     val user by Clerk.userFlow.collectAsStateWithLifecycle()
     val call by model.calls.state.collectAsStateWithLifecycle()
+    var showProgress by rememberSaveable(user?.id) { mutableStateOf(false) }
     var showProfile by rememberSaveable { mutableStateOf(false) }
     var showAuth by rememberSaveable { mutableStateOf(false) }
     var registerAccount by rememberSaveable { mutableStateOf(false) }
@@ -161,12 +162,14 @@ fun EnglishPracticingApp(model: PracticeViewModel = viewModel()) {
             if (call.active) CallScreen(call, model, onEnd = { confirmEnd = true }, onBlock = { block ->
                 model.calls.end(); model.drills.select(block); showFluency = true
             })
+            else if (showProgress && user != null) ProgressScreen(model, user!!.id, onBack = { showProgress = false })
             else if (showFluency && user != null) FluencyScreen(model.drills, onBack = { showFluency = false }, onTutor = { begin("fluency", it) })
             else {
                 LazyColumn(contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                     item {
                         Text(stringResource(R.string.home_title), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                         Text(if (user == null) "Entra con tu cuenta para practicar y conservar tu progreso." else "Elige cómo quieres practicar hoy.", Modifier.padding(top = 16.dp))
+                        if (user != null) OutlinedButton(onClick = { showProgress = true }, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) { Text("Ver mi progreso") }
                         if (user == null) {
                             Button(onClick = { registerAccount = false; showAuth = true }, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
                                 Text("Iniciar sesión")

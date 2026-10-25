@@ -2,6 +2,7 @@
 import asyncio
 import json
 import logging
+import re
 
 from google import genai
 from google.genai import types
@@ -11,6 +12,39 @@ from openai import AsyncOpenAI
 from agent.quota import QuotaLedger, estimate_tokens
 
 logger = logging.getLogger(__name__)
+
+
+class CorrectionValidationError(ValueError):
+    """A fixed, non-sensitive reason that is safe to include in operational logs."""
+
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+
+def _words(text):
+    return [(match.group().replace("’", "'").casefold(), match.start(), match.end())
+            for match in re.finditer(r"[^\W_]+(?:['’][^\W_]+)*", text)]
+
+
+def anchored_quote(text, quote):
+    """Ignore ASR typography, but preserve every word and return original evidence.
+
+    Never fuzzy-match, add/remove negations or substitute a corrected verb. The
+    returned quote is a contiguous substring of the learner's actual response.
+    """
+    source, wanted = _words(text), _words(quote)
+    words = [word[0] for word in wanted]
+    if not words:
+        return None
+    for index in range(len(source) - len(words) + 1):
+        span = source[index:index + len(words)]
+        if [word[0] for word in span] == words:
+            # Preserve the exact punctuation too when the quote was verbatim.
+            if quote in text[span[0][1]:span[-1][2] + len(quote)]:
+                return quote
+            return text[span[0][1]:span[-1][2]]
+    return None
 
 
 def correction_config(settings):
@@ -64,7 +98,7 @@ async def review_response(settings, text: str, language: str) -> dict:
                     system_instruction=system, response_mime_type="application/json",
                     max_output_tokens=output, temperature=0.2)), timeout=25)
             if not response.candidates or response.candidates[0].finish_reason != "STOP":
-                raise ValueError("Incomplete correction")
+                raise CorrectionValidationError("incomplete_response")
             content = response.text or ""
             usage = response.usage_metadata.total_token_count if response.usage_metadata else None
         else:
@@ -76,24 +110,35 @@ async def review_response(settings, text: str, language: str) -> dict:
                 **({"extra_body": {"thinking": {"type": "disabled"}}} if provider == "deepseek" else {}),
                 **({"reasoning_effort": "low"} if provider == "groq" and model.startswith("openai/gpt-oss") else {}))
             if response.choices[0].finish_reason != "stop":
-                raise ValueError("Incomplete correction")
+                raise CorrectionValidationError("incomplete_response")
             content = response.choices[0].message.content or ""
             usage = response.usage.total_tokens if response.usage else None
         if usage is not None:
             await asyncio.to_thread(ledger.settle, reservation, usage)
-        payload = json.loads(content)
+        try:
+            payload = json.loads(content)
+        except (ValueError, TypeError) as exc:
+            raise CorrectionValidationError("invalid_json") from exc
         if not isinstance(payload, dict) or not isinstance(payload.get("feedback"), str) or not payload["feedback"].strip():
-            raise ValueError("Invalid correction feedback")
+            raise CorrectionValidationError("invalid_feedback")
         cards = payload.get("corrections")
         if not isinstance(cards, list) or len(cards) > 4:
-            raise ValueError("Invalid correction cards")
+            raise CorrectionValidationError("invalid_cards")
         required = ("learner_text", "corrected_text", "pattern", "explanation", "recovery_task")
+        verified = []
         for card in cards:
             if (not isinstance(card, dict) or
-                any(not isinstance(card.get(k), str) or not card[k].strip() or len(card[k]) > 2000 for k in required) or
-                card["learner_text"] not in text or card["learner_text"] == card["corrected_text"]):
-                raise ValueError("Unverified correction quote")
-        return {"corrections": [{**{k: c[k] for k in required}, "provider": provider, "model": model} for c in cards],
+                any(not isinstance(card.get(k), str) or not card[k].strip() or len(card[k]) > 2000 for k in required)):
+                raise CorrectionValidationError("invalid_card_fields")
+            quote = anchored_quote(text, card["learner_text"])
+            if quote is None:
+                raise CorrectionValidationError("unverified_quote")
+            # ASR punctuation/case is not a grammar error. A no-op must not make
+            # other valid cards or the response feedback disappear.
+            if [w[0] for w in _words(quote)] == [w[0] for w in _words(card["corrected_text"])]:
+                continue
+            verified.append({**{k: card[k] for k in required}, "learner_text": quote})
+        return {"corrections": [{**c, "provider": provider, "model": model} for c in verified],
                 "feedback": payload["feedback"][:2000]}
     finally:
         if client is not None:

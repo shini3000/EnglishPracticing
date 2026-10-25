@@ -112,6 +112,7 @@ function compile(path, imports, env = {}) {
     ['/api/profile', 'GET'],
     ['/api/profile', 'PATCH'],
     ['/api/progress', 'GET'],
+    ['/api/mobile-progress', 'GET'],
     ['/api/practice-journal', 'GET'],
   ]) {
     const request = nativeRequest(path, method);
@@ -124,6 +125,8 @@ function compile(path, imports, env = {}) {
     nativeRequest('/api/time-shifting', 'POST', { cookie: 'session=anything' }),
     nativeRequest('/api/time-shifting', 'POST', { origin: 'https://untrusted.example' }),
     nativeRequest('/api/progress', 'PATCH'),
+    nativeRequest('/api/mobile-progress', 'POST'),
+    nativeRequest('/api/mobile-progress', 'GET', { origin: 'https://untrusted.example' }),
     nativeRequest('/api/profile', 'PATCH', { origin: 'https://untrusted.example' }),
     nativeRequest('/api/profile', 'PATCH', { cookie: '__session=anything' }),
     nativeRequest('/api/token', 'POST', { cookie: '__session=anything' }),

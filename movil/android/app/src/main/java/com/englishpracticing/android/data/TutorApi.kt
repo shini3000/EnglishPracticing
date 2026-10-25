@@ -25,6 +25,11 @@ class TutorApi {
         return Connection(url, json.getString("participantToken").also { require(it.isNotBlank()) })
     }
 
+    suspend fun progress(window: String): JSONObject {
+        require(window in listOf("all", "last-5", "last-10", "week", "month"))
+        return request("/api/mobile-progress?window=$window")
+    }
+
     suspend fun preferences(): PracticePreferences = parsePreferences(request("/api/profile"))
 
     suspend fun savePreferences(language: String): PracticePreferences {
@@ -97,7 +102,7 @@ class TutorApi {
                     while (true) {
                         val count = input.read(buffer)
                         if (count < 0) break
-                        require(output.size() + count <= 512 * 1024) { "Response is too large" }
+                        require(output.size() + count <= if (path.startsWith("/api/mobile-progress?")) 12 * 1024 * 1024 else 512 * 1024) { "Response is too large" }
                         output.write(buffer, 0, count)
                     }
                     output.toByteArray()

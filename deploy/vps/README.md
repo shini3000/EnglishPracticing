@@ -119,12 +119,12 @@ credenciales, certificados, cuotas, permisos ni una sesión real.
 
 ## Backend y agente con soporte Android
 
-`compose.android.yaml` permite usar la imagen local `english-practicing-web:android-0.4`
+`compose.android.yaml` permite usar la imagen local `english-practicing-web:android-0.5`
 con el ajuste de validación de tokens nativos. También selecciona el agente
-`english-practicing-agent:android-0.2`, que corrige el registro duplicado de
+`english-practicing-agent:android-0.3`, que corrige el registro duplicado de
 `record_learning` y omite eventos de handoff en las métricas de mensajes.
 Se construye desde la raíz con
-`docker build -t english-practicing-agent:android-0.2 -f deploy/vps/Dockerfile.agent-android .`. Compilar fuera de la VM de 4 GB para
+`docker build -t english-practicing-agent:android-0.3 -f deploy/vps/Dockerfile.agent-android .`. Compilar fuera de la VM de 4 GB para
 no competir con los procesos de audio. La imagen no incluye credenciales; sigue
 usando `web.env` en ejecución. Transferir la imagen con `docker save`, copiarla al
 servidor y cargarla con `docker load` antes de aplicar el overlay.

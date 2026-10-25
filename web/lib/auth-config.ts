@@ -28,6 +28,8 @@ export function isNativeBearerRequest(request?: Request): boolean {
     (request.method === 'POST' && ['/api/token', '/api/time-shifting'].includes(path)) ||
     (request.method === 'PATCH' && path === '/api/profile') ||
     (request.method === 'GET' &&
-      ['/api/profile', '/api/progress', '/api/practice-journal'].includes(path))
+      ['/api/profile', '/api/progress', '/api/practice-journal', '/api/mobile-progress'].includes(
+        path
+      ))
   );
 }
