@@ -25,3 +25,6 @@ Dockerfile
 .dockerignore
 README.md
 CLAUDE.md
+
+# Local-only infrastructure notes and personal artifacts.
+**/.private/

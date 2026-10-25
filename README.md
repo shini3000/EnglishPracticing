@@ -7,6 +7,7 @@
 
 [Documentación](https://github.com/shini3000/EnglishPracticing/wiki) ·
 [Instalación](https://github.com/shini3000/EnglishPracticing/wiki/Instalacion) ·
+[Android](https://github.com/shini3000/EnglishPracticing/wiki/Android) ·
 [Releases](https://github.com/shini3000/EnglishPracticing/releases) ·
 [Reportar un problema](https://github.com/shini3000/EnglishPracticing/issues)
 
@@ -14,8 +15,9 @@ English Practicing es una aplicación de práctica oral con sesiones guiadas, co
 escritas y seguimiento individual. Combina conversación en tiempo real con ejercicios
 autónomos: no todas las actividades necesitan una llamada ni una respuesta del tutor.
 
-La interfaz y las explicaciones están disponibles en **español e inglés**.
-El idioma de aprendizaje es siempre **inglés**.
+Disponible como **web** y **app nativa para Android**. La interfaz web admite español e
+inglés; la interfaz Android permanece en **español**. Cada cuenta puede elegir el
+idioma de las explicaciones. El idioma de aprendizaje es siempre **inglés**.
 
 ## Características
 
@@ -39,6 +41,7 @@ Repetir una palabra una vez no la marca como aprendida; el nivel estimado no es 
 
 ## Stack
 
+- **Android:** Kotlin · Jetpack Compose · Clerk Android · LiveKit Android.
 - **Web:** Next.js · React · TypeScript · next-intl.
 - **Agente:** Python · LiveKit Agents.
 - **Identidad y datos:** Clerk · PostgreSQL.
@@ -50,7 +53,7 @@ para conocer qué servicio interviene en cada actividad.
 
 ## Inicio rápido
 
-### Requisitos locales
+### Requisitos locales de la web y el agente
 
 - Git, Python **3.13**, Node.js **20 o posterior** y pnpm **9.15.9**. CI utiliza Node 24.
 - Micrófono, navegador con permiso de audio y conexión a Internet.
@@ -60,7 +63,7 @@ para conocer qué servicio interviene en cada actividad.
 
 | Servicio | Qué debes preparar | Para qué se utiliza |
 |---|---|---|
-| [LiveKit Cloud](https://cloud.livekit.io/) | Un proyecto con URL, API key y API secret | Salas y conexión de audio entre navegador y agente. También se admite un servidor LiveKit propio. |
+| [LiveKit Cloud](https://cloud.livekit.io/) | Un proyecto con URL, API key y API secret | Salas y conexión de audio entre navegador o Android y el agente. También se admite un servidor LiveKit propio. |
 | [Clerk](https://dashboard.clerk.com/) | Una aplicación con registro habilitado, Publishable key y Secret key; Google como método de acceso si lo deseas | Registro, inicio de sesión y cuentas individuales. |
 | [Neon / PostgreSQL](https://neon.com/) | Una base de datos y su cadena de conexión; aplicar el esquema del proyecto | Identidad interna, preferencias, prácticas y progreso. La web usa el driver de Neon; no cualquier URL PostgreSQL es intercambiable sin adaptar el acceso. |
 | [Groq](https://console.groq.com/keys) | Una cuenta y `GROQ_API_KEY` | Transcripción de voz con Whisper, incluso si eliges otro proveedor para conversar. También puede conversar y evaluar. |
@@ -74,57 +77,18 @@ Groq para conversación, correcciones y evaluación, además de LiveKit, Clerk, 
 y Tavily. DeepSeek, Google y bitHuman son opcionales. Edge TTS no requiere una API key
 en esta implementación. Cada servicio tiene sus propias cuotas y condiciones.
 
-### Proveedores implementados
+### Proveedores
 
-La compatibilidad depende de la función, no solo del proveedor seleccionado:
+Groq, Google Gemini y DeepSeek se seleccionan **por función**: conversación
+(`LLM_PROVIDER`), corrección (`CORRECTION_PROVIDER`) y evaluación
+(`GRADING_PROVIDER`). El corrector de ejercicios independientes se configura
+además en el entorno web. Elegir un proveedor no cambia los demás ni habilita
+fallback automático; configura la clave de cada función donde se ejecuta.
 
-| Función | Implementación disponible | Configuración |
-|---|---|---|
-| Conversación del tutor | Groq, Google Gemini o DeepSeek | `LLM_PROVIDER=groq`, `google` o `deepseek` en el agente |
-| Evaluación final de la llamada | Groq, Google Gemini o DeepSeek | `GRADING_PROVIDER=groq`, `google` o `deepseek` en el agente |
-| Transcripción en inglés | Whisper mediante Groq | `GROQ_API_KEY` y `STT_MODEL` en el agente |
-| Correcciones durante la llamada | Groq, Google Gemini o DeepSeek | `CORRECTION_PROVIDER` y, opcionalmente, `CORRECTION_MODEL` en el agente |
-| Revisión escrita de bloques 1 y 4 de práctica B | Groq, Google Gemini o DeepSeek desde Next.js | `CORRECTION_PROVIDER` y, opcionalmente, `CORRECTION_MODEL` en el entorno web |
-| Síntesis de voz del tutor | Edge TTS | Voces configuradas en el agente; sin clave adicional |
-| Búsqueda web | Tavily | `TAVILY_API_KEY` en el agente |
-| Transporte de audio | LiveKit Cloud o servidor propio | Las mismas credenciales LiveKit en agente y web |
-
-Cada función se selecciona por separado. Por ejemplo:
-
-```dotenv
-# .env del agente
-LLM_PROVIDER=deepseek
-CORRECTION_PROVIDER=groq
-CORRECTION_MODEL=openai/gpt-oss-20b
-GRADING_PROVIDER=google
-GOOGLE_GRADING_MODEL=gemini-3-flash-preview
-```
-
-```dotenv
-# web/.env.local: corrector de ejercicios independientes
-CORRECTION_PROVIDER=groq
-CORRECTION_MODEL=openai/gpt-oss-20b
-GROQ_API_KEY=tu_clave_privada
-```
-
-Configura la clave de cada proveedor seleccionado en el proceso que lo utiliza.
-Para conversar se usa `LLM_MODEL`, `GOOGLE_LLM_MODEL` o `DEEPSEEK_LLM_MODEL`;
-para evaluar, `GRADING_MODEL`, `GOOGLE_GRADING_MODEL` o `DEEPSEEK_GRADING_MODEL`.
-Reinicia agente y web tras modificar su entorno. No hay cambios de base de datos.
-
-En instalaciones anteriores, omitir `CORRECTION_PROVIDER` mantiene el corrector web
-en DeepSeek y las tarjetas de llamada en el modelo de conversación. Defínelo
-explícitamente en ambos entornos para separar las funciones. El corrector de llamada
-solo recibe una respuesta al solicitar revisión; no analiza cada fragmento de voz.
-
-Cambiar un proveedor no cambia los demás. No existe fallback automático entre
-proveedores. Un fallo deja la revisión pendiente, no una nota perfecta; el texto
-del ejercicio se conserva para reintentar. El caché distingue proveedor y modelo.
-Los presupuestos locales limitan el tamaño enviado sin recortar silenciosamente
-tu respuesta. No garantizan cuota ni acceso a todos los modelos de cada proveedor.
-
-Consulta la [guía técnica de proveedores](docs/ai-providers.md) para los valores
-predeterminados, límites y comportamiento de las correcciones en llamada.
+Whisper utiliza Groq, el transporte de voz utiliza LiveKit y Edge TTS genera la voz
+del tutor. Los valores, ejemplos y límites están en la
+[wiki de proveedores](https://github.com/shini3000/EnglishPracticing/wiki/Proveedores-y-cuotas)
+y la [guía técnica](docs/ai-providers.md).
 
 Los comandos siguientes usan **PowerShell en Windows**. La instalación detallada
 está en la [Wiki](https://github.com/shini3000/EnglishPracticing/wiki/Instalacion).
@@ -185,22 +149,28 @@ El idioma se cambia desde **avatar de Clerk → Preferencias**.
 > No publiques archivos `.env` ni claves privadas. Los servicios tienen cuotas y costes
 > independientes; no se garantiza una sesión gratuita de 150 minutos.
 
+## Android
+
+La app nativa incluye registro e inicio de sesión, llamadas por voz, transcripción,
+correcciones, perfil y preferencias. La práctica B ofrece sus **cinco bloques**,
+con pasos, cronómetros, grabación y revisión escrita donde corresponde.
+
+Cada persona configura **su propio servidor y servicios** y compila su APK de uso
+personal. Los agentes y las claves secretas se ejecutan en el servidor; no en el
+teléfono. No se distribuye una APK ni un backend compartido.
+
+Consulta la **[guía Android de la wiki](https://github.com/shini3000/EnglishPracticing/wiki/Android)**
+para preparar el SDK, desplegar el backend y generar tu APK. El código está en
+[`movil/android`](movil/android/README.md). Requiere Android 8.0 o posterior; la
+estabilidad y el rendimiento en un teléfono físico siguen pendientes de medir.
+
 ## Documentación
-
-### Android nativo y despliegue para móvil
-
-- [`movil/android`](movil/android/README.md): cliente Kotlin con Jetpack Compose,
-  pantalla inicial de modalidades y configuración para compilar una APK. La
-  autenticación y las llamadas LiveKit todavía están pendientes de integrar.
-- [`deploy/vps`](deploy/vps/README.md): despliegue Docker del agente y backend de
-  APIs por HTTPS. La interfaz web permanece privada en esta configuración.
-- [Horarios de la VM en Azure](deploy/vps/azure/README.md): encendido diario y
-  apagado con desasignación para controlar el consumo de cómputo.
 
 La **[Wiki](https://github.com/shini3000/EnglishPracticing/wiki)** reúne las guías de uso y operación:
 
 - **Practicar:** [Práctica A y diagnóstico](https://github.com/shini3000/EnglishPracticing/wiki/Practica-A-y-diagnostico) · [Práctica B](https://github.com/shini3000/EnglishPracticing/wiki/Practica-B).
 - **Revisar resultados:** [Progreso](https://github.com/shini3000/EnglishPracticing/wiki/Progreso-y-aprendizaje) · [Correcciones](https://github.com/shini3000/EnglishPracticing/wiki/Historial-de-correcciones).
+- **Android:** [Instalar y compilar tu APK](https://github.com/shini3000/EnglishPracticing/wiki/Android).
 - **Configurar:** [Cuentas e idiomas](https://github.com/shini3000/EnglishPracticing/wiki/Configuracion-y-cuentas) · [Proveedores y cuotas](https://github.com/shini3000/EnglishPracticing/wiki/Proveedores-y-cuotas).
 - **Operar:** [Logs y solución de problemas](https://github.com/shini3000/EnglishPracticing/wiki/Logs-y-solucion-de-problemas) · [Docker, CI y versiones](https://github.com/shini3000/EnglishPracticing/wiki/Docker-CI-y-versiones).
 
