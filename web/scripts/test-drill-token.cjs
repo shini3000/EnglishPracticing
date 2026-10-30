@@ -98,6 +98,9 @@ function request(mode, extra = {}) {
   assert.equal(options.attributes.practice_capture, '');
   await exportsObject.POST(request('diagnostic'));
   assert.equal(options.attributes.practice_capture, '');
+  assert.equal((await exportsObject.POST(request('vocabulary'))).status, 200);
+  assert.equal(options.attributes.practice_mode, 'vocabulary');
+  assert.equal(options.attributes.practice_capture, '');
   console.log(
     'PASS: authentication and signed capture attribute restricted to practice B. No real tokens or network.'
   );

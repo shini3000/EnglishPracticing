@@ -27,7 +27,7 @@ class CallService : Service() {
         }
         if (calls.state.value.active) return START_NOT_STICKY
         val mode = intent.getStringExtra(MODE)
-        if (mode !in setOf("daily", "diagnostic", "fluency")) {
+        if (mode !in setOf("daily", "diagnostic", "fluency", "vocabulary")) {
             stopSelf()
             return START_NOT_STICKY
         }

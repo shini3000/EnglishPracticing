@@ -11,7 +11,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
@@ -38,6 +37,7 @@ fun FluencyScreen(manager: DrillManager, onBack: () -> Unit, onTutor: (Int) -> U
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var confirmExit by remember { mutableStateOf(false) }
     var permissionError by remember { mutableStateOf(false) }
+    var showSteps by rememberSaveable(state.block) { mutableStateOf(false) }
     var materialUrl by rememberSaveable { mutableStateOf("") }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         permissionError = !granted
@@ -76,35 +76,40 @@ fun FluencyScreen(manager: DrillManager, onBack: () -> Unit, onTutor: (Int) -> U
     }
     val listState = rememberLazyListState()
     LaunchedEffect(state.block, state.step) { listState.scrollToItem(0) }
-    LazyColumn(state = listState, contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    LazyColumn(state = listState, contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
-            TextButton(onClick = { back() }, enabled = !state.busy) { Text(if (state.block < 0) "Volver al inicio" else "Ver los cinco bloques") }
-            Text("Práctica B", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-            Text("Cinco bloques · 55 minutos", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
+            TextButton(onClick = { back() }, enabled = !state.busy) { Text(if (state.block < 0) "Volver al inicio" else "Volver a los bloques") }
+            if (state.block < 0) {
+                Text("Práctica B", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("Cinco bloques para practicar a tu ritmo", Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("55 minutos en total", Modifier.padding(top = 6.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
         }
         if (state.block < 0) {
-            item { Text("Recorre la ruta en orden o abre el bloque que quieras practicar hoy.") }
-            itemsIndexed(fluencyBlocks) { index, block ->
-                OutlinedCard(onClick = { manager.select(index) }, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Bloque ${index + 1} · ${block.duration}", color = MaterialTheme.colorScheme.primary)
-                        Text(block.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text(block.description)
-                        Text(if (index in state.completed) "Recorrido en esta sesión · Volver a practicar" else "Abrir bloque", fontWeight = FontWeight.SemiBold)
+            item { Text("Elige un bloque", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+            fluencyBlocks.withIndex().toList().chunked(2).forEach { blockRow ->
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        blockRow.forEach { (index, block) ->
+                            OutlinedCard(onClick = { manager.select(index) }, modifier = Modifier.weight(1f), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                                Column(Modifier.fillMaxWidth().heightIn(min = 148.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Bloque ${index + 1}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                                    Text(block.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text(block.duration, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(if (index in state.completed) "Completado" else "Abrir bloque", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                        if (blockRow.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
         } else {
             val block = fluencyBlocks[state.block]
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    itemsIndexed(fluencyBlocks) { index, _ ->
-                        FilterChip(selected = index == state.block, onClick = { if (index != state.block) manager.select(index) },
-                            enabled = !state.recording && !state.busy, label = { Text("Bloque ${index + 1}") })
-                    }
-                }
-                Text(block.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 16.dp))
-                Text(block.description, Modifier.padding(top = 8.dp))
+                Text("Práctica B · Bloque ${state.block + 1} de 5", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                Text(block.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+                if (block.startStep != null || state.finished) Text(block.description, Modifier.padding(top = 8.dp))
             }
             if (block.startStep != null) {
                 item {
@@ -122,11 +127,16 @@ fun FluencyScreen(manager: DrillManager, onBack: () -> Unit, onTutor: (Int) -> U
             } else {
                 val step = block.steps[state.step]
                 item {
-                    Text("Paso ${state.step + 1} de ${block.steps.size}", color = MaterialTheme.colorScheme.primary)
-                    Text(step.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp))
-                    Text(step.instruction, Modifier.padding(top = 12.dp))
-                    Text("%02d:%02d".format(state.remaining / 60, state.remaining % 60), style = MaterialTheme.typography.displayMedium, modifier = Modifier.padding(top = 20.dp))
-                    if (state.remaining == 0) Text(if (state.recording) "Tiempo cumplido. Termina tu idea y pulsa Finalizar grabación." else "Tiempo cumplido. Continúa cuando estés listo.")
+                    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Paso ${state.step + 1} de ${block.steps.size}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                            LinearProgressIndicator(progress = { (state.step + 1).toFloat() / block.steps.size }, modifier = Modifier.fillMaxWidth())
+                            Text(step.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(step.instruction, style = MaterialTheme.typography.bodyLarge)
+                            Text("%02d:%02d".format(state.remaining / 60, state.remaining % 60), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                            if (state.remaining == 0) Text(if (state.recording) "Tiempo cumplido. Termina tu idea y pulsa Finalizar grabación." else "Tiempo cumplido. Continúa cuando estés listo.")
+                        }
+                    }
                 }
                 if (state.block == 0 || state.block == 3) item {
                     OutlinedTextField(value = state.routine, onValueChange = manager::routine, enabled = !state.recording && !state.busy && state.review == null && (state.block == 0 && state.step in listOf(0, 3) || state.block == 3 && state.step == 0),
@@ -143,11 +153,13 @@ fun FluencyScreen(manager: DrillManager, onBack: () -> Unit, onTutor: (Int) -> U
                 state.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
                 if (step.speaking) {
                     item {
-                        Text("La grabación se cierra al ocultar la app. Se envía para transcribir y revisar solo al pulsar Revisar respuesta.", style = MaterialTheme.typography.bodySmall)
                         if (state.recording) Button(onClick = manager::stopRecording, modifier = Modifier.fillMaxWidth()) { Text("Finalizar grabación") }
-                        else if (state.review == null) Button(onClick = { record() }, enabled = state.routine.isNotBlank() && !state.busy, modifier = Modifier.fillMaxWidth()) {
-                            Text(if (state.audio == null) "Grabar respuesta" else "Volver a grabar")
+                        else if (state.review == null) OutlinedButton(onClick = { record() }, enabled = state.routine.isNotBlank() && !state.busy, modifier = Modifier.fillMaxWidth()) {
+                            Text(if (state.routine.isBlank()) {
+                                if (state.block == 0) "Escribe tu rutina para grabar" else "Escribe tu tema para grabar"
+                            } else if (state.audio == null) "Grabar respuesta" else "Volver a grabar")
                         }
+                        Text("La grabación se cierra al ocultar la app. Se envía para transcribir y revisar solo al pulsar Revisar respuesta.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                         OutlinedTextField(value = state.text, onValueChange = manager::text, enabled = !state.recording && !state.busy && state.review == null,
                             label = { Text(if (state.audio != null && state.text.isBlank()) "Audio listo. Puedes revisarlo o escribir el texto." else "Respuesta en inglés (también puedes escribirla)") },
                             minLines = 3, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
@@ -183,9 +195,10 @@ fun FluencyScreen(manager: DrillManager, onBack: () -> Unit, onTutor: (Int) -> U
                         enabled = !state.recording && !state.busy && (!step.speaking || state.review != null) && (state.block != 3 || state.routine.isNotBlank()),
                         modifier = Modifier.fillMaxWidth()) { Text(if (state.step == block.steps.lastIndex) "Terminar bloque" else "Siguiente paso") }
                 }
-                itemsIndexed(block.steps) { index, routeStep ->
-                    Text("${if (index < state.step) "✓" else if (index == state.step) "→" else "·"} ${routeStep.title} · ${routeStep.seconds / 60} min ${if (routeStep.seconds % 60 != 0) "${routeStep.seconds % 60} s" else ""}",
-                        color = if (index == state.step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                item { TextButton(onClick = { showSteps = !showSteps }) { Text(if (showSteps) "Ocultar recorrido" else "Ver recorrido de este bloque") } }
+                if (showSteps) itemsIndexed(block.steps) { index, routeStep ->
+                    Text("${if (index < state.step) "Completado" else if (index == state.step) "Paso actual" else "Pendiente"}: ${routeStep.title}",
+                        color = if (index == state.step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }

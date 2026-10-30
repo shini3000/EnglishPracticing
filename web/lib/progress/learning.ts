@@ -1,4 +1,5 @@
 import type { Sql } from '@/lib/db';
+import { vocabularyBlockProgress } from './vocabulary-block';
 
 export type LearningAttempt = {
   date: string;
@@ -7,11 +8,13 @@ export type LearningAttempt = {
   observed: boolean;
   context: string;
   evidence: string;
+  practice_block?: string;
 };
 export type LearningItem = {
   item_type: 'vocabulary' | 'structure';
   key: string;
   label: string;
+  vocabulary_block?: ReturnType<typeof vocabularyBlockProgress>;
   state: 'EN PRÁCTICA' | 'EN CONSOLIDACIÓN' | 'CONSOLIDADA' | 'REPASO PENDIENTE';
   introduced_on: string;
   successful_days: string[];
@@ -99,6 +102,9 @@ export async function buildLearningSummary(sql: Sql, learnerId: string): Promise
     }).format(new Date());
     const items = rows.map(({ snapshot }) => ({
       ...snapshot,
+      ...(snapshot.item_type === 'vocabulary'
+        ? { vocabulary_block: vocabularyBlockProgress(snapshot.attempts, today) }
+        : {}),
       state:
         snapshot.state === 'CONSOLIDADA' &&
         snapshot.successful_days.length &&

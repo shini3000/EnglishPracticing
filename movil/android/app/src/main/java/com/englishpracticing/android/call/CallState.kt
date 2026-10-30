@@ -10,7 +10,21 @@ data class WrittenCorrection(
     val explanation: String,
     val exercise: String,
     val saved: Boolean,
+    val currentCall: Boolean = false,
+    val roomName: String = "",
 )
+
+/** A late history response must neither downgrade nor evict current-call cards. */
+fun mergeCorrections(existing: List<WrittenCorrection>, incoming: WrittenCorrection): List<WrittenCorrection> {
+    fun same(a: WrittenCorrection): Boolean = a.id == incoming.id ||
+        (a.roomName.isNotBlank() && a.roomName == incoming.roomName &&
+            a.original.trim().equals(incoming.original.trim(), ignoreCase = true) &&
+            a.corrected.trim().equals(incoming.corrected.trim(), ignoreCase = true))
+    val previous = existing.find(::same)
+    val merged = incoming.copy(currentCall = incoming.currentCall || previous?.currentCall == true, saved = incoming.saved || previous?.saved == true)
+    val all = existing.filterNot(::same) + merged
+    return (all.filterNot { it.currentCall } + all.filter { it.currentCall }).takeLast(50)
+}
 
 data class PracticeStatus(
     val step: String,

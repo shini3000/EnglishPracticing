@@ -130,7 +130,7 @@ class CallManager(private val context: Context) {
                             feedbackReady = data.optBoolean("feedback_ready"),
                             independentBlock = state.value.mode == "fluency" && data.optInt("step_index") in 5..14,
                         )) }
-                        "practice-journal" -> data.optJSONObject("entry")?.let { correction(it, data.optBoolean("saved")) }
+                        "practice-journal" -> data.optJSONObject("entry")?.let { correction(it, data.optBoolean("saved"), fromCurrentCall = true) }
                     }
                 } catch (_: Exception) { /* Ignore malformed room packets. */ }
             }
@@ -138,7 +138,7 @@ class CallManager(private val context: Context) {
         }
     }
 
-    private fun correction(data: JSONObject, saved: Boolean) {
+    private fun correction(data: JSONObject, saved: Boolean, fromCurrentCall: Boolean = false) {
         if (data.optString("kind") != "correction") return
         val original = data.optString("learner_text").take(4000)
         val corrected = data.optString("corrected_text").take(4000)
@@ -147,8 +147,12 @@ class CallManager(private val context: Context) {
             id = data.optString("event_id").ifBlank { "$original|$corrected" }, original = original,
             corrected = corrected, explanation = data.optString("explanation").take(4000),
             exercise = data.optString("recovery_task").take(4000), saved = saved,
+            currentCall = fromCurrentCall || (data.optString("room_name").isNotBlank() && data.optString("room_name") == room?.name),
+            roomName = data.optString("room_name"),
         )
-        mutableState.update { it.copy(corrections = ((it.corrections.filterNot { old -> old.id == item.id }) + item).takeLast(50)) }
+        mutableState.update { state ->
+            state.copy(corrections = mergeCorrections(state.corrections, item))
+        }
     }
 
     fun toggleMicrophone() {

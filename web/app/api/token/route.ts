@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     if (
       typeof nativeLanguage !== 'string' ||
       !Object.hasOwn(NATIVE_LANGUAGES, nativeLanguage) ||
-      !['daily', 'diagnostic', 'fluency'].includes(practiceMode)
+      !['daily', 'diagnostic', 'fluency', 'vocabulary'].includes(practiceMode)
     ) {
       return new NextResponse('Invalid practice preferences', { status: 400 });
     }

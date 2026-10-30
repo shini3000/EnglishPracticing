@@ -1,12 +1,12 @@
 # Optional overlay for a locally built backend with Android bearer authentication.
-# Build: docker build -t english-practicing-web:android-0.5 -f web/Dockerfile .
+# Build: docker build -t english-practicing-web:android-0.6 -f web/Dockerfile .
 # Transfer with docker save/load, then run from the deployment directory:
 # docker compose -f compose.yaml -f compose.android.yaml up -d --no-deps web agent
 # Roll back: docker compose -f compose.yaml up -d --no-deps web agent
 services:
   agent:
-    image: english-practicing-agent:android-0.3
+    image: english-practicing-agent:android-0.5
     pull_policy: never
   web:
-    image: english-practicing-web:android-0.5
+    image: english-practicing-web:android-0.6
     pull_policy: never

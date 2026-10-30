@@ -51,6 +51,8 @@ class EnglishTutor(Agent):
         self._history = history
         self._quota_paused = False
         self._correction_cache = {}
+        self._correction_scope = None
+        self._correction_turns = []
         self._independent_corrections = correction_config(settings) is not None
         self.model_policy = model_policy(settings)
         p = self.model_policy
@@ -67,8 +69,23 @@ class EnglishTutor(Agent):
         self._greeting = persona.greeting
 
     @function_tool
+    async def pending_vocabulary(self, page: int = 0) -> str:
+        """List vocabulary that must be practised today, 20 words per page. Begin at page 0 and use next_page until null."""
+        if self.practice.mode != "vocabulary":
+            return json.dumps({"error": "wrong_practice_mode"})
+        if self.practice.vocabulary_pending is None:
+            return json.dumps({"error": "progress_unavailable"})
+        if page < 0:
+            return json.dumps({"error": "invalid_page"})
+        words = self.practice.vocabulary_pending
+        start = page * 20
+        return json.dumps({"words": [{**word, "practised_this_session": word["key"] in self.practice.vocabulary_seen} for word in words[start:start + 20]], "total": len(words),
+                           "next_page": page + 1 if start + 20 < len(words) else None})
+
+    @function_tool
     async def record_learning(self, kind: str, details_json: str) -> str:
-        """Save learning evidence. Correction: exact learner_text; when a separate
+        """Save learning evidence. Correction: learner_text quoted from an observed
+        learner turn in THIS step, including before 'I'm done' or a retry request; when a separate
         corrector is configured it generates the card, otherwise include corrected_text,
         pattern, explanation, recovery_task. Vocabulary: element,observed_need,meaning,
         pattern,pronunciation,restrictions,collocations,examples (2),transfer_task.
@@ -82,11 +99,13 @@ class EnglishTutor(Agent):
         try:
             data = json.loads(details_json)
             quote = data.get("learner_text") if isinstance(data, dict) else None
-            text = self.practice.latest_user_text
-            if not isinstance(quote, str) or not quote.strip() or anchored_quote(text, quote) is None:
-                return "Provide an exact quote from the current learner response; nothing was reviewed."
+            text = self._correction_evidence(quote)
+            if text is None:
+                logger.warning("correction.rejected", extra={"reason_code": "quote_not_observed",
+                    "step_index": self.practice.index})
+                return "Use an exact quote from the learner's observed response in this step, not a request to retry or finish. No correction was generated."
             # Review the whole current response once, not one paid request per error.
-            cache_key = (correction_config(settings), self.practice.language, text)
+            cache_key = (self._correction_scope, correction_config(settings), self.practice.language, text)
             if cache_key in self._correction_cache:
                 return self._correction_cache[cache_key]
             result = await review_response(settings, text, LANGUAGES.get(self.practice.language, "Spanish"))
@@ -135,7 +154,32 @@ class EnglishTutor(Agent):
         # The full measured state is built once per request, not accumulated as
         # another system message on every turn.
         self.practice.latest_user_text = new_message.text_content or ""
+        self._remember_correction_turn(self.practice.latest_user_text)
         await self.practice.publish()
+
+    def _remember_correction_turn(self, text):
+        # A monologue can span multiple STT turns. "I'm done" or "retry" must
+        # not erase the evidence. Never reuse speech from a different step.
+        scope = (self.practice.index, len(self.practice.completed))
+        if scope != self._correction_scope:
+            self._correction_scope = scope
+            self._correction_turns = []
+        if text.strip() and (not self._correction_turns or text != self._correction_turns[-1]):
+            self._correction_turns.append(text)
+        # Bounded to the corrector's input limit. Preserve complete turns.
+        while len(self._correction_turns) > 1 and len("\n".join(self._correction_turns)) > 8000:
+            self._correction_turns.pop(0)
+
+    def _correction_evidence(self, quote):
+        self._remember_correction_turn(self.practice.latest_user_text if self._correction_scope is None else "")
+        if not isinstance(quote, str) or not quote.strip():
+            return None
+        turns = [text for text in self._correction_turns if anchored_quote(text, quote) is not None]
+        if not turns:
+            return None
+        if self.practice.mode == "fluency" and self.practice.index == 4:
+            return "\n".join(self._correction_turns)
+        return turns[-1]
 
     def _learning_memory(self) -> str:
         entries = []
@@ -179,8 +223,13 @@ class EnglishTutor(Agent):
             due = [{"element": item["label"], "item_type": item["item_type"],
                     "state": item["state"], "next_review": item["next_review"]}
                    for item in snapshots if item.get("due")]
-        return ("Due reviews: " + json.dumps(due[:4], ensure_ascii=False)[:500]
-                + "\n" + "\n".join(selected)[-1000:])
+        memory = ("Due reviews: " + json.dumps(due[:4], ensure_ascii=False)[:500]
+                  + "\n" + "\n".join(selected)[-1000:])
+        if self.practice.mode == "fluency" and self.practice.index == 4:
+            self._remember_correction_turn("")
+            memory += "\nObserved monologue excerpt (evidence only; quote this for correction after completion): " + json.dumps(
+                "\n".join(self._correction_turns)[-1200:], ensure_ascii=False)
+        return memory
 
     async def _quota_notice(self, state: str, seconds: float = 0, reason: str = "") -> None:
         self.practice.quota_status = {"state": state, "wait_seconds": int(seconds),
@@ -469,7 +518,7 @@ async def _run_session(ctx: JobContext) -> None:
     if language not in LANGUAGES:
         language = "es"
     mode = participant.attributes.get("practice_mode", "daily")
-    if mode not in {"daily", "diagnostic", "fluency"}:
+    if mode not in {"daily", "diagnostic", "fluency", "vocabulary"}:
         mode = "daily"
     practice = Practice(learner_id, ctx.room, settings.PROGRESS_DATABASE_URL, mode, language)
     control_tasks: set[asyncio.Task] = set()

@@ -38,6 +38,17 @@ class Stream:
 
 
 class TutorQuotaTests(unittest.IsolatedAsyncioTestCase):
+    async def test_vocabulary_pending_is_paginated_and_never_invented(self):
+        self.practice.mode = "vocabulary"
+        unavailable = json.loads(await self.tutor.pending_vocabulary(0))
+        self.assertEqual(unavailable["error"], "progress_unavailable")
+        self.practice.vocabulary_pending = [{"key": str(i), "label": str(i), "streak": 1, "target": 10} for i in range(23)]
+        self.practice.vocabulary_seen.add("0")
+        first = json.loads(await self.tutor.pending_vocabulary(0))
+        second = json.loads(await self.tutor.pending_vocabulary(first["next_page"]))
+        self.assertEqual((len(first["words"]), len(second["words"]), second["next_page"]), (20, 3, None))
+        self.assertTrue(first["words"][0]["practised_this_session"])
+
     async def test_agent_tools_flatten_without_duplicate_record_learning(self):
         from livekit.agents.llm.tool_context import ToolContext
         tools = ToolContext(self.tutor.tools).flatten()
@@ -75,6 +86,45 @@ class TutorQuotaTests(unittest.IsolatedAsyncioTestCase):
             result = await self.tutor.record_learning('correction', '{"learner_text":"I did went"}')
         self.assertIn('pending', result)
         self.assertFalse(self.practice.entries)
+
+    async def test_monologue_survives_completion_turn_and_retry(self):
+        self.practice.mode, self.practice.index = 'fluency', 4
+        self.tutor._independent_corrections = True
+        for text in ['Yesterday I go to work.', 'Then I buy two apples.', "I'm done."]:
+            await self.tutor.on_user_turn_completed(None, SimpleNamespace(text_content=text))
+        result = {'corrections': [{'learner_text': 'I go to work', 'corrected_text': 'I went to work',
+                  'pattern': 'Past simple', 'explanation': 'Usa pasado.', 'recovery_task': 'Describe another day.'}],
+                  'feedback': 'Review the past tense.'}
+        with patch('agent.tutor.review_response', new=AsyncMock(side_effect=[TimeoutError(), result])) as review:
+            failed = await self.tutor.record_learning('correction', '{"learner_text":"I go to work"}')
+            self.assertIn('pending', failed)
+            self.assertFalse(self.practice.feedback_ready)
+            await self.tutor.on_user_turn_completed(None, SimpleNamespace(text_content='Please try again.'))
+            response = json.loads(await self.tutor.record_learning('correction', '{"learner_text":"I go to work"}'))
+        self.assertEqual(review.await_count, 2)
+        self.assertIn('Then I buy two apples.', review.await_args.args[1])
+        self.assertEqual(response['correction_count'], 1)
+        self.assertTrue(self.practice.feedback_ready)
+        self.assertIn('Yesterday I go to work.', self.tutor._learning_memory())
+
+    async def test_correction_evidence_does_not_leak_into_next_step(self):
+        self.practice.mode, self.practice.index = 'fluency', 4
+        self.tutor._independent_corrections = True
+        await self.tutor.on_user_turn_completed(None, SimpleNamespace(text_content='Yesterday I go to work.'))
+        self.practice.index = 15
+        with patch('agent.tutor.review_response', new=AsyncMock()) as review:
+            await self.tutor.record_learning('correction', '{"learner_text":"Yesterday I go to work"}')
+            await self.tutor.record_learning('correction', '{"learner_text":"Yesterday I go to work"}')
+        review.assert_not_awaited()
+        self.assertFalse(self.tutor._correction_turns)
+
+    async def test_correction_evidence_is_bounded_and_rejects_invented_quotes(self):
+        self.practice.mode, self.practice.index = 'fluency', 4
+        for text in ['Old evidence. ' * 300, 'Recent evidence. ' * 300, "I'm done."]:
+            await self.tutor.on_user_turn_completed(None, SimpleNamespace(text_content=text))
+        self.assertLessEqual(len('\n'.join(self.tutor._correction_turns)), 8000)
+        self.assertIsNone(self.tutor._correction_evidence('I invented this sentence.'))
+        self.assertIn('Recent evidence.', self.tutor._correction_evidence('Recent evidence.'))
 
     def setUp(self):
         room = SimpleNamespace(name="test", local_participant=SimpleNamespace(publish_data=AsyncMock()))

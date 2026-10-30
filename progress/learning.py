@@ -15,6 +15,58 @@ def normalize(value: str) -> str:
     return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value).strip().casefold())
 
 
+def vocabulary_block_progress(attempts: list[dict], today: date | None = None) -> dict:
+    """Count distinct successful days in this block; a failed day resets the streak.
+
+    Several attempts on one date count once. If any assessed attempt on that date
+    fails, the day resets the streak and cannot also add a success. Three full
+    consecutive days without using the word reset an unfinished streak.
+    """
+    days: dict[str, set[str]] = {}
+    for attempt in attempts:
+        if (attempt.get("practice_block") != "vocabulary" or not attempt.get("observed")
+                or attempt.get("attempt_type") not in {"review", "transfer"}
+                or not attempt.get("context") or not attempt.get("date")):
+            continue
+        days.setdefault(attempt["date"], set()).add(attempt.get("result"))
+    today = today or datetime.now(timezone(timedelta(hours=-5))).date()
+    streak = 0
+    completed_on = None
+    last_used = None
+    for day, outcomes in sorted(days.items()):
+        day_date = date.fromisoformat(day)
+        if day_date > today:
+            continue
+        if completed_on:
+            break  # Once completed, it is no longer mandatory in this block.
+        if last_used and (day_date - last_used).days >= 4:
+            streak = 0
+        if "failed" in outcomes:
+            streak = 0
+        elif "unaided" in outcomes:
+            streak += 1
+            if streak >= 10:
+                completed_on = day
+        if "unaided" in outcomes or "helped" in outcomes:
+            last_used = day_date
+    if not completed_on and last_used and (today - last_used).days >= 4:
+        streak = 0
+    return {"streak": streak, "target": 10, "completed": completed_on is not None,
+            "completed_on": completed_on}
+
+
+def vocabulary_words_to_practice(items: list[dict], today: date) -> list[dict]:
+    """Recompute pending words at read time so inactivity resets stale snapshots."""
+    pending = []
+    for item in items:
+        if item.get("item_type") != "vocabulary":
+            continue
+        progress = vocabulary_block_progress(item.get("attempts", []), today)
+        if not progress["completed"]:
+            pending.append({"key": item["key"], "label": item["label"], **progress})
+    return sorted(pending, key=lambda item: (item["streak"], item["label"].casefold()))
+
+
 def item_identity(entry: dict) -> tuple[str, str, str] | None:
     kind = entry.get("kind")
     if kind not in LEARNING_KINDS:
@@ -68,6 +120,7 @@ def build_learning_items(entries: list[dict], today: date | None = None) -> list
             "attempt_type": entry.get("attempt_type", "legacy"),
             "observed": entry.get("observed") is True,
             "context": str(entry.get("context", "")).strip(),
+            "practice_block": entry.get("practice_block"),
             "evidence": str(entry.get("evidence", "")),
             "event_id": event_id or f"legacy-{index}",
         })
@@ -113,6 +166,8 @@ def build_learning_items(entries: list[dict], today: date | None = None) -> list
             "next_review": next_review, "due": next_review is not None and next_review <= today.isoformat(),
             "policy": POLICY,
         })
+        if item["item_type"] == "vocabulary":
+            item["vocabulary_block"] = vocabulary_block_progress(attempts, today)
     return list(items.values())
 
 

@@ -37,7 +37,8 @@ class Practice:
         self.learner_id, self.room, self.dsn = learner_id, room, dsn
         self.mode, self.language = mode, language
         self.steps = ([(label, minutes) for label, minutes, _, _ in FLUENCY_STAGES]
-                      if mode == "fluency" else DIAGNOSTIC_STEPS if mode == "diagnostic" else DAILY_STEPS)
+                      if mode == "fluency" else DIAGNOSTIC_STEPS if mode == "diagnostic" else
+                      [("Vocabulario en contexto", 15)] if mode == "vocabulary" else DAILY_STEPS)
         self.index = 0
         self.elapsed = 0.0
         self.since: float | None = None
@@ -51,6 +52,8 @@ class Practice:
         self.feedback_ready = False
         self.feedback_summary = ""
         self.latest_user_text = ""
+        self.vocabulary_pending = None  # None means history could not be loaded.
+        self.vocabulary_seen = set()
         self._flush_lock = asyncio.Lock()
         self._modeled_examples: set[str] = set()
         self._manual_lock = asyncio.Lock()
@@ -70,7 +73,7 @@ class Practice:
             "step_count": len(self.steps),
             "route": [{"label": label, "minutes": minutes,
                        "block": ("Bloque " + ("4 · Agilidad y síntesis" if i in {11, 13} else FLUENCY_STAGES[i][2]) if self.mode == "fluency" else
-                                 "Diagnóstico" if self.mode == "diagnostic" else
+                                 "Diagnóstico" if self.mode == "diagnostic" else "Vocabulario" if self.mode == "vocabulary" else
                                  "Bloque 1 · Recuperación y diagnóstico" if i < 4 else
                                  "Bloque 2 · Estructura y escucha" if i < 10 else
                                  "Bloque 3 · Transferencia y cierre"),
@@ -78,7 +81,7 @@ class Practice:
                       for i, (label, minutes) in enumerate(self.steps)],
             "step_duration_seconds": self.steps[self.index][1] * 60,
             "block": ("Bloque " + ("4 · Agilidad y síntesis" if self.index in {11, 13} else FLUENCY_STAGES[self.index][2]) if self.mode == "fluency" else
-                      "Diagnóstico" if self.mode == "diagnostic" else
+                      "Diagnóstico" if self.mode == "diagnostic" else "Vocabulario" if self.mode == "vocabulary" else
                       "Bloque 1 · Recuperación y diagnóstico" if self.index < 4 else
                       "Bloque 2 · Estructura y escucha" if self.index < 10 else
                       "Bloque 3 · Transferencia y cierre"),
@@ -233,6 +236,10 @@ class Practice:
                 await conn.execute("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", str(self.learner_id))
                 items = await save_learning_projection(conn, self.learner_id,
                                                        datetime.now(timezone(timedelta(hours=-5))).date())
+            if self.mode == "vocabulary":
+                from progress.learning import vocabulary_words_to_practice
+                self.vocabulary_pending = vocabulary_words_to_practice(
+                    items, datetime.now(timezone(timedelta(hours=-5))).date())
             rows = await conn.fetch(
                 "SELECT entry FROM practice_journal WHERE learner_id=$1 ORDER BY created_at DESC LIMIT 80",
                 self.learner_id,
@@ -260,6 +267,10 @@ class Practice:
             return "Invalid action."
         if self.finished:
             return self.model_status()
+        if self.mode == "vocabulary" and action in {"next", "finish"} and self.vocabulary_pending is not None:
+            remaining = [word for word in self.vocabulary_pending if word["key"] not in self.vocabulary_seen]
+            if remaining:
+                return f"The learner may end the call, but {len(remaining)} pending words were not reviewed; do not claim they were practised."
         if self.mode == "fluency" and self.index == 4 and action == "next":
             if not learner_requested:
                 return "Do not advance block 2 yourself. Finish written feedback first; the learner chooses when to continue. Record feedback with a nonempty summary after the correction cards."
@@ -348,6 +359,10 @@ class Practice:
             data["reviews"] = [(today + timedelta(days=d)).isoformat() for d in (1, 3, 7, 14)]
             data["state"] = "EN PRÁCTICA"
         if kind == "retrieval":
+            # The runtime selects the practice block; never trust the model's label.
+            data.pop("practice_block", None)
+            if self.mode == "vocabulary":
+                data["practice_block"] = "vocabulary"
             if any(not isinstance(data.get(key), str) or not data[key].strip()
                    for key in ("element", "evidence", "context")) or data.get("result") not in {"unaided", "helped", "failed"}:
                 return "Retrieval needs element, result and evidence."
@@ -367,6 +382,10 @@ class Practice:
         if kind != "retrieval":
             data.pop("observed", None)
         saved, entry = await self.append_event(kind, data)
+        if (self.mode == "vocabulary" and kind == "retrieval" and saved and data.get("observed")
+                and data.get("item_type") == "vocabulary" and data.get("attempt_type") in {"review", "transfer"}):
+            from progress.learning import normalize
+            self.vocabulary_seen.add(normalize(data["element"]))
         if kind in {"vocabulary", "structure", "correction", "retrieval"}:
             # Projection derives mastery from all attempts, not the last 80 messages.
             identity = item_identity(entry)

@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +27,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
@@ -61,6 +65,7 @@ import com.englishpracticing.android.BuildConfig
 import com.englishpracticing.android.R
 import com.englishpracticing.android.call.CallPhase
 import com.englishpracticing.android.call.CallState
+import com.englishpracticing.android.ui.theme.IndigoClerkTheme
 import kotlinx.coroutines.delay
 
 private enum class PracticeMode(val wire: String, val title: Int, val description: Int) {
@@ -82,6 +87,7 @@ fun EnglishPracticingApp(model: PracticeViewModel = viewModel()) {
     val user by Clerk.userFlow.collectAsStateWithLifecycle()
     val call by model.calls.state.collectAsStateWithLifecycle()
     var showProgress by rememberSaveable(user?.id) { mutableStateOf(false) }
+    var showVocabulary by rememberSaveable(user?.id) { mutableStateOf(false) }
     var showProfile by rememberSaveable { mutableStateOf(false) }
     var showAuth by rememberSaveable { mutableStateOf(false) }
     var registerAccount by rememberSaveable { mutableStateOf(false) }
@@ -108,6 +114,7 @@ fun EnglishPracticingApp(model: PracticeViewModel = viewModel()) {
     if (user == null && showAuth) {
         key(registerAccount) {
             AuthView(
+                clerkTheme = IndigoClerkTheme,
                 mode = if (registerAccount) AuthMode.SignUp else AuthMode.SignIn,
                 isDismissible = true,
                 onDismiss = { showAuth = false },
@@ -121,6 +128,7 @@ fun EnglishPracticingApp(model: PracticeViewModel = viewModel()) {
     if (user != null && showProfile) {
         key(user!!.id) {
             UserProfileView(
+                clerkTheme = IndigoClerkTheme,
                 customRows = listOf(UserProfileCustomRow(routeKey = "preferences", title = "Preferencias",
                     icon = UserProfileRowIcon.Resource(R.drawable.ic_preferences))),
                 customDestination = { route -> if (route == "preferences") ProfilePreferencesScreen(model, user!!.id) },
@@ -163,6 +171,7 @@ fun EnglishPracticingApp(model: PracticeViewModel = viewModel()) {
                 model.calls.end(); model.drills.select(block); showFluency = true
             })
             else if (showProgress && user != null) ProgressScreen(model, user!!.id, onBack = { showProgress = false })
+            else if (showVocabulary && user != null) VocabularyScreen(model, user!!.id, onBack = { showVocabulary = false }, onStart = { begin("vocabulary") })
             else if (showFluency && user != null) FluencyScreen(model.drills, onBack = { showFluency = false }, onTutor = { begin("fluency", it) })
             else {
                 LazyColumn(contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -180,13 +189,37 @@ fun EnglishPracticingApp(model: PracticeViewModel = viewModel()) {
                         }
                     }
                     call.error?.let { item { ErrorMessage(it) } }
-                    items(PracticeMode.entries, key = { it.wire }) { mode ->
+                    item {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             HorizontalDivider()
-                            Text(stringResource(mode.title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text(stringResource(mode.description), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Button(onClick = { if (user == null) { registerAccount = false; showAuth = true } else if (mode == PracticeMode.Fluency) { model.drills.selectMenu(); showFluency = true } else begin(mode.wire) }, enabled = pendingMode == null, modifier = Modifier.fillMaxWidth()) {
-                                Text(if (user == null) "Entrar para practicar" else if (mode == PracticeMode.Fluency) "Ver los cinco bloques" else "Iniciar llamada")
+                            Text("Vocabulario en contexto", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text("Aprende una palabra, úsala en situaciones distintas y practica las que tienes pendientes.")
+                            Button(onClick = { if (user == null) showAuth = true else showVocabulary = true }, modifier = Modifier.fillMaxWidth()) { Text(if (user == null) "Entrar para practicar" else "Ver palabras pendientes") }
+                        }
+                    }
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("Elige tu práctica", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            OutlinedCard(onClick = { if (user == null) { registerAccount = false; showAuth = true } else { model.drills.selectMenu(); showFluency = true } }, enabled = pendingMode == null, modifier = Modifier.fillMaxWidth(), colors = androidx.compose.material3.CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Práctica B", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                    Text("Cinco bloques para hablar con más fluidez.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("55 min · Abrir práctica", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                                listOf(PracticeMode.Daily, PracticeMode.Diagnostic).forEach { mode ->
+                                    OutlinedCard(onClick = { if (user == null) { registerAccount = false; showAuth = true } else begin(mode.wire) }, enabled = pendingMode == null, modifier = Modifier.weight(1f).fillMaxHeight(), colors = androidx.compose.material3.CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Text(stringResource(mode.title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            if (mode == PracticeMode.Daily) androidx.compose.material3.Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = androidx.compose.foundation.shape.RoundedCornerShape(50)) {
+                                                Text("Deprecado", modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                            }
+                                            Text(if (mode == PracticeMode.Daily) "Conversación y fundamentos" else "Conoce tu punto de partida", style = MaterialTheme.typography.bodySmall)
+                                            Text(if (user == null) "Entrar" else "Iniciar llamada", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -221,10 +254,23 @@ private fun CallScreen(call: CallState, model: PracticeViewModel, onEnd: () -> U
         else -> if (call.tutorReady) "Tutor conectado" else "Esperando al tutor…"
     }
     Column(Modifier.fillMaxSize()) {
-        Text(status, Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = model.calls::toggleMicrophone, enabled = call.phase == CallPhase.Connected, modifier = Modifier.weight(1f)) { Text(if (call.muted) "Activar micrófono" else "Silenciar") }
-            Button(onClick = onEnd, modifier = Modifier.weight(1f)) { Text("Finalizar") }
+        if (call.mode == "fluency") {
+            androidx.compose.material3.Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(status, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(if (call.phase != CallPhase.Connected) "Preparando el micrófono" else if (call.muted) "Micrófono silenciado" else "Micrófono activo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(onClick = model.calls::toggleMicrophone, enabled = call.phase == CallPhase.Connected, modifier = Modifier.weight(1f)) { Text(if (call.muted) "Activar micrófono" else "Silenciar") }
+                        Button(onClick = onEnd, modifier = Modifier.weight(1f)) { Text("Finalizar") }
+                    }
+                }
+            }
+        } else {
+            Text(status, Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = model.calls::toggleMicrophone, enabled = call.phase == CallPhase.Connected, modifier = Modifier.weight(1f)) { Text(if (call.muted) "Activar micrófono" else "Silenciar") }
+                Button(onClick = onEnd, modifier = Modifier.weight(1f)) { Text("Finalizar") }
+            }
         }
         TabRow(selectedTabIndex = tab) {
             listOf("Práctica", "Conversación", "Correcciones").forEachIndexed { index, title ->
@@ -285,14 +331,11 @@ private fun CallScreen(call: CallState, model: PracticeViewModel, onEnd: () -> U
                 }
                 2 -> {
                     if (call.corrections.isEmpty()) item { Text("Aquí verás las correcciones escritas que prepare el tutor.") }
-                    items(call.corrections.asReversed(), key = { it.id }) { correction ->
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(correction.original, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(correction.corrected, fontWeight = FontWeight.Bold)
-                            Text(correction.explanation)
-                            if (correction.exercise.isNotBlank()) Text(correction.exercise)
-                            if (!correction.saved) Text("Pendiente de confirmar guardado", style = MaterialTheme.typography.bodySmall)
-                            HorizontalDivider()
+                    listOf(true, false).forEach { current ->
+                        val corrections = call.corrections.asReversed().filter { it.currentCall == current }
+                        if (corrections.isNotEmpty()) {
+                            item { Text(if (current) "Correcciones de esta práctica" else "Prácticas anteriores", style = MaterialTheme.typography.titleLarge) }
+                            items(corrections, key = { it.id }) { correction -> CallCorrectionCard(correction) }
                         }
                     }
                 }
